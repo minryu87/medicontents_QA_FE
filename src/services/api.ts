@@ -180,10 +180,55 @@ export class ClientApiService {
     return response.data.campaigns || [];
   }
 
-  // 프로필 API
-  async getProfile(): Promise<{ hospital: Hospital, user: User }> {
-    const response = await api.get('/api/v1/client/posts/profile');
+  async getCampaign(campaignId: number): Promise<Campaign> {
+    const response = await api.get(`/api/v1/admin/campaigns/${campaignId}`);
     return response.data;
+  }
+
+  async getCampaignPosts(campaignId: number): Promise<any[]> {
+    const response = await api.get(`/api/v1/admin/campaigns/${campaignId}/posts`);
+    return response.data.posts || [];
+  }
+
+  // 포스트 상세 API
+  async getPostMaterials(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/client/posts/${postId}/materials`);
+    return response.data;
+  }
+
+  async getContentResults(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/client/posts/${postId}/content`);
+    return response.data;
+  }
+
+  async getEvaluationResults(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/client/posts/${postId}/evaluation`);
+    return response.data;
+  }
+
+  async getAgentExecutionLogs(postId: string): Promise<any[]> {
+    const response = await api.get(`/api/v1/client/posts/${postId}/logs`);
+    return response.data;
+  }
+
+  async getPostReviews(postId: string): Promise<any[]> {
+    const response = await api.get(`/api/v1/client/posts/${postId}/reviews`);
+    return response.data;
+  }
+
+  // 프로필 API
+  async getHospitalProfile(): Promise<Hospital> {
+    const response = await api.get('/api/v1/client/profile/hospital');
+    return response.data;
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await api.get('/api/v1/client/profile/user');
+    return response.data;
+  }
+
+  async updateHospitalProfile(profileData: any): Promise<void> {
+    await api.put('/api/v1/client/profile/hospital', profileData);
   }
 
   async updateProfile(profileData: any): Promise<void> {

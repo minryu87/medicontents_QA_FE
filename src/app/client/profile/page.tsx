@@ -9,8 +9,8 @@ import Input from '@/components/ui/Input';
 interface HospitalProfile {
   id: number;
   name: string;
-  address: string;
-  phone: string;
+  address?: string;
+  phone?: string;
   website?: string;
   description?: string;
   business_card_image?: string;
@@ -53,8 +53,8 @@ export default function ProfilePage() {
       setUser(userData);
       setFormData({
         name: profileData.name,
-        address: profileData.address,
-        phone: profileData.phone,
+        address: profileData.address || '',
+        phone: profileData.phone || '',
         website: profileData.website || '',
         description: profileData.description || ''
       });
@@ -84,8 +84,8 @@ export default function ProfilePage() {
     if (profile) {
       setFormData({
         name: profile.name,
-        address: profile.address,
-        phone: profile.phone,
+        address: profile.address || '',
+        phone: profile.phone || '',
         website: profile.website || '',
         description: profile.description || ''
       });

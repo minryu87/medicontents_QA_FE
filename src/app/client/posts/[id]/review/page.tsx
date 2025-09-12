@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 
 interface Post {
   post_id: string;
-  title: string;
+  title?: string;
   status: string;
 }
 

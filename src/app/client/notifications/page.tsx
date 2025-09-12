@@ -4,20 +4,16 @@ import { useEffect, useState } from 'react';
 import { clientApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import type { Notification as BaseNotification } from '@/types/common';
 
-interface Notification {
-  id: string;
-  notification_type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
+interface Notification extends BaseNotification {
   post_id?: string;
 }
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [markingAsRead, setMarkingAsRead] = useState<string | null>(null);
+  const [markingAsRead, setMarkingAsRead] = useState<number | null>(null);
 
   useEffect(() => {
     loadNotifications();
@@ -34,7 +30,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const handleMarkAsRead = async (notificationId: number) => {
     try {
       setMarkingAsRead(notificationId);
       await clientApi.markNotificationAsRead(notificationId);

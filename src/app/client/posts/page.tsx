@@ -7,12 +7,9 @@ import { clientApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
+import type { Post as BasePost } from '@/types/common';
 
-interface Post {
-  id: string;
-  post_id: string;
-  title?: string;
-  status: string;
+interface Post extends BasePost {
   type?: string;
   medical_service?: {
     category: string;
@@ -22,7 +19,6 @@ interface Post {
     id: number;
     name: string;
   };
-  created_at: string;
   publish_date?: string;
   seo_score?: number;
   legal_score?: number;
@@ -43,7 +39,7 @@ export default function ClientPostsPage() {
       setLoading(true);
       const params = activeTab !== 'all' ? { status: activeTab } : {};
       const data = await clientApi.getPosts(params);
-      setPosts(data);
+      setPosts(data as Post[]);
     } catch (error) {
       console.error('Error loading posts:', error);
     } finally {

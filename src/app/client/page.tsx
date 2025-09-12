@@ -5,21 +5,18 @@ import Link from 'next/link';
 import { clientApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import type { Post as BasePost } from '@/types/common';
 
 interface DashboardStats {
   totalPosts: number;
   pendingPosts: number;
   completedPosts: number;
-  averageSeoScore: number;
-  averageLegalScore: number;
+  averageQualityScore: number;
+  approvalRate: number;
 }
 
-interface RecentPost {
-  id: string;
-  post_id: string;
-  title: string;
-  status: string;
-  created_at: string;
+interface RecentPost extends BasePost {
+  // Additional properties if needed
 }
 
 interface ActiveCampaign {
@@ -46,10 +43,15 @@ export default function ClientDashboard() {
         clientApi.getRecentPosts(),
         clientApi.getActiveCampaigns()
       ]);
-      
+
       setStats(statsData);
-      setRecentPosts(postsData);
-      setActiveCampaigns(campaignsData);
+      setRecentPosts(postsData as RecentPost[]);
+      // Transform campaigns to include progress
+      const transformedCampaigns: ActiveCampaign[] = campaignsData.map((campaign: any) => ({
+        ...campaign,
+        progress: Math.round((campaign.completed_post_count / Math.max(campaign.target_post_count, 1)) * 100)
+      }));
+      setActiveCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -113,12 +115,12 @@ export default function ClientDashboard() {
             <p className="text-3xl font-bold text-green-600">{stats.completedPosts}</p>
           </Card>
           <Card className="p-6">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">평균 SEO 점수</h3>
-            <p className="text-3xl font-bold text-blue-600">{stats.averageSeoScore}</p>
+            <h3 className="text-sm font-medium text-gray-600 mb-2">평균 품질 점수</h3>
+            <p className="text-3xl font-bold text-blue-600">{stats.averageQualityScore.toFixed(1)}</p>
           </Card>
           <Card className="p-6">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">평균 Legal 점수</h3>
-            <p className="text-3xl font-bold text-purple-600">{stats.averageLegalScore}</p>
+            <h3 className="text-sm font-medium text-gray-600 mb-2">승인율</h3>
+            <p className="text-3xl font-bold text-purple-600">{stats.approvalRate.toFixed(1)}%</p>
           </Card>
         </div>
       )}

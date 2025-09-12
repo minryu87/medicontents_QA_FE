@@ -7,13 +7,9 @@ import { clientApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
+import type { Post as BasePost } from '@/types/common';
 
-interface Post {
-  id: string;
-  post_id: string;
-  title?: string;
-  status: string;
-  created_at: string;
+interface Post extends BasePost {
   medical_service?: {
     category: string;
     treatment: string;
@@ -102,7 +98,7 @@ export default function PostDetailPage() {
         clientApi.getPostReviews(postId)
       ]);
 
-      setPost(postData);
+      setPost(postData as Post);
       setMaterials(materialsData);
       setContent(contentData);
       setEvaluation(evalData);

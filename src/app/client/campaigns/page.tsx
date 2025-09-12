@@ -5,17 +5,9 @@ import Link from 'next/link';
 import { clientApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import type { Campaign as BaseCampaign } from '@/types/common';
 
-interface Campaign {
-  id: number;
-  name: string;
-  description?: string;
-  status: string;
-  start_date: string;
-  end_date: string;
-  target_post_count: number;
-  completed_post_count: number;
-  published_post_count: number;
+interface Campaign extends BaseCampaign {
   progress: number;
   medical_service?: {
     category: string;
@@ -34,7 +26,13 @@ export default function CampaignsPage() {
   const loadCampaigns = async () => {
     try {
       const data = await clientApi.getCampaigns();
-      setCampaigns(data);
+      // Transform campaigns to include progress and medical_service
+      const transformedCampaigns: Campaign[] = data.map((campaign: BaseCampaign) => ({
+        ...campaign,
+        progress: calculateProgress(campaign),
+        medical_service: undefined // TODO: Add medical service lookup if needed
+      }));
+      setCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error loading campaigns:', error);
     } finally {
@@ -62,7 +60,7 @@ export default function CampaignsPage() {
     return texts[status] || status;
   };
 
-  const calculateProgress = (campaign: Campaign) => {
+  const calculateProgress = (campaign: BaseCampaign) => {
     return Math.round((campaign.completed_post_count / Math.max(campaign.target_post_count, 1)) * 100);
   };
 

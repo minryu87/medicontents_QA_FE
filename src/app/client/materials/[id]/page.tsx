@@ -214,7 +214,7 @@ export default function MaterialsProvisionPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, selected_symptom: e.target.value }))}
               >
                 <option value="">선택하세요</option>
-                {[...new Set(medicalServices.map(s => s.symptom))].map(symptom => (
+                {Array.from(new Set(medicalServices.map(s => s.symptom))).map(symptom => (
                   <option key={symptom} value={symptom}>{symptom}</option>
                 ))}
               </select>
@@ -228,7 +228,7 @@ export default function MaterialsProvisionPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, selected_procedure: e.target.value }))}
               >
                 <option value="">선택하세요</option>
-                {[...new Set(medicalServices.map(s => s.procedure))].map(procedure => (
+                {Array.from(new Set(medicalServices.map(s => s.procedure))).map(procedure => (
                   <option key={procedure} value={procedure}>{procedure}</option>
                 ))}
               </select>
