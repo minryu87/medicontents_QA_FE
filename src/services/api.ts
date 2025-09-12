@@ -22,6 +22,27 @@ export class AdminApiService {
     return response.data;
   }
 
+  async getRecentActivities(): Promise<Array<{
+    id: string;
+    type: string;
+    description: string;
+    timestamp: string;
+    related_id?: number;
+  }>> {
+    const response = await api.get('/api/v1/admin/dashboard/activities');
+    return response.data;
+  }
+
+  async getSystemStatus(): Promise<{
+    database: 'healthy' | 'warning' | 'error';
+    redis: 'healthy' | 'warning' | 'error';
+    api: 'healthy' | 'warning' | 'error';
+    lastBackup: string;
+  }> {
+    const response = await api.get('/api/v1/admin/system/status');
+    return response.data;
+  }
+
   // 포스트 관리 API
   async getPosts(filters?: any): Promise<{ posts: Post[], pagination: PaginationInfo }> {
     const response = await api.get('/api/v1/admin/posts', { params: filters });

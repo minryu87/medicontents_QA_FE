@@ -2,203 +2,245 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import { formatDate, getStatusText, getStatusColor, truncateText } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
 import { clientApi } from '@/services/api';
-import type { Post } from '@/types/common';
+import { Card } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import { Tabs } from '@/components/ui/Tabs';
 
-interface PostFilters {
+interface Post {
+  id: string;
+  post_id: string;
+  title?: string;
   status: string;
-  type: string;
-  search: string;
+  type?: string;
+  medical_service?: {
+    category: string;
+    treatment: string;
+  };
+  campaign?: {
+    id: number;
+    name: string;
+  };
+  created_at: string;
+  publish_date?: string;
+  seo_score?: number;
+  legal_score?: number;
 }
 
-export default function ClientPosts() {
+export default function ClientPostsPage() {
+  const searchParams = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [filters, setFilters] = useState<PostFilters>({
-    status: '',
-    type: '',
-    search: '',
-  });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(searchParams.get('status') || 'all');
 
   useEffect(() => {
-    const loadPostsData = async () => {
-      try {
-        setLoading(true);
-        
-        // 실제 API 호출로 데이터 로드
-        const postsData = await clientApi.getPosts();
-        setPosts(postsData);
-      } catch (error) {
-        console.error('클라이언트 포스트 데이터 로드 실패:', error);
-        // 에러 시 빈 상태로 설정
-        setPosts([]);
-      } finally {
-        setLoading(false);
-      }
+    loadPosts();
+  }, [activeTab]);
+
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const params = activeTab !== 'all' ? { status: activeTab } : {};
+      const data = await clientApi.getPosts(params);
+      setPosts(data);
+    } catch (error) {
+      console.error('Error loading posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      'initial': 'bg-gray-100 text-gray-800',
+      'hospital_completed': 'bg-blue-100 text-blue-800',
+      'agent_processing': 'bg-yellow-100 text-yellow-800',
+      'agent_completed': 'bg-purple-100 text-purple-800',
+      'client_review': 'bg-indigo-100 text-indigo-800',
+      'client_approved': 'bg-teal-100 text-teal-800',
+      'published': 'bg-green-100 text-green-800'
     };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
 
-    loadPostsData();
-  }, []);
-
-  const filteredPosts = posts.filter((post) => {
-    if (filters.status && post.status !== filters.status) return false;
-    if (filters.type && post.post_type !== filters.type) return false;
-    if (filters.search && !post.title?.toLowerCase().includes(filters.search.toLowerCase()) && 
-        !post.post_id.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    return true;
-  });
-
-  const handleFilterChange = (key: keyof PostFilters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  const getStatusText = (status: string) => {
+    const texts: { [key: string]: string } = {
+      'initial': '자료 대기',
+      'hospital_completed': '자료 완료',
+      'agent_processing': 'AI 처리 중',
+      'agent_completed': 'AI 처리 완료',
+      'client_review': '검토 필요',
+      'client_approved': '승인됨',
+      'published': '게시됨'
+    };
+    return texts[status] || status;
   };
 
   const getActionButton = (post: Post) => {
     switch (post.status) {
       case 'initial':
-      case 'hospital_processing':
         return (
-          <Button size="sm" variant="primary" asChild>
-            <Link href={`/client/materials/${post.post_id}`}>자료 제공</Link>
-          </Button>
+          <Link href={`/client/materials/${post.post_id}`}>
+            <Button size="sm">자료 제공</Button>
+          </Link>
         );
       case 'client_review':
         return (
-          <Button size="sm" variant="primary" asChild>
-            <Link href={`/client/posts/${post.post_id}/review`}>검토하기</Link>
-          </Button>
+          <Link href={`/client/posts/${post.post_id}/review`}>
+            <Button size="sm">검토하기</Button>
+          </Link>
         );
       default:
         return (
-          <Button size="sm" variant="outline" asChild>
-            <Link href={`/client/posts/${post.post_id}`}>상세보기</Link>
-          </Button>
+          <Link href={`/client/posts/${post.post_id}`}>
+            <Button size="sm" variant="secondary">상세보기</Button>
+          </Link>
         );
     }
   };
 
+  const tabCounts = {
+    all: posts.length,
+    initial: posts.filter(p => p.status === 'initial').length,
+    processing: posts.filter(p => ['agent_processing', 'hospital_completed'].includes(p.status)).length,
+    review: posts.filter(p => p.status === 'client_review').length,
+    completed: posts.filter(p => ['client_approved', 'published'].includes(p.status)).length
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      {/* 헤더 */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">포스트 관리</h1>
-          <p className="text-gray-600">포스트 현황을 확인하고 관리하세요</p>
+          <h1 className="text-3xl font-bold">포스트 관리</h1>
+          <p className="text-gray-600 mt-2">콘텐츠 생성 및 관리</p>
         </div>
-        <Button asChild>
-          <Link href="/client/posts/create">새 포스트 요청</Link>
-        </Button>
+        <Link href="/client/posts/create">
+          <Button>새 포스트 생성</Button>
+        </Link>
       </div>
 
-      {/* 필터 */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">상태</label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+      {/* Status Tabs */}
+      <div className="mb-8">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            {[
+              { key: 'all', label: '전체', count: tabCounts.all },
+              { key: 'initial', label: '자료 대기', count: tabCounts.initial },
+              { key: 'processing', label: '처리 중', count: tabCounts.processing },
+              { key: 'review', label: '검토 필요', count: tabCounts.review },
+              { key: 'completed', label: '완료', count: tabCounts.completed }
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`
+                  whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm
+                  ${activeTab === tab.key 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
               >
-                <option value="">전체</option>
-                <option value="initial">초기</option>
-                <option value="hospital_processing">자료 제공 중</option>
-                <option value="agent_processing">AI 처리 중</option>
-                <option value="agent_completed">AI 완료</option>
-                <option value="client_review">검토 대기</option>
-                <option value="client_approved">승인 완료</option>
-                <option value="published">게시 완료</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">타입</label>
-              <select
-                value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="">전체</option>
-                <option value="informational">정보성 포스팅</option>
-                <option value="case_study">사례 연구</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">검색</label>
-              <Input
-                placeholder="제목 또는 Post ID 검색"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 포스트 카드 그리드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPosts.map((post) => (
-          <Card key={post.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">
-                  {truncateText(post.title || '제목 미정', 30)}
-                </CardTitle>
-                <Badge className={getStatusColor(post.status)}>
-                  {getStatusText(post.status)}
-                </Badge>
-              </div>
-              <p className="text-sm text-gray-600">Post ID: {post.post_id}</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">타입:</span>
-                  <span>{post.post_type === 'informational' ? '정보성' : '사례 연구'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">생성일:</span>
-                  <span>{formatDate(post.created_at)}</span>
-                </div>
-                {post.publish_date && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">게시일:</span>
-                    <span>{formatDate(post.publish_date)}</span>
-                  </div>
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className="ml-2 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+                    {tab.count}
+                  </span>
                 )}
-                
-                <div className="flex space-x-2 pt-2">
-                  {getActionButton(post)}
-                  <Button size="sm" variant="ghost" asChild>
-                    <Link href={`/client/posts/${post.post_id}`}>상세</Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
-      
-      {filteredPosts.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-gray-500">조건에 맞는 포스트가 없습니다.</p>
-          </CardContent>
-        </Card>
+
+      {/* Posts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {posts
+          .filter(post => {
+            if (activeTab === 'all') return true;
+            if (activeTab === 'initial') return post.status === 'initial';
+            if (activeTab === 'processing') return ['agent_processing', 'hospital_completed'].includes(post.status);
+            if (activeTab === 'review') return post.status === 'client_review';
+            if (activeTab === 'completed') return ['client_approved', 'published'].includes(post.status);
+            return true;
+          })
+          .map((post) => (
+            <Card key={post.id} className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {post.title || `포스트 ${post.post_id}`}
+                  </h3>
+                  <p className="text-sm text-gray-600">ID: {post.post_id}</p>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(post.status)}`}>
+                  {getStatusText(post.status)}
+                </span>
+              </div>
+
+              {post.medical_service && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">
+                    {post.medical_service.category} - {post.medical_service.treatment}
+                  </p>
+                </div>
+              )}
+
+              {post.campaign && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">
+                    캠페인: {post.campaign.name}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
+                <span>생성일: {new Date(post.created_at).toLocaleDateString('ko-KR')}</span>
+                {post.publish_date && (
+                  <span>게시 예정: {new Date(post.publish_date).toLocaleDateString('ko-KR')}</span>
+                )}
+              </div>
+
+              {(post.seo_score || post.legal_score) && (
+                <div className="flex gap-4 mb-4">
+                  {post.seo_score && (
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-blue-600">{post.seo_score}</div>
+                      <div className="text-xs text-gray-600">SEO 점수</div>
+                    </div>
+                  )}
+                  {post.legal_score && (
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-green-600">{post.legal_score}</div>
+                      <div className="text-xs text-gray-600">Legal 점수</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {getActionButton(post)}
+              </div>
+            </Card>
+          ))}
+      </div>
+
+      {posts.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">포스트가 없습니다</p>
+        </div>
       )}
     </div>
   );

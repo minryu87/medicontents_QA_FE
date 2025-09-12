@@ -2,272 +2,200 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import { formatDate, getStatusText, getStatusColor } from '@/lib/utils';
 import { clientApi } from '@/services/api';
-import type { Post, Campaign } from '@/types/common';
+import { Card } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 
-interface ClientStats {
+interface DashboardStats {
   totalPosts: number;
   pendingPosts: number;
   completedPosts: number;
-  publishedPosts: number;
-  averageQualityScore: number;
-  approvalRate: number;
+  averageSeoScore: number;
+  averageLegalScore: number;
+}
+
+interface RecentPost {
+  id: string;
+  post_id: string;
+  title: string;
+  status: string;
+  created_at: string;
+}
+
+interface ActiveCampaign {
+  id: number;
+  name: string;
+  progress: number;
+  end_date: string;
 }
 
 export default function ClientDashboard() {
-  const [stats, setStats] = useState<ClientStats>({
-    totalPosts: 0,
-    pendingPosts: 0,
-    completedPosts: 0,
-    publishedPosts: 0,
-    averageQualityScore: 0,
-    approvalRate: 0,
-  });
-  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
-  const [activeCampaigns, setActiveCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentPosts, setRecentPosts] = useState<RecentPost[]>([]);
+  const [activeCampaigns, setActiveCampaigns] = useState<ActiveCampaign[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        // 실제 API 호출로 데이터 로드
-        const [
-          dashboardStats,
-          recentPostsData,
-          activeCampaignsData
-        ] = await Promise.all([
-          clientApi.getDashboardStats(),
-          clientApi.getRecentPosts(5),
-          clientApi.getActiveCampaigns()
-        ]);
-
-        setStats(dashboardStats);
-        setRecentPosts(recentPostsData);
-        setActiveCampaigns(activeCampaignsData);
-      } catch (error) {
-        console.error('클라이언트 대시보드 데이터 로드 실패:', error);
-        // 에러 시 빈 상태로 설정
-        setStats({
-          totalPosts: 0,
-          pendingPosts: 0,
-          completedPosts: 0,
-          publishedPosts: 0,
-          averageQualityScore: 0,
-          approvalRate: 0,
-        });
-        setRecentPosts([]);
-        setActiveCampaigns([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadDashboardData();
   }, []);
 
+  const loadDashboardData = async () => {
+    try {
+      const [statsData, postsData, campaignsData] = await Promise.all([
+        clientApi.getDashboardStats(),
+        clientApi.getRecentPosts(),
+        clientApi.getActiveCampaigns()
+      ]);
+      
+      setStats(statsData);
+      setRecentPosts(postsData);
+      setActiveCampaigns(campaignsData);
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      'initial': 'bg-gray-100 text-gray-800',
+      'hospital_processing': 'bg-blue-100 text-blue-800',
+      'agent_processing': 'bg-yellow-100 text-yellow-800',
+      'client_review': 'bg-purple-100 text-purple-800',
+      'published': 'bg-green-100 text-green-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusText = (status: string) => {
+    const texts: { [key: string]: string } = {
+      'initial': '자료 대기',
+      'hospital_processing': '자료 작성 중',
+      'agent_processing': 'AI 처리 중',
+      'client_review': '검토 필요',
+      'published': '게시됨'
+    };
+    return texts[status] || status;
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      {/* 환영 메시지 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">안녕하세요, 내이튼치과의원님!</h1>
-        <p className="text-gray-600 mt-2">오늘도 좋은 콘텐츠로 고객을 만나보세요.</p>
+        <h1 className="text-3xl font-bold">대시보드</h1>
+        <p className="text-gray-600 mt-2">콘텐츠 생성 현황을 한눈에 확인하세요</p>
       </div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">총 포스트</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalPosts}</div>
-          </CardContent>
-        </Card>
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="p-6">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">전체 포스트</h3>
+            <p className="text-3xl font-bold">{stats.totalPosts}</p>
+          </Card>
+          <Card className="p-6">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">대기 중</h3>
+            <p className="text-3xl font-bold text-yellow-600">{stats.pendingPosts}</p>
+          </Card>
+          <Card className="p-6">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">완료</h3>
+            <p className="text-3xl font-bold text-green-600">{stats.completedPosts}</p>
+          </Card>
+          <Card className="p-6">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">평균 SEO 점수</h3>
+            <p className="text-3xl font-bold text-blue-600">{stats.averageSeoScore}</p>
+          </Card>
+          <Card className="p-6">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">평균 Legal 점수</h3>
+            <p className="text-3xl font-bold text-purple-600">{stats.averageLegalScore}</p>
+          </Card>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">진행 중</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.pendingPosts}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">완료</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completedPosts}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">게시됨</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.publishedPosts}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">평균 품질</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.averageQualityScore.toFixed(1)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">승인률</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{stats.approvalRate.toFixed(1)}%</div>
-          </CardContent>
-        </Card>
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">빠른 작업</h2>
+        <div className="flex gap-4">
+          <Link href="/client/posts/create">
+            <Button>새 포스트 생성</Button>
+          </Link>
+          <Link href="/client/posts?status=client_review">
+            <Button variant="secondary">검토 대기 포스트</Button>
+          </Link>
+        </div>
       </div>
 
-      {/* 빠른 액션 */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>빠른 액션</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-4">
-            <Button asChild>
-              <Link href="/client/posts/create">새 포스트 생성</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/client/posts">포스트 목록 보기</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/client/campaigns">캠페인 현황</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 메인 콘텐츠 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 최근 포스트 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>최근 포스트</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentPosts.map((post) => (
-                <div key={post.id} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900">
-                      {post.title || '제목 미정'}
-                    </h3>
-                    <Badge className={getStatusColor(post.status)}>
-                      {getStatusText(post.status)}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">Post ID: {post.post_id}</p>
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-gray-500">
-                      생성일: {formatDate(post.created_at)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Posts */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">최근 포스트</h2>
+          <div className="space-y-4">
+            {recentPosts.map((post) => (
+              <Card key={post.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">{post.title || `포스트 ${post.post_id}`}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {new Date(post.created_at).toLocaleDateString('ko-KR')}
                     </p>
-                    <div className="flex space-x-2">
-                      {post.status === 'client_review' && (
-                        <Button size="sm" variant="primary" asChild>
-                          <Link href={`/client/posts/${post.post_id}/review`}>검토하기</Link>
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/client/posts/${post.post_id}`}>상세보기</Link>
-                      </Button>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(post.status)}`}>
+                      {getStatusText(post.status)}
+                    </span>
+                    <Link href={`/client/posts/${post.post_id}`}>
+                      <Button size="sm" variant="secondary">보기</Button>
+                    </Link>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </Card>
+            ))}
+            {recentPosts.length === 0 && (
+              <p className="text-gray-500 text-center py-8">최근 포스트가 없습니다</p>
+            )}
+          </div>
+        </div>
 
-        {/* 활성 캠페인 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>활성 캠페인</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activeCampaigns.map((campaign) => {
-                const progress = campaign.target_post_count > 0 
-                  ? (campaign.completed_post_count / campaign.target_post_count) * 100 
-                  : 0;
-
-                return (
-                  <div key={campaign.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900">{campaign.name}</h3>
-                      <Badge variant={campaign.status === 'active' ? 'success' : 'warning'}>
-                        {campaign.status === 'active' ? '진행 중' : campaign.status}
-                      </Badge>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>진행률</span>
-                        <span>{Math.round(progress)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">목표:</span>
-                        <div className="font-medium">{campaign.target_post_count}개</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">완료:</span>
-                        <div className="font-medium text-green-600">{campaign.completed_post_count}개</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">게시:</span>
-                        <div className="font-medium text-blue-600">{campaign.published_post_count}개</div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3 flex justify-between items-center">
-                      <p className="text-xs text-gray-500">
-                        기간: {formatDate(campaign.start_date)} ~ {formatDate(campaign.end_date)}
-                      </p>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/client/campaigns/${campaign.id}`}>상세보기</Link>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Active Campaigns */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">진행 중인 캠페인</h2>
+          <div className="space-y-4">
+            {activeCampaigns.map((campaign) => (
+              <Card key={campaign.id} className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">{campaign.name}</h3>
+                  <span className="text-sm text-gray-600">
+                    ~{new Date(campaign.end_date).toLocaleDateString('ko-KR')}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${campaign.progress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>진행률</span>
+                  <span>{campaign.progress}%</span>
+                </div>
+              </Card>
+            ))}
+            {activeCampaigns.length === 0 && (
+              <p className="text-gray-500 text-center py-8">진행 중인 캠페인이 없습니다</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

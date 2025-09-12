@@ -2,66 +2,73 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import { formatDate } from '@/lib/utils';
 import { clientApi } from '@/services/api';
-import type { Campaign } from '@/types/common';
+import { Card } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 
-export default function ClientCampaigns() {
+interface Campaign {
+  id: number;
+  name: string;
+  description?: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  target_post_count: number;
+  completed_post_count: number;
+  published_post_count: number;
+  progress: number;
+  medical_service?: {
+    category: string;
+    treatment: string;
+  };
+}
+
+export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadCampaignsData = async () => {
-      try {
-        setLoading(true);
-        
-        // 실제 API 호출로 데이터 로드 (현재 병원의 캠페인만)
-        const campaignsData = await clientApi.getCampaigns();
-        setCampaigns(campaignsData);
-      } catch (error) {
-        console.error('클라이언트 캠페인 데이터 로드 실패:', error);
-        // 에러 시 빈 상태로 설정
-        setCampaigns([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCampaignsData();
+    loadCampaigns();
   }, []);
 
-  const getProgressPercentage = (campaign: Campaign) => {
-    return campaign.target_post_count > 0 
-      ? (campaign.completed_post_count / campaign.target_post_count) * 100 
-      : 0;
-  };
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'active': return 'success';
-      case 'paused': return 'warning';
-      case 'completed': return 'secondary';
-      case 'aborted': return 'destructive';
-      default: return 'outline';
+  const loadCampaigns = async () => {
+    try {
+      const data = await clientApi.getCampaigns();
+      setCampaigns(data);
+    } catch (error) {
+      console.error('Error loading campaigns:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusText = (status: string) => {
-    const statusMap: Record<string, string> = {
-      'active': '진행 중',
-      'paused': '일시 중단',
-      'completed': '완료',
-      'aborted': '중단',
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      'active': 'bg-green-100 text-green-800',
+      'paused': 'bg-yellow-100 text-yellow-800',
+      'completed': 'bg-blue-100 text-blue-800',
+      'aborted': 'bg-red-100 text-red-800'
     };
-    return statusMap[status] || status;
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusText = (status: string) => {
+    const texts: { [key: string]: string } = {
+      'active': '진행 중',
+      'paused': '일시 정지',
+      'completed': '완료',
+      'aborted': '중단됨'
+    };
+    return texts[status] || status;
+  };
+
+  const calculateProgress = (campaign: Campaign) => {
+    return Math.round((campaign.completed_post_count / Math.max(campaign.target_post_count, 1)) * 100);
   };
 
   const getDaysRemaining = (endDate: string) => {
-    const today = new Date();
     const end = new Date(endDate);
+    const today = new Date();
     const diffTime = end.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -69,125 +76,110 @@ export default function ClientCampaigns() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">캠페인 현황</h1>
-        <p className="text-gray-600">진행 중인 캠페인의 현황을 확인하세요</p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">캠페인 현황</h1>
+          <p className="text-gray-600 mt-2">진행 중인 콘텐츠 캠페인을 확인하세요</p>
+        </div>
+        <Link href="/client/posts">
+          <Button variant="secondary">포스트 관리로</Button>
+        </Link>
       </div>
 
-      {/* 캠페인 카드 그리드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {campaigns.map((campaign) => {
-          const progress = getProgressPercentage(campaign);
-          const daysRemaining = getDaysRemaining(campaign.end_date);
+      {campaigns.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">진행 중인 캠페인이 없습니다</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {campaigns.map((campaign) => {
+            const progress = calculateProgress(campaign);
+            const daysRemaining = getDaysRemaining(campaign.end_date);
 
-          return (
-            <Card key={campaign.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                  <Badge variant={getStatusVariant(campaign.status)}>
-                    {getStatusText(campaign.status)}
-                  </Badge>
-                </div>
-                {campaign.description && (
-                  <p className="text-sm text-gray-600">{campaign.description}</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* 기간 정보 */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">시작일:</span>
-                      <div className="font-medium">{formatDate(campaign.start_date)}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">종료일:</span>
-                      <div className="font-medium">{formatDate(campaign.end_date)}</div>
-                    </div>
-                  </div>
-
-                  {/* 남은 기간 */}
-                  {campaign.status === 'active' && (
-                    <div className="text-center">
-                      <div className={`text-lg font-bold ${daysRemaining > 30 ? 'text-green-600' : 
-                                      daysRemaining > 7 ? 'text-orange-600' : 'text-red-600'}`}>
-                        {daysRemaining > 0 ? `${daysRemaining}일 남음` : '기간 만료'}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 진행률 */}
+            return (
+              <Card key={campaign.id} className="p-6 hover:shadow-lg transition-shadow">
+                <div className="flex justify-between items-start mb-4">
                   <div>
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>진행률</span>
-                      <span>{Math.round(progress)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full transition-all duration-300 ${
-                          progress >= 100 ? 'bg-green-500' : 
-                          progress >= 75 ? 'bg-blue-500' : 
-                          progress >= 50 ? 'bg-yellow-500' : 'bg-gray-400'
-                        }`}
-                        style={{ width: `${Math.min(progress, 100)}%` }}
-                      />
-                    </div>
+                    <h3 className="text-lg font-semibold mb-1">{campaign.name}</h3>
+                    {campaign.description && (
+                      <p className="text-sm text-gray-600 line-clamp-2">{campaign.description}</p>
+                    )}
                   </div>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                    {getStatusText(campaign.status)}
+                  </span>
+                </div>
 
-                  {/* 포스트 수 통계 */}
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <div className="text-lg font-semibold text-gray-700">
-                        {campaign.target_post_count}
-                      </div>
-                      <div className="text-xs text-gray-500">목표</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-semibold text-green-600">
-                        {campaign.completed_post_count}
-                      </div>
-                      <div className="text-xs text-gray-500">완료</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-semibold text-blue-600">
-                        {campaign.published_post_count}
-                      </div>
-                      <div className="text-xs text-gray-500">게시</div>
-                    </div>
+                {campaign.medical_service && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">
+                      {campaign.medical_service.category} - {campaign.medical_service.treatment}
+                    </p>
                   </div>
+                )}
 
-                  {/* 액션 버튼 */}
-                  <div className="flex space-x-2 pt-2">
-                    <Button size="sm" variant="outline" asChild className="flex-1">
-                      <Link href={`/client/campaigns/${campaign.id}`}>상세보기</Link>
-                    </Button>
-                    <Button size="sm" variant="ghost" asChild>
-                      <Link href={`/client/posts?campaign_id=${campaign.id}`}>포스트</Link>
-                    </Button>
+                {/* Progress */}
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>진행률</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
 
-      {campaigns.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-gray-500">진행 중인 캠페인이 없습니다.</p>
-          </CardContent>
-        </Card>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-4 text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-blue-600">{campaign.target_post_count}</div>
+                    <div className="text-xs text-gray-600">목표</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-green-600">{campaign.completed_post_count}</div>
+                    <div className="text-xs text-gray-600">완료</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-purple-600">{campaign.published_post_count}</div>
+                    <div className="text-xs text-gray-600">게시</div>
+                  </div>
+                </div>
+
+                {/* Period */}
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span>기간</span>
+                    <span className={daysRemaining < 0 ? 'text-red-600 font-medium' : daysRemaining <= 7 ? 'text-orange-600 font-medium' : ''}>
+                      {daysRemaining > 0 ? `${daysRemaining}일 남음` : daysRemaining === 0 ? '오늘 종료' : `${Math.abs(daysRemaining)}일 지남`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    {new Date(campaign.start_date).toLocaleDateString('ko-KR')} ~ {new Date(campaign.end_date).toLocaleDateString('ko-KR')}
+                  </p>
+                </div>
+
+                {/* Action */}
+                <Link href={`/client/campaigns/${campaign.id}`}>
+                  <Button className="w-full">상세보기</Button>
+                </Link>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );
