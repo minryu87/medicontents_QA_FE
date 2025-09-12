@@ -47,8 +47,11 @@ npm install
 ### 2. 환경 변수 설정
 
 ```bash
-# .env.local 파일 생성
+# .env.local 파일 생성 (개발용)
 echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+
+# 또는 프로덕션용
+echo "NEXT_PUBLIC_API_URL=https://medicontents-qa-be-u45006.vm.elestio.app" > .env.local
 ```
 
 ### 3. 개발 서버 실행
@@ -97,8 +100,11 @@ npm run dev
 # Docker 이미지 빌드
 docker build -t medicontents-qa-frontend .
 
-# Docker 컨테이너 실행
-docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://your-backend-url medicontents-qa-frontend
+# Docker 컨테이너 실행 (개발용)
+docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://localhost:8000 medicontents-qa-frontend
+
+# Docker 컨테이너 실행 (프로덕션용)
+docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=https://medicontents-qa-be-u45006.vm.elestio.app medicontents-qa-frontend
 ```
 
 ### 환경 변수
