@@ -3,9 +3,10 @@
  */
 
 import axios from 'axios';
+import config from './config';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://medicontents-qa-be-u45006.vm.elestio.app',
+  baseURL: config.apiUrl,
   headers: {
     'Content-Type': 'application/json',
   },
