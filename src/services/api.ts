@@ -108,6 +108,12 @@ export class AdminApiService {
     const response = await api.get('/api/v1/admin/agents/pipeline-results', { params: { limit } });
     return response.data;
   }
+
+  // 포스트 검토 API
+  async submitPostReview(postId: string, reviewData: any): Promise<any> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/review`, reviewData);
+    return response.data;
+  }
 }
 
 export class ClientApiService {
@@ -213,6 +219,14 @@ export class ClientApiService {
 
   async getPostReviews(postId: string): Promise<any[]> {
     const response = await api.get(`/api/v1/client/posts/${postId}/reviews`);
+    return response.data;
+  }
+
+  // 성과 분석 API
+  async getAnalytics(period: string = 'month'): Promise<any> {
+    const response = await api.get('/api/v1/client/posts/analytics', {
+      params: { period }
+    });
     return response.data;
   }
 

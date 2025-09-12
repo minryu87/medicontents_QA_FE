@@ -19,6 +19,11 @@ export const getAgentPerformance = async () => {
   return response.data;
 };
 
+export const getCaseStudies = async () => {
+  const response = await publicApi.get('/case-studies');
+  return response.data;
+};
+
 // Public blog
 export const getPublicPosts = async (params?: {
   page?: number;
