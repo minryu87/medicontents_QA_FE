@@ -1,0 +1,35 @@
+node_modules
+.next
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.tgz
+*.tar.gz
+.vscode
+.idea
+coverage
+.nyc_output
+.cache
+dist
+build
+*.log
+
+# Development files
+docs/
+*.md
+
+# Test files
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
