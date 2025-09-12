@@ -11,7 +11,6 @@ const adminNavigation = [
   { name: '병원 관리', href: '/admin/hospitals', icon: '🏥' },
   { name: '에이전트 모니터링', href: '/admin/agents', icon: '🤖' },
   { name: '시스템 설정', href: '/admin/settings', icon: '⚙️' },
-  { name: '성능 모니터링', href: '/admin/performance', icon: '📊' },
 ];
 
 export default function AdminLayout({

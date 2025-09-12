@@ -7,9 +7,7 @@ import { cn } from '@/lib/utils';
 const clientNavigation = [
   { name: '대시보드', href: '/client', icon: '🏠' },
   { name: '포스트 관리', href: '/client/posts', icon: '📝' },
-  { name: '자료 제공', href: '/client/materials', icon: '📁' },
   { name: '캠페인 현황', href: '/client/campaigns', icon: '📋' },
-  { name: '콘텐츠 검토', href: '/client/reviews', icon: '👀' },
   { name: '프로필 관리', href: '/client/profile', icon: '👤' },
   { name: '알림', href: '/client/notifications', icon: '🔔' },
 ];

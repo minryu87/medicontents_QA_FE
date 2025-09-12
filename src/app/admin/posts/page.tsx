@@ -214,6 +214,9 @@ export default function AdminPosts() {
                           <Button size="sm" variant="outline" asChild>
                             <Link href={`/admin/posts/${post.post_id}`}>상세</Link>
                           </Button>
+                          <Button size="sm" variant="ghost" asChild>
+                            <Link href={`/admin/posts/${post.post_id}/pipeline`}>파이프라인</Link>
+                          </Button>
                           {post.status === 'admin_review' && (
                             <Button size="sm" variant="primary">
                               검토
