@@ -17,6 +17,8 @@ interface SignupData {
   name: string;
   email: string;
   phone: string;
+  password: string;
+  confirmPassword: string;
   position: string;
 
   // 서비스 선택
@@ -49,6 +51,8 @@ export default function SignupPage() {
     name: '',
     email: '',
     phone: '',
+    password: '',
+    confirmPassword: '',
     position: '',
     planType: 'starter',
     agreeTerms: false,
@@ -91,16 +95,107 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      // TODO: 실제 회원가입 API 호출
       console.log('회원가입 데이터:', signupData);
 
-      // 임시로 성공 처리
+      // 1. 병원 정보 생성
+      const hospitalResponse = await fetch('/api/v1/hospitals/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: signupData.hospitalName,
+          address: signupData.hospitalAddress,
+          phone: signupData.hospitalPhone,
+        }),
+      });
+
+      if (!hospitalResponse.ok) {
+        const errorData = await hospitalResponse.json();
+        throw new Error(`병원 정보 생성 실패: ${errorData.detail || hospitalResponse.statusText}`);
+      }
+
+      const hospitalData = await hospitalResponse.json();
+      const hospitalId = hospitalData.id;
+
+      // 2. 사용자 계정 생성
+      const userResponse = await fetch('/api/v1/users/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: signupData.email.split('@')[0], // 이메일 앞부분을 username으로
+          email: signupData.email,
+          password: signupData.password, // 실제 사용자 입력 비밀번호 사용
+          role: 'hospital_admin',
+          phone: signupData.phone,
+          department: '관리부',
+          position: signupData.position || '담당자',
+          hospital_id: hospitalId,
+        }),
+      });
+
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json();
+        throw new Error(`사용자 계정 생성 실패: ${errorData.detail || userResponse.statusText}`);
+      }
+
+      const userData = await userResponse.json();
+
+      // 3. 병원 서비스 매핑 생성 (선택된 진료과목에 따라)
+      if (signupData.medicalServices.length > 0) {
+        // 진료과목 ID 매핑 (간단하게 매핑)
+        const medicalServiceMap: { [key: string]: number } = {
+          '치과': 1,
+          '피부과': 2,
+          '내과': 3,
+          '안과': 4,
+          '산부인과': 5,
+          '정형외과': 6,
+          '신경외과': 7,
+          '흉부외과': 8,
+          '이비인후과': 9,
+          '비뇨기과': 10,
+          '재활의학과': 11,
+        };
+
+        for (const serviceName of signupData.medicalServices) {
+          const medicalServiceId = medicalServiceMap[serviceName];
+          if (medicalServiceId) {
+            try {
+              const serviceResponse = await fetch(`/api/v1/hospital-services/hospitals/${hospitalId}/services`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  hospital_id: hospitalId,
+                  medical_service_id: medicalServiceId,
+                  specific_treatments: [], // 기본적으로 빈 배열
+                  treatment_description: `${serviceName} 진료 서비스를 제공합니다.`,
+                  special_equipment: [], // 기본적으로 빈 배열
+                }),
+              });
+
+              if (!serviceResponse.ok) {
+                console.warn(`${serviceName} 서비스 매핑 실패:`, await serviceResponse.text());
+                // 서비스 매핑 실패해도 전체 회원가입은 성공으로 처리
+              }
+            } catch (serviceError) {
+              console.warn(`${serviceName} 서비스 매핑 중 오류:`, serviceError);
+              // 서비스 매핑 실패해도 전체 회원가입은 성공으로 처리
+            }
+          }
+        }
+      }
+
       alert('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
       window.location.href = '/login';
 
     } catch (error) {
       console.error('회원가입 실패:', error);
-      alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
+      alert(`회원가입 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -111,7 +206,10 @@ export default function SignupPage() {
       case 1:
         return signupData.hospitalName && signupData.hospitalAddress && signupData.medicalServices.length > 0;
       case 2:
-        return signupData.name && signupData.email && signupData.phone;
+        return signupData.name && signupData.email && signupData.phone &&
+               signupData.password && signupData.confirmPassword &&
+               signupData.password === signupData.confirmPassword &&
+               signupData.password.length >= 8;
       case 3:
         return signupData.planType;
       case 4:
@@ -260,6 +358,38 @@ export default function SignupPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="010-1234-5678"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  비밀번호 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={signupData.password}
+                  onChange={(e) => updateSignupData('password', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="8자 이상 입력해주세요"
+                />
+                {signupData.password && signupData.password.length < 8 && (
+                  <p className="text-red-500 text-xs mt-1">비밀번호는 8자 이상이어야 합니다.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  비밀번호 확인 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={signupData.confirmPassword}
+                  onChange={(e) => updateSignupData('confirmPassword', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="비밀번호를 다시 입력해주세요"
+                />
+                {signupData.confirmPassword && signupData.password !== signupData.confirmPassword && (
+                  <p className="text-red-500 text-xs mt-1">비밀번호가 일치하지 않습니다.</p>
+                )}
               </div>
 
               <div>
