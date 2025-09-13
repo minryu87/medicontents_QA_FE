@@ -39,10 +39,10 @@ interface ABTest {
   variantB: PromptVersion;
   status: 'running' | 'completed' | 'stopped';
   startDate: string;
+  winner?: string;
   metrics: {
     variantA: { usage: number; score: number; };
     variantB: { usage: number; score: number; };
-    winner?: string;
     significance: number;
   };
 }

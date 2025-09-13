@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { clientApi } from '@/services/api';
+import { adminApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 
@@ -49,8 +49,8 @@ export default function CampaignDetailPage() {
   const loadCampaignDetail = async (campaignId: string) => {
     try {
       const [campaignData, postsData] = await Promise.all([
-        clientApi.getCampaign(parseInt(campaignId)),
-        clientApi.getCampaignPosts(parseInt(campaignId))
+        adminApi.getCampaign(parseInt(campaignId)),
+        adminApi.getCampaignPosts(parseInt(campaignId))
       ]);
 
       setCampaign(campaignData);

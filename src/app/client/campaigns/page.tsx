@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { clientApi } from '@/services/api';
+import { adminApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import type { Campaign as BaseCampaign } from '@/types/common';
@@ -25,7 +25,7 @@ export default function CampaignsPage() {
 
   const loadCampaigns = async () => {
     try {
-      const data = await clientApi.getCampaigns();
+      const data = await adminApi.getCampaigns();
       // Transform campaigns to include progress and medical_service
       const transformedCampaigns: Campaign[] = data.map((campaign: BaseCampaign) => ({
         ...campaign,

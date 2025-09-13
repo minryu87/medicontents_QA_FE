@@ -8,6 +8,7 @@ const clientNavigation = [
   { name: '대시보드', href: '/client', icon: '🏠' },
   { name: '포스트 관리', href: '/client/posts', icon: '📝' },
   { name: '캠페인 현황', href: '/client/campaigns', icon: '📋' },
+  { name: '성과 분석', href: '/client/analytics', icon: '📊' },
   { name: '프로필 관리', href: '/client/profile', icon: '👤' },
   { name: '알림', href: '/client/notifications', icon: '🔔' },
 ];

@@ -39,7 +39,56 @@ export class AdminApiService {
     api: 'healthy' | 'warning' | 'error';
     lastBackup: string;
   }> {
-    const response = await api.get('/api/v1/admin/system/status');
+    const response = await api.get('/api/v1/admin/dashboard/system/status');
+    return response.data;
+  }
+
+  async getAgentPerformance(): Promise<Array<{
+    agent_type: string;
+    total_executions: number;
+    successful_executions: number;
+    failed_executions: number;
+    avg_execution_time: number;
+    success_rate: number;
+    last_execution: string;
+  }>> {
+    const response = await api.get('/api/v1/admin/dashboard/agent-performance');
+    return response.data;
+  }
+
+  async getQualityMetrics(): Promise<{
+    avg_seo_score: number;
+    avg_legal_score: number;
+    first_pass_rate: number;
+    total_evaluations: number;
+    quality_trend: 'improving' | 'stable' | 'declining';
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard/quality-metrics');
+    return response.data;
+  }
+
+  async getProcessingStatus(): Promise<{
+    total_processing: number;
+    agent_processing: number;
+    admin_review: number;
+    client_review: number;
+    completed_today: number;
+    failed_today: number;
+    bottlenecks: string[];
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard/processing-status');
+    return response.data;
+  }
+
+  async getSystemAlerts(): Promise<Array<{
+    id: string;
+    level: 'info' | 'warning' | 'error' | 'critical';
+    message: string;
+    source: string;
+    timestamp: string;
+    resolved: boolean;
+  }>> {
+    const response = await api.get('/api/v1/admin/dashboard/system-alerts');
     return response.data;
   }
 
@@ -114,6 +163,12 @@ export class AdminApiService {
     const response = await api.post(`/api/v1/admin/posts/${postId}/review`, reviewData);
     return response.data;
   }
+
+
+  async getCampaignPosts(campaignId: number): Promise<any[]> {
+    const response = await api.get(`/api/v1/admin/campaigns/${campaignId}/posts`);
+    return response.data.posts || [];
+  }
 }
 
 export class ClientApiService {
@@ -180,21 +235,6 @@ export class ClientApiService {
     await api.post(`/api/v1/client/posts/${postId}/review`, review);
   }
 
-  // 캠페인 API
-  async getCampaigns(): Promise<Campaign[]> {
-    const response = await api.get('/api/v1/campaigns/', { params: { hospital_id: 137 } });
-    return response.data.campaigns || [];
-  }
-
-  async getCampaign(campaignId: number): Promise<Campaign> {
-    const response = await api.get(`/api/v1/admin/campaigns/${campaignId}`);
-    return response.data;
-  }
-
-  async getCampaignPosts(campaignId: number): Promise<any[]> {
-    const response = await api.get(`/api/v1/admin/campaigns/${campaignId}/posts`);
-    return response.data.posts || [];
-  }
 
   // 포스트 상세 API
   async getPostMaterials(postId: string): Promise<any> {

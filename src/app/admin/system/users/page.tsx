@@ -240,7 +240,7 @@ export default function UserManagementPage() {
     if (action === '*') {
       return `${resource} 전체`;
     }
-    return permissions[resource as keyof typeof permissions]?.[action as keyof typeof permissions.posts] || permission;
+    return permission; // 임시로 간단하게 수정
   };
 
   if (loading) {

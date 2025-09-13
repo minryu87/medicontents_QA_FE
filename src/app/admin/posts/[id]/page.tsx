@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import type { Post, AgentExecutionLog, PipelineResult, AgentResult } from '@/typ
 
 export default function AdminPostDetail() {
   const params = useParams();
+  const router = useRouter();
   const postId = params.id as string;
   
   const [post, setPost] = useState<Post | null>(null);
@@ -316,9 +317,27 @@ export default function AdminPostDetail() {
                 <div className="pt-4 border-t">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">추가 작업</h3>
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="outline">파이프라인 재실행</Button>
-                    <Button size="sm" variant="outline">로그 다운로드</Button>
-                    <Button size="sm" variant="outline">콘텐츠 내보내기</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/admin/posts/${postId}/pipeline`)}
+                    >
+                      파이프라인 상태
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/admin/posts/${postId}/edit`)}
+                    >
+                      콘텐츠 편집
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/admin/posts/${postId}/review`)}
+                    >
+                      검토하기
+                    </Button>
                   </div>
                 </div>
               </div>

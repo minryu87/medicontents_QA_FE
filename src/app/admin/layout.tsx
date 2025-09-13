@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const adminNavigation = [
@@ -9,8 +10,29 @@ const adminNavigation = [
   { name: '포스트 관리', href: '/admin/posts', icon: '📝' },
   { name: '캠페인 관리', href: '/admin/campaigns', icon: '📋' },
   { name: '병원 관리', href: '/admin/hospitals', icon: '🏥' },
-  { name: '에이전트 모니터링', href: '/admin/agents', icon: '🤖' },
-  { name: '시스템 설정', href: '/admin/settings', icon: '⚙️' },
+  {
+    name: 'AI 에이전트',
+    href: '#',
+    icon: '🤖',
+    children: [
+      { name: '모니터링', href: '/admin/agents' },
+      { name: '성능 분석', href: '/admin/agents/performance' },
+      { name: '프롬프트 관리', href: '/admin/agents/prompts' },
+      { name: '체크리스트', href: '/admin/agents/checklists' },
+    ]
+  },
+  { name: '데이터베이스 관리', href: '/admin/database', icon: '🗄️' },
+  {
+    name: '시스템 관리',
+    href: '#',
+    icon: '⚙️',
+    children: [
+      { name: '시스템 로그', href: '/admin/system/logs' },
+      { name: '사용자 관리', href: '/admin/system/users' },
+      { name: '시스템 상태', href: '/admin/system/health' },
+      { name: '분석 및 보고', href: '/admin/analytics' },
+    ]
+  },
 ];
 
 export default function AdminLayout({
@@ -19,6 +41,19 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
+
+  const toggleMenu = (menuName: string) => {
+    const newExpanded = new Set(expandedMenus);
+    if (newExpanded.has(menuName)) {
+      newExpanded.delete(menuName);
+    } else {
+      newExpanded.add(menuName);
+    }
+    setExpandedMenus(newExpanded);
+  };
+
+  const isMenuExpanded = (menuName: string) => expandedMenus.has(menuName);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,18 +88,55 @@ export default function AdminLayout({
             <ul className="space-y-2">
               {adminNavigation.map((item) => (
                 <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                      pathname === item.href
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    )}
-                  >
-                    <span className="mr-3">{item.icon}</span>
-                    {item.name}
-                  </Link>
+                  {item.children ? (
+                    <div>
+                      <button
+                        onClick={() => toggleMenu(item.name)}
+                        className={cn(
+                          'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors w-full text-left',
+                          'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        )}
+                      >
+                        <span className="mr-3">{item.icon}</span>
+                        {item.name}
+                        <span className="ml-auto">
+                          {isMenuExpanded(item.name) ? '▼' : '▶'}
+                        </span>
+                      </button>
+                      {isMenuExpanded(item.name) && (
+                        <ul className="ml-6 mt-2 space-y-1">
+                          {item.children.map((child) => (
+                            <li key={child.name}>
+                              <Link
+                                href={child.href}
+                                className={cn(
+                                  'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                                  pathname === child.href
+                                    ? 'bg-primary-100 text-primary-700'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                )}
+                              >
+                                {child.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                        pathname === item.href
+                          ? 'bg-primary-100 text-primary-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      )}
+                    >
+                      <span className="mr-3">{item.icon}</span>
+                      {item.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

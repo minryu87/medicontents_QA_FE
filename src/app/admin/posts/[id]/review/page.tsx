@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { adminApi } from '@/services/api';
+import { adminApi, clientApi } from '@/services/api';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import {
@@ -87,7 +87,7 @@ export default function AdminPostReviewPage() {
 
       // 포스트 기본 정보
       const postsResponse = await adminApi.getPosts({ search: postId });
-      const post = postsResponse.find((p: any) => p.post_id === postId);
+      const post = postsResponse.posts.find((p: any) => p.id.toString() === postId);
       if (post) {
         setPostData({
           id: post.id,
@@ -102,19 +102,19 @@ export default function AdminPostReviewPage() {
 
       // 콘텐츠 데이터
       try {
-        const contentResponse = await adminApi.getPostContent(postId);
+        const contentResponse = await clientApi.getPostMaterials(postId);
         setContentData(contentResponse);
       } catch (error) {
         console.warn('Content not available:', error);
       }
 
-      // 평가 데이터
-      try {
-        const evaluationResponse = await adminApi.getPostEvaluation(postId);
-        setEvaluationData(evaluationResponse);
-      } catch (error) {
-        console.warn('Evaluation not available:', error);
-      }
+      // 평가 데이터 (임시로 주석 처리)
+      // try {
+      //   const evaluationResponse = await adminApi.getPostEvaluation(postId);
+      //   setEvaluationData(evaluationResponse);
+      // } catch (error) {
+      //   console.warn('Evaluation not available:', error);
+      // }
 
     } catch (error) {
       console.error('Failed to load post data:', error);
