@@ -188,6 +188,97 @@ export class ClientApiService {
     return response.data.campaigns || [];
   }
 
+  async getPostsStatusSummary(): Promise<{
+    status_summary: Record<string, number>;
+    materials_needed: Array<{
+      id: number;
+      post_id: string;
+      title: string;
+      status: string;
+      created_at: string;
+      campaign_name: string;
+      material_status: string;
+    }>;
+    review_needed: Array<{
+      id: number;
+      post_id: string;
+      title: string;
+      status: string;
+      created_at: string;
+      quality_score: number;
+      seo_score: number;
+      legal_score: number;
+      campaign_name: string;
+    }>;
+    recent_published: Array<{
+      id: number;
+      post_id: string;
+      title: string;
+      status: string;
+      publish_date: string;
+      created_at: string;
+      quality_score: number;
+      campaign_name: string;
+    }>;
+  }> {
+    const response = await api.get('/api/v1/client/dashboard/posts-status-summary');
+    return response.data;
+  }
+
+  async getCampaignsWithPosts(): Promise<Array<{
+    campaign: {
+      id: number;
+      name: string;
+      description: string;
+      start_date: string;
+      end_date: string;
+      target_post_count: number;
+      status: string;
+      total_posts: number;
+      completed_posts: number;
+      review_pending: number;
+      materials_needed: number;
+      progress: number;
+    };
+    posts: Array<{
+      id: number;
+      post_id: string;
+      title: string;
+      status: string;
+      created_at: string;
+      quality_score: number;
+      seo_score: number;
+      legal_score: number;
+      material_status: string;
+    }>;
+  }>> {
+    const response = await api.get('/api/v1/client/dashboard/campaigns-with-posts');
+    return response.data;
+  }
+
+  async getActionRequiredPosts(): Promise<{
+    urgent_materials: Array<{
+      id: number;
+      post_id: string;
+      title: string;
+      created_at: string;
+      campaign_name: string;
+      days_since_creation: number;
+    }>;
+    old_reviews: Array<{
+      id: number;
+      post_id: string;
+      title: string;
+      created_at: string;
+      pipeline_completed_at: string;
+      campaign_name: string;
+      days_waiting: number;
+    }>;
+  }> {
+    const response = await api.get('/api/v1/client/dashboard/action-required');
+    return response.data;
+  }
+
   // 포스트 관리 API
   async getPosts(filters?: any): Promise<Post[]> {
     const response = await api.get('/api/v1/client/posts', { params: filters });
