@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { StatusBadge, StatusIndicator } from '@/components/ui/StatusBadge';
 import { formatDateTime } from '@/lib/utils';
 
 interface DashboardStats {
@@ -556,13 +557,32 @@ export default function AdminDashboard() {
                 {systemAlerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className={`p-4 border rounded-lg ${getAlertColor(alert.level)}`}
+                    className={`p-4 border rounded-lg ${
+                      alert.level === 'critical' ? 'border-red-200 bg-red-50' :
+                      alert.level === 'error' ? 'border-red-200 bg-red-50' :
+                      alert.level === 'warning' ? 'border-yellow-200 bg-yellow-50' :
+                      'border-blue-200 bg-blue-50'
+                    }`}
                   >
                     <div className="flex items-start space-x-3">
-                      <div className="text-lg">{getAlertIcon(alert.level)}</div>
+                      <div className="text-lg">
+                        {alert.level === 'critical' ? '🚨' :
+                         alert.level === 'error' ? '❌' :
+                         alert.level === 'warning' ? '⚠️' : 'ℹ️'}
+                      </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <Badge variant={alert.level === 'critical' ? 'destructive' : 'secondary'}>
+                          <Badge
+                            variant={
+                              alert.level === 'critical' ? 'destructive' :
+                              alert.level === 'error' ? 'destructive' :
+                              alert.level === 'warning' ? 'secondary' : 'outline'
+                            }
+                            className={
+                              alert.level === 'info' ? 'bg-blue-100 text-blue-800' :
+                              alert.level === 'warning' ? 'bg-yellow-100 text-yellow-800' : ''
+                            }
+                          >
                             {alert.level === 'info' ? '정보' :
                              alert.level === 'warning' ? '경고' :
                              alert.level === 'error' ? '오류' : '심각'}
@@ -574,9 +594,7 @@ export default function AdminDashboard() {
                         <p className="font-medium mt-2">{alert.message}</p>
                         <p className="text-sm text-gray-600 mt-1">출처: {alert.source}</p>
                         {alert.resolved && (
-                          <Badge variant="outline" className="mt-2">
-                            해결됨
-                          </Badge>
+                          <StatusBadge status="published" size="sm" />
                         )}
                       </div>
                     </div>

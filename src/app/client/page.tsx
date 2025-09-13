@@ -8,7 +8,14 @@ import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Progress } from '@/components/ui/Progress';
-import { formatDateTime } from '@/lib/utils';
+import { StatusBadge, WorkflowProgress } from '@/components/ui/StatusBadge';
+import {
+  formatDateTime,
+  getStatusActions,
+  getActionButtonStyle,
+  getActionButtonText,
+  getStatusPriority
+} from '@/lib/utils';
 
 interface DashboardStats {
   totalPosts: number;
@@ -163,54 +170,33 @@ export default function ClientDashboard() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      'initial': 'bg-gray-100 text-gray-800',
-      'hospital_processing': 'bg-blue-100 text-blue-800',
-      'agent_processing': 'bg-yellow-100 text-yellow-800',
-      'client_review': 'bg-purple-100 text-purple-800',
-      'admin_approved': 'bg-indigo-100 text-indigo-800',
-      'client_approved': 'bg-teal-100 text-teal-800',
-      'published': 'bg-green-100 text-green-800',
-      'error': 'bg-red-100 text-red-800',
-      'cancelled': 'bg-orange-100 text-orange-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  const renderActionButtons = (post: any) => {
+    const actions = getStatusActions(post.status);
+    if (actions.length === 0) return null;
 
-  const getStatusText = (status: string) => {
-    const texts: { [key: string]: string } = {
-      'initial': '초기',
-      'hospital_processing': '자료 작성 중',
-      'agent_processing': 'AI 처리 중',
-      'client_review': '검토 필요',
-      'admin_approved': '관리자 승인',
-      'client_approved': '클라이언트 승인',
-      'published': '게시됨',
-      'error': '오류',
-      'cancelled': '취소됨'
-    };
-    return texts[status] || status;
-  };
-
-  const getActionButton = (post: any, type: 'material' | 'review') => {
-    if (type === 'material') {
-      return (
-        <Link href={`/client/posts/${post.post_id}/materials`}>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-            자료 제공
-          </Button>
-        </Link>
-      );
-    } else {
-      return (
-        <Link href={`/client/posts/${post.post_id}/review`}>
-          <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-            검토하기
-          </Button>
-        </Link>
-      );
-    }
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {actions.map((action) => (
+          <Link
+            key={action}
+            href={
+              action.includes('materials')
+                ? `/client/posts/${post.post_id}/materials`
+                : action === 'review_content'
+                ? `/client/posts/${post.post_id}/review`
+                : `/client/posts/${post.post_id}`
+            }
+          >
+            <Button
+              size="sm"
+              className={getActionButtonStyle(action)}
+            >
+              {getActionButtonText(action)}
+            </Button>
+          </Link>
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -258,17 +244,23 @@ export default function ClientDashboard() {
             <div className="space-y-4">
               {urgentMaterials.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-red-700 mb-2">자료 제공 지연 ({urgentMaterials.length}건)</h4>
+                  <h4 className="font-medium text-red-700 mb-2">🚨 자료 제공 지연 ({urgentMaterials.length}건)</h4>
                   <div className="space-y-2">
                     {urgentMaterials.slice(0, 3).map((material) => (
-                      <div key={material.id} className="flex items-center justify-between p-3 bg-white rounded border">
+                      <div key={material.id} className="flex items-center justify-between p-3 bg-white rounded border border-red-200">
                         <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <StatusBadge status="initial" variant="priority" size="sm" />
+                            <span className="text-xs text-red-600 font-medium">
+                              {material.days_since_creation}일 지연
+                            </span>
+                          </div>
                           <p className="font-medium">{material.title}</p>
                           <p className="text-sm text-gray-600">
-                            {material.campaign_name} • {material.days_since_creation}일 경과
+                            {material.campaign_name}
                           </p>
                         </div>
-                        {getActionButton(material, 'material')}
+                        {renderActionButtons(material)}
                       </div>
                     ))}
                   </div>
@@ -277,17 +269,23 @@ export default function ClientDashboard() {
 
               {oldReviews.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-red-700 mb-2">검토 대기 오래됨 ({oldReviews.length}건)</h4>
+                  <h4 className="font-medium text-red-700 mb-2">⏰ 검토 대기 오래됨 ({oldReviews.length}건)</h4>
                   <div className="space-y-2">
                     {oldReviews.slice(0, 3).map((review) => (
-                      <div key={review.id} className="flex items-center justify-between p-3 bg-white rounded border">
+                      <div key={review.id} className="flex items-center justify-between p-3 bg-white rounded border border-orange-200">
                         <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <StatusBadge status="client_review" variant="priority" size="sm" />
+                            <span className="text-xs text-orange-600 font-medium">
+                              {review.days_waiting}일 대기
+                            </span>
+                          </div>
                           <p className="font-medium">{review.title}</p>
                           <p className="text-sm text-gray-600">
-                            {review.campaign_name} • {review.days_waiting}일 대기
+                            {review.campaign_name}
                           </p>
                         </div>
-                        {getActionButton(review, 'review')}
+                        {renderActionButtons(review)}
                       </div>
                     ))}
                   </div>
@@ -463,9 +461,7 @@ export default function ClientDashboard() {
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Badge className={getStatusColor(post.status)}>
-                              {getStatusText(post.status)}
-                            </Badge>
+                            <StatusBadge status={post.status} size="sm" />
                             {(post.status === 'initial' || post.status === 'hospital_processing') && (
                               <Link href={`/client/posts/${post.post_id}/materials`}>
                                 <Button size="sm">자료 제공</Button>
@@ -511,15 +507,13 @@ export default function ClientDashboard() {
                           {post.campaign_name} • 생성일: {formatDateTime(post.created_at)}
                         </p>
                         <div className="flex items-center space-x-2 mt-2">
-                          <Badge className={getStatusColor(post.status)}>
-                            {getStatusText(post.status)}
-                          </Badge>
-                          <Badge variant="outline">
-                            자료 상태: {post.material_status || '미제공'}
+                          <StatusBadge status={post.status} size="sm" />
+                          <Badge variant="outline" className="text-xs">
+                            자료: {post.material_status || '미제공'}
                           </Badge>
                         </div>
                       </div>
-                      {getActionButton(post, 'material')}
+                      {renderActionButtons(post)}
                     </div>
                   ))}
                 </div>
@@ -546,15 +540,21 @@ export default function ClientDashboard() {
                 <div className="space-y-4">
                   {reviewNeeded.map((post) => (
                     <div key={post.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-medium">{post.title}</h4>
-                          <p className="text-sm text-gray-600">
-                            {post.campaign_name} • 생성일: {formatDateTime(post.created_at)}
-                          </p>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <StatusBadge status={post.status} size="sm" />
+                              <span className="text-xs text-gray-500">
+                                {post.campaign_name}
+                              </span>
+                            </div>
+                            <h4 className="font-medium">{post.title}</h4>
+                            <p className="text-sm text-gray-600">
+                              생성일: {formatDateTime(post.created_at)}
+                            </p>
+                          </div>
+                          {renderActionButtons(post)}
                         </div>
-                        {getActionButton(post, 'review')}
-                      </div>
 
                       {/* 품질 점수 */}
                       <div className="grid grid-cols-3 gap-4 text-sm">
@@ -603,9 +603,9 @@ export default function ClientDashboard() {
                           {post.campaign_name} • 게시일: {formatDateTime(post.publish_date)}
                         </p>
                         <div className="flex items-center space-x-2 mt-2">
-                          <Badge className="bg-green-100 text-green-800">게시됨</Badge>
+                          <StatusBadge status={post.status} size="sm" />
                           {post.quality_score && (
-                            <Badge variant="outline">
+                            <Badge variant="outline" className="text-xs">
                               품질: {post.quality_score.toFixed(1)}
                             </Badge>
                           )}

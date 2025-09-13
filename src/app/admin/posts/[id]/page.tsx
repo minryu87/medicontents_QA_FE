@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { formatDate, formatDateTime, getStatusText, getStatusColor, truncateText } from '@/lib/utils';
 import { adminApi } from '@/services/api';
+import { WorkflowTimeline } from '@/components/ui/WorkflowTimeline';
 import type { Post, AgentExecutionLog, PipelineResult, AgentResult } from '@/types/common';
 
 export default function AdminPostDetail() {
@@ -19,6 +20,7 @@ export default function AdminPostDetail() {
   const [agentLogs, setAgentLogs] = useState<AgentExecutionLog[]>([]);
   const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null);
   const [agentResults, setAgentResults] = useState<AgentResult[]>([]);
+  const [workflowData, setWorkflowData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,18 +33,21 @@ export default function AdminPostDetail() {
           postData,
           agentLogsData,
           pipelineResultData,
-          agentResultsData
+          agentResultsData,
+          workflowDataResponse
         ] = await Promise.all([
           adminApi.getPost(postId),
           adminApi.getAgentLogs(postId),
           adminApi.getPipelineResult(postId),
-          adminApi.getAgentResults(postId)
+          adminApi.getAgentResults(postId),
+          adminApi.getPostWorkflow(postId)
         ]);
 
         setPost(postData);
         setAgentLogs(agentLogsData);
         setPipelineResult(pipelineResultData);
         setAgentResults(agentResultsData);
+        setWorkflowData(workflowDataResponse);
       } catch (error) {
         console.error('포스트 상세 데이터 로드 실패:', error);
         // 에러 시 null/빈 상태로 설정
@@ -133,11 +138,45 @@ export default function AdminPostDetail() {
       {/* 탭 콘텐츠 */}
       <Tabs defaultValue="pipeline" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="workflow">워크플로우</TabsTrigger>
           <TabsTrigger value="pipeline">파이프라인 결과</TabsTrigger>
           <TabsTrigger value="agents">에이전트 로그</TabsTrigger>
           <TabsTrigger value="content">콘텐츠</TabsTrigger>
           <TabsTrigger value="actions">작업</TabsTrigger>
         </TabsList>
+
+        {/* 워크플로우 탭 */}
+        <TabsContent value="workflow">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>콘텐츠 생성 워크플로우</span>
+                {workflowData && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">진행률:</span>
+                    <Badge variant="outline">
+                      {Math.round(workflowData.progress_percentage)}%
+                    </Badge>
+                  </div>
+                )}
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                포스트 생성부터 게시까지의 전체 프로세스를 단계별로 확인하세요
+              </p>
+            </CardHeader>
+            <CardContent>
+              {workflowData && workflowData.workflow_steps ? (
+                <WorkflowTimeline steps={workflowData.workflow_steps} />
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">📊</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">워크플로우 데이터를 불러올 수 없습니다</h3>
+                  <p className="text-gray-600">잠시 후 다시 시도해주세요.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="pipeline">
           <Card>

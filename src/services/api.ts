@@ -92,6 +92,32 @@ export class AdminApiService {
     return response.data;
   }
 
+  async getPostWorkflow(postId: string): Promise<{
+    post: {
+      id: number;
+      post_id: string;
+      title: string;
+      status: string;
+      created_at: string;
+      campaign_name: string;
+      hospital_name: string;
+    };
+    workflow_steps: Array<{
+      id: string;
+      name: string;
+      description: string;
+      icon: string;
+      status: 'completed' | 'in_progress' | 'pending' | 'error';
+      timestamp?: string;
+      details?: string;
+    }>;
+    current_step: string;
+    progress_percentage: number;
+  }> {
+    const response = await api.get(`/api/v1/admin/dashboard/post-workflow/${postId}`);
+    return response.data;
+  }
+
   // 포스트 관리 API
   async getPosts(filters?: any): Promise<{ posts: Post[], pagination: PaginationInfo }> {
     const response = await api.get('/api/v1/admin/posts', { params: filters });

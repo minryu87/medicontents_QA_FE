@@ -29,44 +29,340 @@ export function formatDateTime(date: string | Date): string {
   });
 }
 
-export function getStatusText(status: string): string {
-  const statusMap: Record<string, string> = {
-    'initial': '초기',
-    'hospital_processing': '병원 처리 중',
-    'hospital_completed': '병원 완료',
-    'admin_guide_input': '어드민 가이드 입력',
-    'guide_completed': '가이드 완료',
-    'agent_processing': '에이전트 처리 중',
-    'agent_completed': '에이전트 완료',
-    'admin_review': '어드민 검토',
-    'admin_approved': '어드민 승인',
-    'client_review': '클라이언트 검토',
-    'client_approved': '클라이언트 승인',
-    'final_revision': '최종 수정',
-    'published': '게시 완료',
+// 포스트 상태 정의
+export interface PostStatusInfo {
+  text: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  icon: string;
+  priority: number; // 1: 긴급, 2: 중요, 3: 보통, 4: 낮음
+  step: number; // 워크플로우 단계 (1-10)
+  description: string;
+  actions: string[]; // 가능한 액션들
+  nextStatuses: string[]; // 다음 가능한 상태들
+}
+
+// 포스트 상태별 상세 정보
+const POST_STATUS_CONFIG: Record<string, PostStatusInfo> = {
+  // 1. 초기 단계
+  'initial': {
+    text: '자료 대기',
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200',
+    icon: '📋',
+    priority: 1,
+    step: 1,
+    description: '자료 제공이 필요합니다',
+    actions: ['provide_materials'],
+    nextStatuses: ['hospital_processing']
+  },
+
+  // 2. 자료 제공 단계
+  'hospital_processing': {
+    text: '자료 작성 중',
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    icon: '✍️',
+    priority: 1,
+    step: 2,
+    description: '병원에서 자료를 작성하고 있습니다',
+    actions: ['continue_materials', 'submit_materials'],
+    nextStatuses: ['hospital_completed']
+  },
+
+  'hospital_completed': {
+    text: '자료 완료',
+    color: 'text-green-700',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    icon: '✅',
+    priority: 3,
+    step: 3,
+    description: '자료 제공이 완료되었습니다',
+    actions: [],
+    nextStatuses: ['admin_guide_input']
+  },
+
+  // 3. 어드민 가이드 단계
+  'admin_guide_input': {
+    text: '가이드 입력',
+    color: 'text-yellow-700',
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200',
+    icon: '📝',
+    priority: 2,
+    step: 4,
+    description: '어드민이 키워드 가이드를 입력해야 합니다',
+    actions: ['input_guide'],
+    nextStatuses: ['guide_completed']
+  },
+
+  'guide_completed': {
+    text: '가이드 완료',
+    color: 'text-green-700',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    icon: '🎯',
+    priority: 3,
+    step: 5,
+    description: '키워드 가이드 입력이 완료되었습니다',
+    actions: [],
+    nextStatuses: ['agent_processing']
+  },
+
+  // 4. AI 처리 단계
+  'agent_processing': {
+    text: 'AI 처리 중',
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    icon: '🤖',
+    priority: 3,
+    step: 6,
+    description: 'AI 에이전트가 콘텐츠를 생성하고 있습니다',
+    actions: ['view_progress'],
+    nextStatuses: ['agent_completed']
+  },
+
+  'agent_completed': {
+    text: 'AI 완료',
+    color: 'text-green-700',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    icon: '🎉',
+    priority: 3,
+    step: 7,
+    description: 'AI 콘텐츠 생성이 완료되었습니다',
+    actions: [],
+    nextStatuses: ['client_review']
+  },
+
+  // 5. 검토 단계
+  'admin_review': {
+    text: '어드민 검토',
+    color: 'text-orange-700',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    icon: '👨‍💼',
+    priority: 2,
+    step: 8,
+    description: '어드민이 콘텐츠를 검토하고 있습니다',
+    actions: ['review_content', 'approve', 'request_revision'],
+    nextStatuses: ['admin_approved', 'edit_requested']
+  },
+
+  'admin_approved': {
+    text: '어드민 승인',
+    color: 'text-green-700',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    icon: '👍',
+    priority: 3,
+    step: 9,
+    description: '어드민이 콘텐츠를 승인했습니다',
+    actions: [],
+    nextStatuses: ['client_review']
+  },
+
+  'client_review': {
+    text: '클라이언트 검토',
+    color: 'text-indigo-700',
+    bgColor: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
+    icon: '👤',
+    priority: 1,
+    step: 10,
+    description: '클라이언트가 콘텐츠를 검토해야 합니다',
+    actions: ['review_content', 'approve', 'request_revision'],
+    nextStatuses: ['client_approved', 'edit_requested']
+  },
+
+  'client_approved': {
+    text: '클라이언트 승인',
+    color: 'text-green-700',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    icon: '🎊',
+    priority: 3,
+    step: 11,
+    description: '클라이언트가 콘텐츠를 승인했습니다',
+    actions: [],
+    nextStatuses: ['final_revision']
+  },
+
+  // 6. 게시 단계
+  'final_revision': {
+    text: '최종 수정',
+    color: 'text-yellow-700',
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200',
+    icon: '🔧',
+    priority: 2,
+    step: 12,
+    description: '최종 수정 작업이 진행 중입니다',
+    actions: ['edit_content'],
+    nextStatuses: ['published']
+  },
+
+  'published': {
+    text: '게시 완료',
+    color: 'text-emerald-700',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
+    icon: '🚀',
+    priority: 4,
+    step: 13,
+    description: '콘텐츠가 성공적으로 게시되었습니다',
+    actions: ['view_published'],
+    nextStatuses: []
+  },
+
+  // 에러 상태들
+  'error': {
+    text: '오류 발생',
+    color: 'text-red-700',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+    icon: '❌',
+    priority: 1,
+    step: 0,
+    description: '처리 중 오류가 발생했습니다',
+    actions: ['retry', 'contact_support'],
+    nextStatuses: []
+  },
+
+  'cancelled': {
+    text: '취소됨',
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200',
+    icon: '🚫',
+    priority: 4,
+    step: 0,
+    description: '작업이 취소되었습니다',
+    actions: [],
+    nextStatuses: []
+  },
+
+  'edit_requested': {
+    text: '수정 요청',
+    color: 'text-orange-700',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    icon: '📝',
+    priority: 1,
+    step: 0,
+    description: '수정 요청이 접수되었습니다',
+    actions: ['edit_content'],
+    nextStatuses: ['client_review', 'admin_review']
+  }
+};
+
+// 포스트 상태 정보 조회 함수들
+export function getPostStatusInfo(status: string): PostStatusInfo {
+  return POST_STATUS_CONFIG[status] || {
+    text: status,
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200',
+    icon: '❓',
+    priority: 3,
+    step: 0,
+    description: '알 수 없는 상태',
+    actions: [],
+    nextStatuses: []
   };
-  
-  return statusMap[status] || status;
+}
+
+export function getStatusText(status: string): string {
+  return getPostStatusInfo(status).text;
 }
 
 export function getStatusColor(status: string): string {
-  const colorMap: Record<string, string> = {
-    'initial': 'bg-gray-100 text-gray-800',
-    'hospital_processing': 'bg-blue-100 text-blue-800',
-    'hospital_completed': 'bg-green-100 text-green-800',
-    'admin_guide_input': 'bg-yellow-100 text-yellow-800',
-    'guide_completed': 'bg-green-100 text-green-800',
-    'agent_processing': 'bg-purple-100 text-purple-800',
-    'agent_completed': 'bg-green-100 text-green-800',
-    'admin_review': 'bg-orange-100 text-orange-800',
-    'admin_approved': 'bg-green-100 text-green-800',
-    'client_review': 'bg-indigo-100 text-indigo-800',
-    'client_approved': 'bg-green-100 text-green-800',
-    'final_revision': 'bg-yellow-100 text-yellow-800',
-    'published': 'bg-emerald-100 text-emerald-800',
-  };
-  
-  return colorMap[status] || 'bg-gray-100 text-gray-800';
+  const info = getPostStatusInfo(status);
+  return `${info.bgColor} ${info.color}`;
+}
+
+export function getStatusIcon(status: string): string {
+  return getPostStatusInfo(status).icon;
+}
+
+export function getStatusPriority(status: string): number {
+  return getPostStatusInfo(status).priority;
+}
+
+export function getStatusStep(status: string): number {
+  return getPostStatusInfo(status).step;
+}
+
+export function getStatusDescription(status: string): string {
+  return getPostStatusInfo(status).description;
+}
+
+export function getStatusActions(status: string): string[] {
+  return getPostStatusInfo(status).actions;
+}
+
+export function getNextStatuses(status: string): string[] {
+  return getPostStatusInfo(status).nextStatuses;
+}
+
+// 워크플로우 진행률 계산 (0-100)
+export function getWorkflowProgress(status: string): number {
+  const step = getStatusStep(status);
+  return Math.min(100, Math.round((step / 13) * 100));
+}
+
+// 긴급도에 따른 색상 (빨강 > 주황 > 파랑 > 회색)
+export function getPriorityColor(priority: number): string {
+  switch (priority) {
+    case 1: return 'text-red-600 bg-red-50 border-red-200';
+    case 2: return 'text-orange-600 bg-orange-50 border-orange-200';
+    case 3: return 'text-blue-600 bg-blue-50 border-blue-200';
+    case 4: return 'text-gray-600 bg-gray-50 border-gray-200';
+    default: return 'text-gray-600 bg-gray-50 border-gray-200';
+  }
+}
+
+// 액션 타입별 버튼 스타일
+export function getActionButtonStyle(action: string): string {
+  switch (action) {
+    case 'provide_materials':
+    case 'submit_materials':
+      return 'bg-blue-600 hover:bg-blue-700 text-white';
+    case 'review_content':
+      return 'bg-purple-600 hover:bg-purple-700 text-white';
+    case 'approve':
+      return 'bg-green-600 hover:bg-green-700 text-white';
+    case 'request_revision':
+      return 'bg-orange-600 hover:bg-orange-700 text-white';
+    case 'view_progress':
+    case 'view_published':
+      return 'bg-gray-600 hover:bg-gray-700 text-white';
+    default:
+      return 'bg-gray-600 hover:bg-gray-700 text-white';
+  }
+}
+
+export function getActionButtonText(action: string): string {
+  switch (action) {
+    case 'provide_materials': return '자료 제공';
+    case 'submit_materials': return '자료 제출';
+    case 'continue_materials': return '계속 작성';
+    case 'review_content': return '콘텐츠 검토';
+    case 'approve': return '승인';
+    case 'request_revision': return '수정 요청';
+    case 'input_guide': return '가이드 입력';
+    case 'edit_content': return '콘텐츠 수정';
+    case 'view_progress': return '진행 상황';
+    case 'view_published': return '게시물 보기';
+    case 'retry': return '재시도';
+    case 'contact_support': return '문의하기';
+    default: return action;
+  }
 }
 
 export function truncateText(text: string, maxLength: number): string {
