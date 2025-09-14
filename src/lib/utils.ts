@@ -372,13 +372,8 @@ export function calculatePostActualStatus(workflowData?: any): string {
   }
 
   // 자료 제공 완료 (다음 단계 진행 전)
-  // 임시: 실제로는 137-5-010만 자료 제공 완료된 상태로 처리
   if (materialsStep && materialsStep.status === 'completed') {
-    if (workflowData && workflowData.post && workflowData.post.post_id === '137-5-010') {
-      return 'hospital_completed';
-    } else {
-      return 'hospital_processing'; // 다른 포스트는 진행 중으로 표시
-    }
+    return 'hospital_completed';
   }
 
   // 기본적으로 초기 상태
