@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { formatDate, formatDateTime, getStatusText, getStatusColor, truncateText } from '@/lib/utils';
 import { adminApi } from '@/services/api';
 import { WorkflowTimeline } from '@/components/ui/WorkflowTimeline';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { Post, AgentExecutionLog, PipelineResult, AgentResult } from '@/types/common';
 
 export default function AdminPostDetail() {
@@ -89,9 +90,7 @@ export default function AdminPostDetail() {
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-2">
           <h1 className="text-2xl font-bold text-gray-900">포스트 상세</h1>
-          <Badge className={getStatusColor(post.status)}>
-            {getStatusText(post.status)}
-          </Badge>
+          <StatusBadge status={post.status} workflowData={workflowData} />
         </div>
         <p className="text-gray-600">Post ID: {post.post_id}</p>
       </div>

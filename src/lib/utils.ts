@@ -327,6 +327,65 @@ export function getPriorityColor(priority: number): string {
   }
 }
 
+// 워크플로우 데이터를 기반으로 포스트의 실제 상태 계산
+export function calculatePostActualStatus(workflowData?: any): string {
+  if (!workflowData || !workflowData.workflow_steps) {
+    return 'initial';
+  }
+
+  const steps = workflowData.workflow_steps;
+
+  // 게시 완료 상태 확인
+  const publishStep = steps.find((s: any) => s.id === 'publish');
+  if (publishStep && publishStep.status === 'completed') {
+    return 'published';
+  }
+
+  // 최종 편집 진행 중
+  const finalEditStep = steps.find((s: any) => s.id === 'final_edit');
+  if (finalEditStep && finalEditStep.status === 'in_progress') {
+    return 'final_revision';
+  }
+
+  // 클라이언트 검토 진행 중
+  const clientReviewStep = steps.find((s: any) => s.id === 'client_review');
+  if (clientReviewStep && clientReviewStep.status === 'in_progress') {
+    return 'client_review';
+  }
+
+  // 어드민 검토 진행 중
+  const adminReviewStep = steps.find((s: any) => s.id === 'admin_review');
+  if (adminReviewStep && adminReviewStep.status === 'in_progress') {
+    return 'admin_review';
+  }
+
+  // AI 처리 진행 중
+  const agentProcessingStep = steps.find((s: any) => s.id === 'agent_processing');
+  if (agentProcessingStep && agentProcessingStep.status === 'in_progress') {
+    return 'agent_processing';
+  }
+
+  // 자료 제공 진행 중
+  const materialsStep = steps.find((s: any) => s.id === 'materials');
+  if (materialsStep && materialsStep.status === 'in_progress') {
+    return 'hospital_processing';
+  }
+
+  // 자료 제공 완료 (다음 단계 진행 전)
+  if (materialsStep && materialsStep.status === 'completed') {
+    return 'hospital_completed';
+  }
+
+  // 기본적으로 초기 상태
+  return 'initial';
+}
+
+// 워크플로우 데이터를 기반으로 포스트의 실제 상태 정보 가져오기
+export function getPostActualStatusInfo(workflowData?: any): PostStatusInfo {
+  const actualStatus = calculatePostActualStatus(workflowData);
+  return getPostStatusInfo(actualStatus);
+}
+
 // 액션 타입별 버튼 스타일
 export function getActionButtonStyle(action: string): string {
   switch (action) {

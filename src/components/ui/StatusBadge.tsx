@@ -7,11 +7,14 @@ import {
   getStatusDescription,
   getWorkflowProgress,
   getStatusPriority,
-  getPriorityColor
+  getPriorityColor,
+  calculatePostActualStatus,
+  getPostActualStatusInfo
 } from '@/lib/utils';
 
 interface StatusBadgeProps {
   status: string;
+  workflowData?: any; // 워크플로우 데이터가 있으면 실제 상태 계산에 사용
   showIcon?: boolean;
   showProgress?: boolean;
   showDescription?: boolean;
@@ -21,18 +24,22 @@ interface StatusBadgeProps {
 
 export function StatusBadge({
   status,
+  workflowData,
   showIcon = true,
   showProgress = false,
   showDescription = false,
   size = 'md',
   variant = 'default'
 }: StatusBadgeProps) {
-  const icon = getStatusIcon(status);
-  const text = getStatusText(status);
-  const color = getStatusColor(status);
-  const description = getStatusDescription(status);
-  const progress = getWorkflowProgress(status);
-  const priority = getStatusPriority(status);
+  // 워크플로우 데이터가 있으면 실제 상태를 계산해서 사용
+  const actualStatus = workflowData ? calculatePostActualStatus(workflowData) : status;
+
+  const icon = getStatusIcon(actualStatus);
+  const text = getStatusText(actualStatus);
+  const color = getStatusColor(actualStatus);
+  const description = getStatusDescription(actualStatus);
+  const progress = getWorkflowProgress(actualStatus);
+  const priority = getStatusPriority(actualStatus);
   const priorityColor = getPriorityColor(priority);
 
   const sizeClasses = {
