@@ -182,3 +182,4 @@ export function generatePostWorkflow(post: any): WorkflowStep[] {
 
   return steps;
 }
+

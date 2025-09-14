@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { formatDate, getStatusText, getStatusColor, truncateText } from '@/lib/utils';
 import { adminApi } from '@/services/api';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { Post, Hospital } from '@/types/common';
 
 interface PostFilters {
@@ -20,6 +21,7 @@ interface PostFilters {
 export default function AdminPosts() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [workflowData, setWorkflowData] = useState<Record<string, any>>({});
   const [filters, setFilters] = useState<PostFilters>({
     status: '',
     hospital: '',
@@ -32,15 +34,39 @@ export default function AdminPosts() {
     const loadPostsData = async () => {
       try {
         setLoading(true);
-        
+
         // 실제 API 호출로 데이터 로드
         const [postsData, hospitalsData] = await Promise.all([
           adminApi.getPosts(),
           adminApi.getHospitals()
         ]);
 
-        setPosts(postsData.posts || []);
+        const postsList = postsData.posts || [];
+        setPosts(postsList);
         setHospitals(hospitalsData);
+
+        // 각 포스트의 워크플로우 데이터 로드
+        if (postsList.length > 0) {
+          try {
+            const workflowPromises = postsList.map(post =>
+              adminApi.getPostWorkflow(post.post_id).catch(() => ({}))
+            );
+
+            const workflowResults = await Promise.all(workflowPromises);
+            const workflowMap: Record<string, any> = {};
+
+            workflowResults.forEach((result, index) => {
+              if (result && typeof result === 'object' && 'workflow_steps' in result && Array.isArray(result.workflow_steps)) {
+                workflowMap[postsList[index].post_id] = result;
+              }
+            });
+
+            setWorkflowData(workflowMap);
+          } catch (error) {
+            console.error('워크플로우 데이터 로드 실패:', error);
+            setWorkflowData({});
+          }
+        }
       } catch (error) {
         console.error('포스트 데이터 로드 실패:', error);
         // 에러 시 빈 상태로 설정
@@ -194,9 +220,7 @@ export default function AdminPosts() {
                         </span>
                       </td>
                       <td className="py-3 px-2">
-                        <Badge className={getStatusColor(post.status)}>
-                          {getStatusText(post.status)}
-                        </Badge>
+                        <StatusBadge status={post.status} workflowData={workflowData[post.post_id]} />
                       </td>
                       <td className="py-3 px-2">
                         <Badge variant="outline">
