@@ -509,26 +509,30 @@ export default function HospitalInfoTab({
                             <span className="font-medium">{event.post?.title}</span>
                           </div>
                           <div className="text-neutral-600 mb-1">
-                            타입: {event.post?.post_type === 'informational' ? '정보성' : '치료사례'}
+                            ID: {event.post?.id} | 타입: {event.post?.post_type === 'informational' ? '정보성' : '치료사례'} | 상태: {
+                              event.type === 'post_published' ? '게시완료' :
+                              event.type === 'post_completed' ? '작업완료' :
+                              '대기중'
+                            }
                           </div>
                           <div className="text-neutral-600 mb-1">
-                            게시일: {event.post?.publish_date}
+                            게시 예정일: {event.post?.publish_date}
                           </div>
                           {event.post?.published_at && (
                             <div className="text-neutral-600 mb-1">
-                              실제 게시: {new Date(event.post.published_at).toLocaleString('ko-KR')}
+                              실제 게시일: {new Date(event.post.published_at).toLocaleString('ko-KR')}
                             </div>
                           )}
                           {event.post?.published_url && (
                             <div className="text-neutral-600 mb-1">
-                              <a href={event.post.published_url} target="_blank" rel="noopener noreferrer"
+                              게시 URL: <a href={event.post.published_url} target="_blank" rel="noopener noreferrer"
                                  className="text-blue-600 hover:text-blue-800 underline">
-                                게시 링크
+                                {event.post.published_url}
                               </a>
                             </div>
                           )}
                           <div className="text-neutral-500">
-                            담당: {event.post?.creator_username || '미정'}
+                            담당자: {event.post?.creator_username || '미정'}
                           </div>
                         </div>
                       ))}
