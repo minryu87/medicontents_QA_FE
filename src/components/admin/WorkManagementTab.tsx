@@ -38,6 +38,7 @@ interface WorkManagementTabProps {
   isLoadingWaitingTasks?: boolean;
   kanbanPosts?: any;
   isLoadingKanban?: boolean;
+  statusPostsLoading?: boolean;
 }
 
 export default function WorkManagementTab({
@@ -48,7 +49,8 @@ export default function WorkManagementTab({
   monitoringIssues,
   isLoadingWaitingTasks = false,
   kanbanPosts,
-  isLoadingKanban = false
+  isLoadingKanban = false,
+  statusPostsLoading = false
 }: WorkManagementTabProps) {
   const [isWaitingTasksCollapsed, setIsWaitingTasksCollapsed] = useState(false);
 
@@ -124,7 +126,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.material_completed?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -209,7 +211,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.ai_completed?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -255,7 +257,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.admin_review?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -301,7 +303,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.client_review?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -347,7 +349,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.publish_scheduled?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -441,7 +443,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.ai_failed?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -529,7 +531,7 @@ export default function WorkManagementTab({
                     {kanbanPosts?.aborted?.length || 0}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-3">
                   {isLoadingKanban ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
@@ -571,36 +573,47 @@ export default function WorkManagementTab({
         </div>
       </div>
 
-      {/* 게시 상태 섹션 */}
+      {/* 게시 및 모니터링 섹션 */}
       <div className="px-6 mb-6">
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-4 gap-4">
           {/* 게시 대기 */}
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">게시 대기</h2>
             <div className="space-y-3">
-              {publishPending.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-calendar-alt text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <p className="text-xs text-neutral-600 mb-2">게시 예정: {item.scheduledDate}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <img
-                        src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${item.avatar}`}
-                        alt="User"
-                        className="w-5 h-5 rounded-full"
-                      />
-                      <span className="text-xs text-neutral-600">{item.assignee}</span>
-                    </div>
-                    <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">
-                      즉시게시
-                    </button>
-                  </div>
+              {statusPostsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                 </div>
-              ))}
+              ) : publishPending.length > 0 ? (
+                publishPending.map((post: any) => {
+                  const calculateDDay = (publishDate: string | null) => {
+                    if (!publishDate) return '미정';
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const publish = new Date(publishDate);
+                    publish.setHours(0, 0, 0, 0);
+                    const diffTime = publish.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                  };
+
+                  return (
+                    <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                      <div className="text-xs text-neutral-600 mb-2">
+                        {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                      </div>
+                      <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                      <div className="text-xs text-neutral-600">
+                        {calculateDDay(post.publish_date)}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-neutral-500 text-sm py-4">
+                  게시 대기 중인 포스트가 없습니다
+                </div>
+              )}
             </div>
           </div>
 
@@ -608,72 +621,80 @@ export default function WorkManagementTab({
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">게시 완료</h2>
             <div className="space-y-3">
-              {publishCompleted.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-check-circle text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <p className="text-xs text-neutral-600 mb-2">게시됨: {item.publishedDate}</p>
-                  <div className="flex justify-between text-xs text-neutral-600 mb-2">
-                    <span>조회수: {item.views?.toLocaleString()}</span>
-                    <span>좋아요: {item.likes}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <img
-                        src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${item.avatar}`}
-                        alt="User"
-                        className="w-5 h-5 rounded-full"
-                      />
-                      <span className="text-xs text-neutral-600">{item.assignee}</span>
-                    </div>
-                    <button className="px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded hover:bg-neutral-200">
-                      상세보기
-                    </button>
-                  </div>
+              {statusPostsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                 </div>
-              ))}
+              ) : publishCompleted.length > 0 ? (
+                publishCompleted.map((post: any) => {
+                  const calculateDDay = (publishDate: string | null) => {
+                    if (!publishDate) return '미정';
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const publish = new Date(publishDate);
+                    publish.setHours(0, 0, 0, 0);
+                    const diffTime = publish.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                  };
+
+                  return (
+                    <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                      <div className="text-xs text-neutral-600 mb-2">
+                        {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                      </div>
+                      <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                      <div className="text-xs text-neutral-600">
+                        {calculateDDay(post.publish_date)}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-neutral-500 text-sm py-4">
+                  게시 완료된 포스트가 없습니다
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* 모니터링 섹션 */}
-      <div className="px-6 mb-6">
-        <div className="grid grid-cols-2 gap-4">
           {/* 모니터링 */}
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">모니터링</h2>
             <div className="space-y-3">
-              {monitoring.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <div className="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.views.toLocaleString()}</div>
-                      <div>조회수</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.likes}</div>
-                      <div>좋아요</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.shares}</div>
-                      <div>공유</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-600">성과: {item.performance}</span>
-                    <span className="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">{item.status}</span>
-                  </div>
+              {statusPostsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                 </div>
-              ))}
+              ) : monitoring.length > 0 ? (
+                monitoring.map((post: any) => {
+                  const calculateDDay = (publishDate: string | null) => {
+                    if (!publishDate) return '미정';
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const publish = new Date(publishDate);
+                    publish.setHours(0, 0, 0, 0);
+                    const diffTime = publish.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                  };
+
+                  return (
+                    <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                      <div className="text-xs text-neutral-600 mb-2">
+                        {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                      </div>
+                      <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                      <div className="text-xs text-neutral-600">
+                        {calculateDDay(post.publish_date)}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-neutral-500 text-sm py-4">
+                  모니터링 중인 포스트가 없습니다
+                </div>
+              )}
             </div>
           </div>
 
@@ -681,33 +702,40 @@ export default function WorkManagementTab({
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">모니터링 이슈 발생</h2>
             <div className="space-y-3">
-              {monitoringIssues.map((item) => (
-                <div key={item.id} className="bg-neutral-50 border border-neutral-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <div className="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.views}</div>
-                      <div>조회수</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.likes}</div>
-                      <div>좋아요</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.shares}</div>
-                      <div>공유</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-600">성과: {item.performance}</span>
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">{item.status}</span>
-                  </div>
+              {statusPostsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                 </div>
-              ))}
+              ) : monitoringIssues.length > 0 ? (
+                monitoringIssues.map((post: any) => {
+                  const calculateDDay = (publishDate: string | null) => {
+                    if (!publishDate) return '미정';
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const publish = new Date(publishDate);
+                    publish.setHours(0, 0, 0, 0);
+                    const diffTime = publish.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                  };
+
+                  return (
+                    <div key={post.id} className="bg-neutral-50 p-3 rounded-lg border border-neutral-200 shadow-sm">
+                      <div className="text-xs text-neutral-600 mb-2">
+                        {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                      </div>
+                      <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                      <div className="text-xs text-neutral-600">
+                        {calculateDDay(post.publish_date)}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-neutral-500 text-sm py-4">
+                  모니터링 이슈가 발생한 포스트가 없습니다
+                </div>
+              )}
             </div>
           </div>
         </div>

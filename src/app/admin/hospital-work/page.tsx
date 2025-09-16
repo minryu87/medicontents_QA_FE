@@ -33,6 +33,8 @@ export default function HospitalWorkPage() {
   const [waitingTasksLoading, setWaitingTasksLoading] = useState(false);
   const [kanbanPosts, setKanbanPosts] = useState<any>(null);
   const [kanbanLoading, setKanbanLoading] = useState(false);
+  const [statusPosts, setStatusPosts] = useState<any>(null);
+  const [statusPostsLoading, setStatusPostsLoading] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -242,28 +244,45 @@ export default function HospitalWorkPage() {
         setWaitingTasksLoading(false);
       }
 
-      // 칸반 포스트 조회
-      setKanbanLoading(true);
-      try {
-        const kanbanData = await adminApi.getKanbanPosts(hospital.id);
-        setKanbanPosts(kanbanData);
-      } catch (error) {
-        console.error('칸반 데이터 조회 실패:', error);
-        setKanbanPosts({
-          material_completed: [],
-          admin_pre_review: [],
-          ai_completed: [],
-          admin_review: [],
-          client_review: [],
-          publish_scheduled: [],
-          material_delay: [],
-          ai_failed: [],
-          client_delay: [],
-          aborted: []
-        });
-      } finally {
-        setKanbanLoading(false);
-      }
+             // 칸반 포스트 조회
+             setKanbanLoading(true);
+             try {
+               const kanbanData = await adminApi.getKanbanPosts(hospital.id);
+               setKanbanPosts(kanbanData);
+             } catch (error) {
+               console.error('칸반 데이터 조회 실패:', error);
+               setKanbanPosts({
+                 material_completed: [],
+                 admin_pre_review: [],
+                 ai_completed: [],
+                 admin_review: [],
+                 client_review: [],
+                 publish_scheduled: [],
+                 material_delay: [],
+                 ai_failed: [],
+                 client_delay: [],
+                 aborted: []
+               });
+             } finally {
+               setKanbanLoading(false);
+             }
+
+             // 상태별 포스트 조회 (하단 컨테이너용)
+             setStatusPostsLoading(true);
+             try {
+               const statusData = await adminApi.getPostsByStatus(hospital.id);
+               setStatusPosts(statusData);
+             } catch (error) {
+               console.error('상태별 포스트 데이터 조회 실패:', error);
+               setStatusPosts({
+                 publish_scheduled: [],
+                 published: [],
+                 monitoring: [],
+                 monitoring_issue: []
+               });
+             } finally {
+               setStatusPostsLoading(false);
+             }
 
     } catch (error) {
       console.error('병원 정보 로드 실패:', error);
@@ -272,22 +291,29 @@ export default function HospitalWorkPage() {
       setSelectedHospital(updatedHospital);
       setSelectedHospitalCampaigns([]);
       setSelectedHospitalDetail(null);
-      setWaitingTasks([]);
-      setWaitingTasksLoading(false);
-      setKanbanPosts({
-        material_completed: [],
-        admin_pre_review: [],
-        ai_completed: [],
-        admin_review: [],
-        client_review: [],
-        publish_scheduled: [],
-        material_delay: [],
-        ai_failed: [],
-        client_delay: [],
-        aborted: []
-      });
-      setKanbanLoading(false);
-      setCalendarEvents([]);
+             setWaitingTasks([]);
+             setWaitingTasksLoading(false);
+             setKanbanPosts({
+               material_completed: [],
+               admin_pre_review: [],
+               ai_completed: [],
+               admin_review: [],
+               client_review: [],
+               publish_scheduled: [],
+               material_delay: [],
+               ai_failed: [],
+               client_delay: [],
+               aborted: []
+             });
+             setKanbanLoading(false);
+             setStatusPosts({
+               publish_scheduled: [],
+               published: [],
+               monitoring: [],
+               monitoring_issue: []
+             });
+             setStatusPostsLoading(false);
+             setCalendarEvents([]);
     }
   };
 
@@ -546,13 +572,14 @@ export default function HospitalWorkPage() {
         selectedHospital ? (
           <WorkManagementTab
             waitingTasks={waitingTasks}
-            publishPending={mockPublishPending}
-            publishCompleted={mockPublishCompleted}
-            monitoring={mockMonitoring}
-            monitoringIssues={mockMonitoringIssues}
+            publishPending={statusPosts?.publish_scheduled || []}
+            publishCompleted={statusPosts?.published || []}
+            monitoring={statusPosts?.monitoring || []}
+            monitoringIssues={statusPosts?.monitoring_issue || []}
             isLoadingWaitingTasks={waitingTasksLoading}
             kanbanPosts={kanbanPosts}
             isLoadingKanban={kanbanLoading}
+            statusPostsLoading={statusPostsLoading}
           />
         ) : (
           <EmptyState

@@ -231,6 +231,17 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 상태별 포스트 목록 API (하단 컨테이너용)
+  async getPostsByStatus(hospitalId: number): Promise<{
+    publish_scheduled: any[];
+    published: any[];
+    monitoring: any[];
+    monitoring_issue: any[];
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/status/${hospitalId}`);
+    return response.data;
+  }
+
   // 에이전트 모니터링 API
   async getAgentStats() {
     const response = await api.get('/api/v1/admin/agents/stats');
