@@ -192,6 +192,15 @@ export class AdminApiService {
     }
   }
 
+  // 캠페인 및 포스트 일정 데이터 API
+  async getHospitalCalendarData(hospitalId: number): Promise<{
+    campaigns: any[];
+    posts: any[];
+  }> {
+    const response = await api.get(`/api/v1/admin/campaigns/by-hospital/${hospitalId}`);
+    return response.data;
+  }
+
   // 에이전트 모니터링 API
   async getAgentStats() {
     const response = await api.get('/api/v1/admin/agents/stats');

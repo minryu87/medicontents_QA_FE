@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+
 interface SummaryCard {
   id: string;
   title: string;
@@ -36,18 +40,55 @@ interface Schedule {
   events: Array<{ day: number; hasEvent: boolean; type: string }>;
 }
 
+interface CalendarEvent {
+  date: Date;
+  type: 'campaign_completed' | 'campaign_active' | 'campaign_scheduled' | 'post_published' | 'post_completed' | 'post_pending';
+  campaign?: {
+    id: string;
+    name: string;
+    status: string;
+    start_date: string;
+    end_date: string;
+    description?: string;
+    target_post_count?: number;
+    completed_post_count?: number;
+    published_post_count?: number;
+    medical_service?: {
+      category?: string;
+      treatment?: string;
+    };
+    creator_username?: string;
+  };
+  post?: {
+    id: string;
+    title: string;
+    status: string;
+    post_type?: string;
+    publish_date?: string;
+    published_at?: string;
+    published_url?: string;
+    creator_username?: string;
+  };
+}
+
 interface HospitalInfoTabProps {
   summaryCards: SummaryCard[];
   basicInfo: BasicInfo;
   campaigns: Campaign[];
   schedule: Schedule;
+  calendarEvents: CalendarEvent[];
+  onDateSelect?: (date: Date) => void;
+  selectedDate?: Date | null;
 }
 
 export default function HospitalInfoTab({
   summaryCards,
   basicInfo,
   campaigns,
-  schedule
+  schedule,
+  calendarEvents,
+  onDateSelect,
+  selectedDate
 }: HospitalInfoTabProps) {
   return (
     <>
@@ -118,7 +159,7 @@ export default function HospitalInfoTab({
 
       {/* 병원 상세 정보 */}
       <div className="px-6">
-        <div className="grid grid-cols-3 gap-6 mb-6">
+        <div className="grid gap-6 mb-6" style={{ gridTemplateColumns: '1fr 1fr 2fr' }}>
           {/* 병원 기본 정보 */}
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">병원 기본 정보</h2>
@@ -232,44 +273,275 @@ export default function HospitalInfoTab({
           {/* 작업 일정 */}
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">작업 일정</h2>
-            <div className="mb-3">
-              <h3 className="text-sm text-neutral-800 mb-2">{schedule.month}</h3>
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
-                  <div key={day} className="text-center text-xs text-neutral-500 py-1">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {/* 빈 칸들 (1일 이전) */}
-                {Array.from({ length: 14 }, (_, i) => (
-                  <div key={`empty-${i}`} className="text-center py-1 text-xs text-neutral-400"></div>
-                ))}
-                {/* 날짜들 */}
-                {Array.from({ length: 31 }, (_, day) => {
-                  const dayNumber = day + 1;
-                  const event = schedule.events.find(e => e.day === dayNumber);
-                  return (
-                    <div
-                      key={dayNumber}
-                      className={`text-center py-1 text-xs text-neutral-700 relative ${
-                        dayNumber === 15 ? 'bg-neutral-600 text-white rounded-full' : ''
-                      }`}
-                    >
-                      {dayNumber}
-                      {event && (
-                        <div className={`w-1 h-1 rounded-full mx-auto mt-1 ${
-                          event.type === 'post' ? 'bg-neutral-600' :
-                          event.type === 'review' ? 'bg-blue-600' :
-                          'bg-green-600'
-                        }`}></div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="calendar-wrapper custom-calendar" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', minHeight: '120px', padding: '0 4px' }}>
+              <style jsx>{`
+                .calendar-wrapper .react-calendar {formatDay
+                  width: 100%;
+                  max-width: 100%;
+                  height: auto;
+                  border: none;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', sans-serif;
+                }
+                .calendar-wrapper .react-calendar__tile {
+                  padding: 3px 2px;
+                  position: relative;
+                  min-height: 24px;
+                }
+                .calendar-wrapper .react-calendar__tile abbr {
+                  display: none; /* 기본 날짜 텍스트 완전 숨김 */
+                }
+                .custom-calendar .calendar-campaign-completed,
+                .custom-calendar .calendar-campaign-completed.react-calendar__tile--now {
+                  background-color: rgba(74, 124, 158, 0.1) !important;
+                  border: 1px solid rgba(74, 124, 158, 0.2) !important;
+                  position: relative;
+                }
+                .custom-calendar .calendar-campaign-active,
+                .custom-calendar .calendar-campaign-active.react-calendar__tile--now {
+                  background-color: rgba(74, 124, 158, 0.2) !important;
+                  border: 1px solid rgba(74, 124, 158, 0.3) !important;
+                  position: relative;
+                }
+                .custom-calendar .calendar-campaign-scheduled,
+                .custom-calendar .calendar-campaign-scheduled.react-calendar__tile--now {
+                  background-color: rgba(74, 124, 158, 0.15) !important;
+                  border: 1px solid rgba(74, 124, 158, 0.25) !important;
+                  position: relative;
+                }
+                .custom-calendar .calendar-post-published::after,
+                .custom-calendar .calendar-post-completed::after,
+                .custom-calendar .calendar-post-pending::after {
+                  content: '';
+                  position: absolute;
+                  bottom: 4px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  width: 6px;
+                  height: 6px;
+                  border-radius: 50%;
+                  z-index: 10;
+                }
+                .custom-calendar .calendar-post-published::after {
+                  background: #4A7C9E;
+                }
+                .custom-calendar .calendar-post-completed::after {
+                  background: #6FA382;
+                }
+                .custom-calendar .calendar-post-pending::after {
+                  background: #EF4444;
+                }
+                .calendar-wrapper .react-calendar__navigation {
+                  margin-bottom: 10px;
+                }
+                .calendar-wrapper .react-calendar__navigation button {
+                  color: #4A7C9E;
+                  font-weight: 500;
+                  font-size: 13px;
+                  padding: 3px 7px;
+                }
+                .calendar-wrapper .react-calendar__month-view__weekdays {
+                  font-size: 11px;
+                  color: rgba(42, 72, 94, 0.7);
+                  padding: 3px 0;
+                }
+              `}</style>
+              <Calendar
+                value={selectedDate || new Date()}
+                onChange={(date) => {
+                  if (date instanceof Date && onDateSelect) {
+                    onDateSelect(date);
+                  }
+                }}
+                formatDay={() => ''}
+                tileContent={({ date, view }) => {
+                  if (view === 'month') {
+                    const eventsOnDate = calendarEvents.filter(event =>
+                      event.date.toDateString() === date.toDateString()
+                    );
+
+                    const campaignEvent = eventsOnDate.find(event => event.type.startsWith('campaign'));
+                    const postEvent = eventsOnDate.find(event => event.type.startsWith('post'));
+
+                    // 오늘 날짜 확인
+                    const today = new Date();
+                    const isToday = date.toDateString() === today.toDateString();
+
+                    let backgroundColor = 'transparent';
+                    let borderColor = 'transparent';
+                    let dotColor = null;
+
+                    // 캠페인 이벤트 스타일
+                    if (campaignEvent) {
+                      if (campaignEvent.type === 'campaign_completed') {
+                        backgroundColor = 'rgba(74, 124, 158, 0.1)';
+                        borderColor = 'rgba(74, 124, 158, 0.2)';
+                      } else if (campaignEvent.type === 'campaign_active') {
+                        backgroundColor = 'rgba(74, 124, 158, 0.2)';
+                        borderColor = 'rgba(74, 124, 158, 0.3)';
+                      } else if (campaignEvent.type === 'campaign_scheduled') {
+                        backgroundColor = 'rgba(74, 124, 158, 0.15)';
+                        borderColor = 'rgba(74, 124, 158, 0.25)';
+                      }
+                    }
+
+                    // 오늘 날짜인 경우 이벤트 색상을 우선 적용 (노란색 기본 스타일 덮어쓰기)
+                    if (isToday && !campaignEvent) {
+                      backgroundColor = 'rgba(255, 255, 118, 0.3)'; // 연한 노란색
+                      borderColor = 'rgba(255, 255, 118, 0.5)';
+                    }
+
+                    // 포스트 이벤트 점 색상
+                    if (postEvent) {
+                      if (postEvent.type === 'post_published') {
+                        dotColor = '#4A7C9E';
+                      } else if (postEvent.type === 'post_completed') {
+                        dotColor = '#6FA382';
+                      } else if (postEvent.type === 'post_pending') {
+                        dotColor = '#EF4444';
+                      }
+                    }
+
+                    return (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          backgroundColor,
+                          border: borderColor !== 'transparent' ? `1px solid ${borderColor}` : 'none',
+                          borderRadius: '4px',
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {date.getDate()}
+                        {dotColor && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '3px',
+                              right: '2px',
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: dotColor
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
             </div>
+
+            {/* 선택된 날짜의 상세 정보 */}
+            {selectedDate && (
+              <div className="mt-4 pt-4 border-t border-neutral-100">
+                <h3 className="text-sm text-neutral-800 mb-3">
+                  {selectedDate.toLocaleDateString('ko-KR')} 일정
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* 캠페인 정보 */}
+                  <div>
+                    <h4 className="text-xs text-neutral-500 mb-2">캠페인</h4>
+                    {calendarEvents
+                      .filter(event =>
+                        event.type.startsWith('campaign') &&
+                        event.date.toDateString() === selectedDate.toDateString()
+                      )
+                      .map(event => (
+                        <div key={event.campaign?.id} className="text-xs p-2 bg-neutral-50 rounded mb-1">
+                          <div className="font-medium mb-1">{event.campaign?.name}</div>
+                          <div className="text-neutral-600 mb-1">
+                            {event.campaign?.start_date} ~ {event.campaign?.end_date}
+                          </div>
+                          {event.campaign?.medical_service && (
+                            <div className="flex flex-wrap gap-1 mb-1">
+                              {event.campaign.medical_service.category && (
+                                <span className="inline-block px-2 py-0.5 bg-neutral-200 text-neutral-700 rounded-full text-xs">
+                                  {event.campaign.medical_service.category}
+                                </span>
+                              )}
+                              {event.campaign.medical_service.treatment && (
+                                <span className="inline-block px-2 py-0.5 bg-neutral-300 text-neutral-800 rounded-full text-xs">
+                                  {event.campaign.medical_service.treatment}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="text-neutral-500">
+                            목표: {event.campaign?.target_post_count}개 |
+                            완료: {event.campaign?.completed_post_count}개 |
+                            게시: {event.campaign?.published_post_count}개
+                          </div>
+                          <div className="text-neutral-500">
+                            담당: {event.campaign?.creator_username || '미정'}
+                          </div>
+                        </div>
+                      ))}
+                    {calendarEvents.filter(event =>
+                      event.type.startsWith('campaign') &&
+                      event.date.toDateString() === selectedDate.toDateString()
+                    ).length === 0 && (
+                      <div className="text-xs text-neutral-400">캠페인 없음</div>
+                    )}
+                  </div>
+
+                  {/* 포스트 정보 */}
+                  <div>
+                    <h4 className="text-xs text-neutral-500 mb-2">포스트</h4>
+                    {calendarEvents
+                      .filter(event =>
+                        event.type.startsWith('post') &&
+                        event.date.toDateString() === selectedDate.toDateString()
+                      )
+                      .map(event => (
+                        <div key={event.post?.id} className="text-xs p-2 bg-neutral-50 rounded mb-1">
+                          <div className="flex items-center mb-1">
+                            <div className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                              event.type === 'post_published' ? 'bg-[#4A7C9E]' :
+                              event.type === 'post_completed' ? 'bg-[#6FA382]' :
+                              'bg-[#EF4444]'
+                            }`}></div>
+                            <span className="font-medium">{event.post?.title}</span>
+                          </div>
+                          <div className="text-neutral-600 mb-1">
+                            타입: {event.post?.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <div className="text-neutral-600 mb-1">
+                            게시일: {event.post?.publish_date}
+                          </div>
+                          {event.post?.published_at && (
+                            <div className="text-neutral-600 mb-1">
+                              실제 게시: {new Date(event.post.published_at).toLocaleString('ko-KR')}
+                            </div>
+                          )}
+                          {event.post?.published_url && (
+                            <div className="text-neutral-600 mb-1">
+                              <a href={event.post.published_url} target="_blank" rel="noopener noreferrer"
+                                 className="text-blue-600 hover:text-blue-800 underline">
+                                게시 링크
+                              </a>
+                            </div>
+                          )}
+                          <div className="text-neutral-500">
+                            담당: {event.post?.creator_username || '미정'}
+                          </div>
+                        </div>
+                      ))}
+                    {calendarEvents.filter(event =>
+                      event.type.startsWith('post') &&
+                      event.date.toDateString() === selectedDate.toDateString()
+                    ).length === 0 && (
+                      <div className="text-xs text-neutral-400">포스트 없음</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

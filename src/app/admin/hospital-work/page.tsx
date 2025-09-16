@@ -24,6 +24,8 @@ export default function HospitalWorkPage() {
   const [selectedHospital, setSelectedHospital] = useState<HospitalWithCampaigns | null>(null);
   const [selectedHospitalDetail, setSelectedHospitalDetail] = useState<any>(null);
   const [selectedHospitalCampaigns, setSelectedHospitalCampaigns] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
 
@@ -82,43 +84,122 @@ export default function HospitalWorkPage() {
         setSelectedHospitalDetail(updatedDetail);
       }
 
-      // 캠페인 정보 처리
-      if (campaigns.status === 'fulfilled' && campaigns.value && campaigns.value.length > 0) {
-        // 각 캠페인의 진행률 계산 (completed_post_count / target_post_count * 100)
-        const progresses = campaigns.value.map((campaign: any) => {
-          if (campaign.target_post_count && campaign.target_post_count > 0) {
-            return (campaign.completed_post_count || 0) / campaign.target_post_count * 100;
+        // 캠페인 및 포스트 정보 처리
+        if (campaigns.status === 'fulfilled' && campaigns.value && campaigns.value.length > 0) {
+          // 각 캠페인의 진행률 계산 (completed_post_count / target_post_count * 100)
+          const progresses = campaigns.value.map((campaign: any) => {
+            if (campaign.target_post_count && campaign.target_post_count > 0) {
+              return (campaign.completed_post_count || 0) / campaign.target_post_count * 100;
+            }
+            return 0;
+          });
+
+          // 평균 진행률 계산
+          const averageProgress = progresses.reduce((sum: number, progress: number) => sum + progress, 0) / progresses.length;
+
+          // 선택된 병원 정보 업데이트
+          const updatedHospital = { ...hospital, averageProgress };
+          setSelectedHospital(updatedHospital);
+
+          // 캠페인 데이터를 UI용 포맷으로 변환
+          const uiCampaigns = campaigns.value.map((campaign: any) => ({
+            id: campaign.id.toString(),
+            name: campaign.name,
+            status: campaign.status === 'active' ? '진행중' : campaign.status,
+            period: campaign.start_date && campaign.end_date
+              ? `${new Date(campaign.start_date).toLocaleDateString('ko-KR')} ~ ${new Date(campaign.end_date).toLocaleDateString('ko-KR')}`
+              : '기간 미정',
+            progress: campaign.target_post_count && campaign.target_post_count > 0
+              ? Math.round((campaign.completed_post_count || 0) / campaign.target_post_count * 100)
+              : 0,
+            medical_service: campaign.medical_service,
+            creator_username: campaign.creator_username
+          }));
+
+          setSelectedHospitalCampaigns(uiCampaigns);
+
+          // 병원별 캠페인 및 포스트 데이터 가져오기
+          try {
+            const calendarData = await adminApi.getHospitalCalendarData(hospital.id);
+            console.log('Calendar data received:', calendarData);
+
+            // 캘린더 이벤트 생성
+            const events: any[] = [];
+
+            // 캠페인 이벤트 추가 (기간 전체를 표시)
+            calendarData.campaigns.forEach((campaign: any) => {
+              const startDate = new Date(campaign.start_date);
+              const endDate = new Date(campaign.end_date);
+              const today = new Date();
+              const isCompleted = endDate < today;
+              const isActive = startDate <= today && endDate >= today;
+              const isScheduled = startDate > today;
+
+              // 캠페인 기간의 모든 날짜에 이벤트 추가
+              for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+                let eventType: string;
+                if (isCompleted) eventType = 'campaign_completed';
+                else if (isActive) eventType = 'campaign_active';
+                else eventType = 'campaign_scheduled';
+
+                events.push({
+                  date: new Date(date),
+                  type: eventType,
+                  campaign: {
+                    id: campaign.id.toString(),
+                    name: campaign.name,
+                    status: campaign.status,
+                    start_date: campaign.start_date,
+                    end_date: campaign.end_date,
+                    description: campaign.description,
+                    target_post_count: campaign.target_post_count,
+                    completed_post_count: campaign.completed_post_count,
+                    published_post_count: campaign.published_post_count,
+                    medical_service: campaign.medical_service,
+                    creator_username: campaign.creator_username
+                  }
+                });
+              }
+            });
+
+            // 포스트 이벤트 추가 (게시 예정일에 점 표시)
+            calendarData.posts.forEach((post: any) => {
+              if (post.publish_date) {
+                const publishDate = new Date(post.publish_date);
+                let eventType: string;
+                if (post.status === 'published') eventType = 'post_published';
+                else if (post.status === 'completed' || post.status === 'final_approved') eventType = 'post_completed';
+                else eventType = 'post_pending';
+
+                events.push({
+                  date: publishDate,
+                  type: eventType,
+                  post: {
+                    id: post.post_id,
+                    title: post.title,
+                    status: post.status,
+                    post_type: post.post_type,
+                    publish_date: post.publish_date,
+                    published_at: post.published_at,
+                    published_url: post.published_url,
+                    creator_username: post.creator_username
+                  }
+                });
+              }
+            });
+
+            setCalendarEvents(events);
+          } catch (error) {
+            console.error('캘린더 데이터 로드 실패:', error);
+            setCalendarEvents([]);
           }
-          return 0;
-        });
-
-        // 평균 진행률 계산
-        const averageProgress = progresses.reduce((sum: number, progress: number) => sum + progress, 0) / progresses.length;
-
-        // 선택된 병원 정보 업데이트
-        const updatedHospital = { ...hospital, averageProgress };
-        setSelectedHospital(updatedHospital);
-
-        // 캠페인 데이터를 UI용 포맷으로 변환
-        const uiCampaigns = campaigns.value.map((campaign: any) => ({
-          id: campaign.id.toString(),
-          name: campaign.name,
-          status: campaign.status === 'active' ? '진행중' : campaign.status,
-          period: campaign.start_date && campaign.end_date
-            ? `${new Date(campaign.start_date).toLocaleDateString('ko-KR')} ~ ${new Date(campaign.end_date).toLocaleDateString('ko-KR')}`
-            : '기간 미정',
-          progress: campaign.target_post_count && campaign.target_post_count > 0
-            ? Math.round((campaign.completed_post_count || 0) / campaign.target_post_count * 100)
-            : 0
-        }));
-
-        setSelectedHospitalCampaigns(uiCampaigns);
-      } else {
-        // 캠페인이 없는 경우
-        const updatedHospital = { ...hospital, averageProgress: 0 };
-        setSelectedHospital(updatedHospital);
-        setSelectedHospitalCampaigns([]);
-      }
+        } else {
+          // 캠페인이 없는 경우
+          const updatedHospital = { ...hospital, averageProgress: 0 };
+          setSelectedHospital(updatedHospital);
+          setSelectedHospitalCampaigns([]);
+          setCalendarEvents([]);
+        }
     } catch (error) {
       console.error('병원 정보 로드 실패:', error);
       // 에러 시에도 병원 선택은 유지하되 기본값 사용
@@ -126,11 +207,16 @@ export default function HospitalWorkPage() {
       setSelectedHospital(updatedHospital);
       setSelectedHospitalCampaigns([]);
       setSelectedHospitalDetail(null);
+      setCalendarEvents([]);
     }
   };
 
   const handleTabChange = (newTab: 'hospital-info' | 'work-management' | 'monitoring') => {
     setActiveTab(newTab);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedCalendarDate(date);
   };
 
   return (
@@ -286,6 +372,9 @@ export default function HospitalWorkPage() {
                      month: '1월 2025',
                      events: [] // 실제 일정 데이터로 교체 필요
                    }}
+                   calendarEvents={calendarEvents}
+                   onDateSelect={handleDateSelect}
+                   selectedDate={selectedCalendarDate}
                  />
                ) : (
           <EmptyState
