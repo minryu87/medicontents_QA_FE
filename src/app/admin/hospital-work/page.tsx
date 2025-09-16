@@ -1,17 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { adminApi } from '@/services/api';
 import EmptyState from '@/components/admin/EmptyState';
 import HospitalInfoTab from '@/components/admin/HospitalInfoTab';
 import WorkManagementTab from '@/components/admin/WorkManagementTab';
 import MonitoringTab from '@/components/admin/MonitoringTab';
 
+interface HospitalWithCampaigns {
+  id: number;
+  name: string;
+  specialty?: string;
+  activeCampaigns: number;
+  isSelected?: boolean;
+}
+
 export default function HospitalWorkPage() {
-  const [selectedHospital, setSelectedHospital] = useState<any>(null);
+  const [hospitals, setHospitals] = useState<HospitalWithCampaigns[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedHospital, setSelectedHospital] = useState<HospitalWithCampaigns | null>(null);
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
 
-  const handleHospitalSelect = (hospital: any) => {
+  useEffect(() => {
+    const loadHospitals = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const hospitalsData = await adminApi.getHospitals();
+
+        // 병원 데이터를 UI에 맞는 형태로 변환
+        const hospitalsWithCampaigns: HospitalWithCampaigns[] = hospitalsData.map(hospital => ({
+          id: hospital.id,
+          name: hospital.name,
+          specialty: '병원', // 기본값, 실제로는 더 구체적인 정보 필요
+          activeCampaigns: 0, // TODO: 실제 활성 캠페인 수 계산 필요
+          isSelected: false
+        }));
+
+        setHospitals(hospitalsWithCampaigns);
+      } catch (error) {
+        console.error('병원 목록 로드 실패:', error);
+        setError('병원 목록을 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHospitals();
+  }, []);
+
+  const handleHospitalSelect = (hospital: HospitalWithCampaigns) => {
     setSelectedHospital(hospital);
   };
 
@@ -45,36 +86,63 @@ export default function HospitalWorkPage() {
         </div>
         {!isHospitalListCollapsed && (
           <div className="flex space-x-4 overflow-x-auto pb-2">
-            {mockHospitals.map((hospital) => (
-              <div
-                key={hospital.id}
-                className={`rounded-lg p-3 min-w-48 flex-shrink-0 shadow-lg cursor-pointer transition-all ${
-                  hospital.id === selectedHospital?.id
-                    ? 'bg-neutral-600 text-white'
-                    : 'bg-white border border-neutral-200 text-neutral-800'
-                }`}
-                onClick={() => handleHospitalSelect(hospital)}
-              >
+            {loading ? (
+              <div className="flex items-center justify-center min-w-48 py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
+                <span className="ml-2 text-neutral-600">병원 목록 로딩 중...</span>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center min-w-48 py-8">
                 <div className="text-center">
-                  <h3 className={`text-sm mb-1 ${hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-800'}`}>
-                    {hospital.name}
-                  </h3>
-                  <p className={`text-xs mb-2 ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                    {hospital.specialty}
-                  </p>
-                  <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                    hospital.id === selectedHospital?.id ? 'bg-white bg-opacity-20' : 'bg-neutral-100'
-                  }`}>
-                    <i className={`fa-solid fa-hospital text-xs ${
-                      hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-600'
-                    }`}></i>
-                  </div>
-                  <p className={`text-xs ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                    활성 캠페인: {hospital.activeCampaigns}개
-                  </p>
+                  <div className="text-red-500 mb-2">⚠️</div>
+                  <p className="text-sm text-red-600">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200"
+                  >
+                    다시 시도
+                  </button>
                 </div>
               </div>
-            ))}
+            ) : hospitals.length === 0 ? (
+              <div className="flex items-center justify-center min-w-48 py-8">
+                <div className="text-center text-neutral-500">
+                  <div className="text-2xl mb-2">🏥</div>
+                  <p className="text-sm">등록된 병원이 없습니다.</p>
+                </div>
+              </div>
+            ) : (
+              hospitals.map((hospital) => (
+                <div
+                  key={hospital.id}
+                  className={`rounded-lg p-3 min-w-48 flex-shrink-0 shadow-lg cursor-pointer transition-all ${
+                    hospital.id === selectedHospital?.id
+                      ? 'bg-neutral-600 text-white'
+                      : 'bg-white border border-neutral-200 text-neutral-800'
+                  }`}
+                  onClick={() => handleHospitalSelect(hospital)}
+                >
+                  <div className="text-center">
+                    <h3 className={`text-sm mb-1 ${hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-800'}`}>
+                      {hospital.name}
+                    </h3>
+                    <p className={`text-xs mb-2 ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
+                      {hospital.specialty}
+                    </p>
+                    <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
+                      hospital.id === selectedHospital?.id ? 'bg-white bg-opacity-20' : 'bg-neutral-100'
+                    }`}>
+                      <i className={`fa-solid fa-hospital text-xs ${
+                        hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-600'
+                      }`}></i>
+                    </div>
+                    <p className={`text-xs ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
+                      활성 캠페인: {hospital.activeCampaigns}개
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -171,43 +239,6 @@ export default function HospitalWorkPage() {
 }
 
 // Mock 데이터들 (나중에 API로 대체)
-const mockHospitals = [
-  {
-    id: '137',
-    name: '내이튼치과의원',
-    specialty: '치과',
-    activeCampaigns: 1,
-    isSelected: true
-  },
-  {
-    id: '138',
-    name: '강남세브란스병원',
-    specialty: '피부과',
-    activeCampaigns: 2,
-    isSelected: false
-  },
-  {
-    id: '139',
-    name: '아산병원',
-    specialty: '내과',
-    activeCampaigns: 1,
-    isSelected: false
-  },
-  {
-    id: '140',
-    name: '삼성서울병원',
-    specialty: '안과',
-    activeCampaigns: 4,
-    isSelected: false
-  },
-  {
-    id: '141',
-    name: '서울성모병원',
-    specialty: '치과',
-    activeCampaigns: 2,
-    isSelected: false
-  }
-];
 
 const mockSummaryCards = [
   {
