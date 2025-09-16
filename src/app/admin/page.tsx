@@ -478,41 +478,8 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {hospitals && hospitals.length > 0 ? (
                 hospitals.slice(0, 6).map((hospital: any) => {
-                  // 각 병원의 포스트들 가져오기
-                  const hospitalPosts = Object.values(postsByStatus).flat().filter((post: any) =>
-                    post.hospital_id === hospital.id
-                  ) as any[];
-
-                  // 병원별 진행 중 캠페인 정보 추출 (중복 제거)
-                  const activeCampaigns = Array.from(
-                    new Map(
-                      hospitalPosts
-                        .filter(post => post.campaign_name)
-                        .map(post => [post.campaign_name, {
-                          name: post.campaign_name,
-                          start_date: post.created_at,
-                          end_date: post.end_date
-                        }])
-                    ).values()
-                  );
-
-                  // 진행 중 캠페인 정보 (가장 최근 캠페인)
-                  const currentCampaign = activeCampaigns.length > 0 ? activeCampaigns[0] : null;
-
-                  // 캠페인 진행률 계산
-                  const campaignPosts = hospitalPosts.filter(post => post.campaign_name === currentCampaign?.name);
-                  const completedPosts = campaignPosts.filter(post =>
-                    ['final_approved', 'published'].includes(post.status)
-                  ).length;
-                  const totalPosts = campaignPosts.length;
-                  const progressPercentage = totalPosts > 0 ? Math.round((completedPosts / totalPosts) * 100) : 0;
-
-                  // 최근 작업 내용
-                  const recentPosts = hospitalPosts
-                    .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
-                    .slice(0, 1);
-
-                  const recentActivity = recentPosts.length > 0 ? recentPosts[0] : null;
+                  // 백엔드에서 제공하는 current_campaign 데이터 사용
+                  const currentCampaign = hospital.current_campaign;
 
                   return (
                     <div
@@ -543,39 +510,20 @@ export default function AdminDashboard() {
 
                       {/* 진행률 */}
                       <div className="space-y-1">
-                        {currentCampaign && totalPosts > 0 ? (
+                        {currentCampaign && currentCampaign.target_post_count > 0 ? (
                           <>
                             <div className="w-full bg-neutral-200 rounded-full h-1.5">
                               <div
                                 className="bg-neutral-600 h-1.5 rounded-full transition-all duration-300"
-                                style={{ width: `${progressPercentage}%` }}
+                                style={{ width: `${currentCampaign.progress_percentage}%` }}
                               ></div>
                             </div>
                             <p className="text-xs text-neutral-600 text-center">
-                              {completedPosts}/{totalPosts} ({progressPercentage}%)
+                              {currentCampaign.completed_post_count}/{currentCampaign.target_post_count} ({Math.round(currentCampaign.progress_percentage)}%)
                             </p>
                           </>
                         ) : (
                           <p className="text-xs text-neutral-500 text-center">진행률 정보 없음</p>
-                        )}
-                      </div>
-
-                      {/* 최근 작업 내용 */}
-                      <div className="text-center mt-2">
-                        {recentActivity ? (
-                          <div className="space-y-1">
-                            <p className="text-xs text-neutral-700">
-                              {recentActivity.title || `포스트 ${recentActivity.post_id}`}
-                            </p>
-                            <p className="text-xs text-neutral-500">
-                              {new Date(recentActivity.updated_at || recentActivity.created_at).toLocaleDateString('ko-KR', {
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-neutral-500">최근 작업 없음</p>
                         )}
                       </div>
                     </div>
