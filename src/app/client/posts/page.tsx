@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { clientApi } from '@/services/api';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import { Tabs } from '@/components/ui/Tabs';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
+import { Tabs } from '@/components/shared/Tabs';
 import type { Post as BasePost } from '@/types/common';
 
 interface Post extends BasePost {

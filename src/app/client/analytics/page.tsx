@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { clientApi } from '@/services/api';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
 import {
   TrendingUp,
   TrendingDown,

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 const adminNavigation = [
   { name: '대시보드', href: '/admin', icon: '🏠' },
-  { name: '병원별 작업 관리', href: '/hospital-work', icon: '🏥' },
+  { name: '병원별 작업 관리', href: '/admin/hospital-work', icon: '🏥' },
   { name: '포스트 관리', href: '/admin/posts', icon: '📝' },
   { name: '캠페인 관리', href: '/admin/campaigns', icon: '📋' },
   { name: '병원 관리', href: '/admin/hospitals', icon: '🏥' },

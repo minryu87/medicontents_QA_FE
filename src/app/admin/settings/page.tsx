@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import { Badge } from '@/components/shared/Badge';
+import Button from '@/components/shared/Button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shared/Tabs';
 import { formatDate } from '@/lib/utils';
 
 interface SystemStats {

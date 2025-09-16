@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
 import {
   Mail,
   Phone,

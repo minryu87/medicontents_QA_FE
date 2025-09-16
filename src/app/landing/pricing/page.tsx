@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
 import { Check, Star, Zap, Crown } from 'lucide-react';
 
 interface PricingPlan {

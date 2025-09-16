@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminApi } from '@/services/api';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
 
 interface Campaign {
   id: number;

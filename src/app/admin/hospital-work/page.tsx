@@ -1,6 +1,174 @@
 'use client';
 
 import { useState } from 'react';
+import EmptyState from '@/components/admin/EmptyState';
+import HospitalInfoTab from '@/components/admin/HospitalInfoTab';
+import WorkManagementTab from '@/components/admin/WorkManagementTab';
+import MonitoringTab from '@/components/admin/MonitoringTab';
+
+export default function HospitalWorkPage() {
+  const [selectedHospital, setSelectedHospital] = useState<any>(null);
+  const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
+
+  const handleHospitalSelect = (hospital: any) => {
+    setSelectedHospital(hospital);
+  };
+
+  const handleTabChange = (newTab: 'hospital-info' | 'work-management' | 'monitoring') => {
+    setActiveTab(newTab);
+  };
+
+  return (
+    <div className="h-full bg-neutral-50 overflow-y-auto">
+      {/* 병원 목록 캐러셀 */}
+      <div className="px-6 py-4 bg-white border-b border-neutral-100">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-3">
+            <h2 className="text-lg text-neutral-900">병원 목록</h2>
+            <button
+              onClick={() => setIsHospitalListCollapsed(!isHospitalListCollapsed)}
+              className="flex items-center space-x-2 px-3 py-1 text-neutral-600 hover:text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors text-sm"
+            >
+              <span>{isHospitalListCollapsed ? '펼치기' : '접기'}</span>
+              <i className={`fa-solid ${isHospitalListCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}`}></i>
+            </button>
+          </div>
+          <div className="flex space-x-2">
+            <button className="p-2 text-neutral-500 hover:text-neutral-700">
+              <i className="fa-solid fa-chevron-left"></i>
+            </button>
+            <button className="p-2 text-neutral-500 hover:text-neutral-700">
+              <i className="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+        {!isHospitalListCollapsed && (
+          <div className="flex space-x-4 overflow-x-auto pb-2">
+            {mockHospitals.map((hospital) => (
+              <div
+                key={hospital.id}
+                className={`rounded-lg p-3 min-w-48 flex-shrink-0 shadow-lg cursor-pointer transition-all ${
+                  hospital.id === selectedHospital?.id
+                    ? 'bg-neutral-600 text-white'
+                    : 'bg-white border border-neutral-200 text-neutral-800'
+                }`}
+                onClick={() => handleHospitalSelect(hospital)}
+              >
+                <div className="text-center">
+                  <h3 className={`text-sm mb-1 ${hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-800'}`}>
+                    {hospital.name}
+                  </h3>
+                  <p className={`text-xs mb-2 ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
+                    {hospital.specialty}
+                  </p>
+                  <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
+                    hospital.id === selectedHospital?.id ? 'bg-white bg-opacity-20' : 'bg-neutral-100'
+                  }`}>
+                    <i className={`fa-solid fa-hospital text-xs ${
+                      hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-600'
+                    }`}></i>
+                  </div>
+                  <p className={`text-xs ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
+                    활성 캠페인: {hospital.activeCampaigns}개
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 탭 메뉴 */}
+      <div className="px-6 py-4 bg-white border-b border-neutral-100">
+        <div className="flex space-x-1">
+          <button
+            onClick={() => handleTabChange('hospital-info')}
+            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === 'hospital-info'
+                ? 'bg-neutral-600 text-white'
+                : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+            }`}
+          >
+            병원 정보
+          </button>
+          <button
+            onClick={() => handleTabChange('work-management')}
+            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === 'work-management'
+                ? 'bg-neutral-600 text-white'
+                : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+            }`}
+          >
+            작업 관리
+          </button>
+          <button
+            onClick={() => handleTabChange('monitoring')}
+            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === 'monitoring'
+                ? 'bg-neutral-600 text-white'
+                : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+            }`}
+          >
+            모니터링
+          </button>
+        </div>
+      </div>
+
+      {/* 탭별 콘텐츠 */}
+      {activeTab === 'hospital-info' && (
+        selectedHospital ? (
+          <HospitalInfoTab
+            summaryCards={mockSummaryCards}
+            basicInfo={mockHospitalDetails.basicInfo}
+            campaigns={mockHospitalDetails.campaigns}
+            schedule={mockHospitalDetails.schedule}
+          />
+        ) : (
+          <EmptyState
+            icon="fa-hospital"
+            title="병원을 선택해주세요"
+            description="병원 목록에서 병원을 선택하면 상세 정보를 확인할 수 있습니다."
+          />
+        )
+      )}
+
+      {activeTab === 'work-management' && (
+        selectedHospital ? (
+          <WorkManagementTab
+            waitingTasks={mockWaitingTasks}
+            publishPending={mockPublishPending}
+            publishCompleted={mockPublishCompleted}
+            monitoring={mockMonitoring}
+            monitoringIssues={mockMonitoringIssues}
+          />
+        ) : (
+          <EmptyState
+            icon="fa-tasks"
+            title="병원을 선택해주세요"
+            description="병원 목록에서 병원을 선택하면 작업 현황을 확인할 수 있습니다."
+          />
+        )
+      )}
+
+      {activeTab === 'monitoring' && (
+        selectedHospital ? (
+          <MonitoringTab
+            performanceStats={mockPerformanceStats}
+            trafficData={mockTrafficData}
+            topPosts={mockTopPosts}
+          />
+        ) : (
+          <EmptyState
+            icon="fa-chart-line"
+            title="병원을 선택해주세요"
+            description="병원 목록에서 병원을 선택하면 성과 데이터를 확인할 수 있습니다."
+          />
+        )
+      )}
+    </div>
+  );
+}
 
 // Mock 데이터들 (나중에 API로 대체)
 const mockHospitals = [
@@ -292,665 +460,3 @@ const mockTopPosts = [
   }
 ];
 
-export default function HospitalWorkPage() {
-  const [selectedHospital, setSelectedHospital] = useState(mockHospitals[0]);
-  const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
-
-  return (
-    <div className="h-full bg-neutral-50 overflow-y-auto">
-      {/* 병원 목록 캐러셀 */}
-      <div className="px-6 py-4 bg-white border-b border-neutral-100">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-lg text-neutral-900">병원 목록</h2>
-            <button
-              onClick={() => setIsHospitalListCollapsed(!isHospitalListCollapsed)}
-              className="p-1 text-neutral-500 hover:text-neutral-700 transition-colors"
-            >
-              <i className={`fa-solid fa-chevron-${isHospitalListCollapsed ? 'down' : 'up'} text-sm`}></i>
-            </button>
-          </div>
-          <div className="flex space-x-2">
-            <button className="p-2 text-neutral-500 hover:text-neutral-700">
-              <i className="fa-solid fa-chevron-left"></i>
-            </button>
-            <button className="p-2 text-neutral-500 hover:text-neutral-700">
-              <i className="fa-solid fa-chevron-right"></i>
-            </button>
-          </div>
-        </div>
-        {!isHospitalListCollapsed && (
-          <div className="flex space-x-4 overflow-x-auto pb-2">
-            {mockHospitals.map((hospital) => (
-              <div
-                key={hospital.id}
-                className={`rounded-lg p-3 min-w-48 flex-shrink-0 shadow-lg cursor-pointer transition-all ${
-                  hospital.isSelected
-                    ? 'bg-neutral-600 text-white'
-                    : 'bg-white border border-neutral-200 text-neutral-800'
-                }`}
-                onClick={() => setSelectedHospital(hospital)}
-              >
-                <div className="text-center">
-                  <h3 className={`text-sm mb-1 ${hospital.isSelected ? 'text-white' : 'text-neutral-800'}`}>
-                    {hospital.name}
-                  </h3>
-                  <p className={`text-xs mb-2 ${hospital.isSelected ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                    {hospital.specialty}
-                  </p>
-                  <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                    hospital.isSelected ? 'bg-white bg-opacity-20' : 'bg-neutral-100'
-                  }`}>
-                    <i className={`fa-solid fa-hospital text-xs ${
-                      hospital.isSelected ? 'text-white' : 'text-neutral-600'
-                    }`}></i>
-                  </div>
-                  <p className={`text-xs ${hospital.isSelected ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                    활성 캠페인: {hospital.activeCampaigns}개
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 병원 요약 대시보드 */}
-      <div className="px-6 py-4">
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          {mockSummaryCards.map((card) => (
-            <div key={card.id} className="bg-white rounded-xl shadow-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm text-neutral-900">{card.title}</h2>
-                {card.id === 'urgent' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-exclamation text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-                {card.id === 'progress' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-                {card.id === 'performance' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-eye text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-                {card.id === 'activity' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-clock text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-              </div>
-
-              {card.id === 'activity' ? (
-                <div className="space-y-2">
-                  {card.activities?.map((activity, index) => (
-                    <div key={index}>
-                      <div className="text-xs text-neutral-800">{activity.description}</div>
-                      <div className="text-xs text-neutral-500">{activity.time}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <div className="text-2xl text-neutral-900 mb-1">{card.value}</div>
-                  <p className="text-xs text-neutral-600">{card.description}</p>
-                  {card.change && (
-                    <p className="text-xs text-neutral-600 mt-1">{card.change}</p>
-                  )}
-                  {card.progress !== undefined && (
-                    <div className="w-full bg-neutral-200 rounded-full h-1 mt-3">
-                      <div
-                        className="bg-neutral-600 h-1 rounded-full transition-all duration-300"
-                        style={{ width: `${card.progress}%` }}
-                      ></div>
-                    </div>
-                  )}
-                  {card.action && (
-                    <button className="w-full mt-3 px-3 py-2 bg-neutral-600 text-white text-xs rounded-lg hover:bg-neutral-700">
-                      {card.action}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 병원 상세 정보 */}
-      <div className="px-6">
-        <div className="grid grid-cols-3 gap-6 mb-6">
-          {/* 병원 기본 정보 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">병원 기본 정보</h2>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <img
-                  src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${mockHospitalDetails.basicInfo.name}`}
-                  alt="Hospital"
-                  className="w-12 h-12 rounded-lg"
-                />
-                <div>
-                  <h3 className="text-neutral-800 text-sm">{mockHospitalDetails.basicInfo.name}</h3>
-                  <p className="text-xs text-neutral-600">{mockHospitalDetails.basicInfo.specialty}</p>
-                </div>
-              </div>
-              <div className="border-t border-neutral-100 pt-3">
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-neutral-500">담당자</span>
-                    <p className="text-neutral-800">{mockHospitalDetails.basicInfo.manager}</p>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">연락처</span>
-                    <p className="text-neutral-800">{mockHospitalDetails.basicInfo.contact}</p>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">가입일</span>
-                    <p className="text-neutral-800">{mockHospitalDetails.basicInfo.joinDate}</p>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">상태</span>
-                    <span className="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">
-                      {mockHospitalDetails.basicInfo.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button className="w-full mt-4 px-3 py-2 bg-neutral-600 text-white text-sm rounded-lg hover:bg-neutral-700">
-                병원 정보 수정
-              </button>
-            </div>
-          </div>
-
-          {/* 진행 중 캠페인 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">진행 중 캠페인</h2>
-            <div className="space-y-3">
-              {mockHospitalDetails.campaigns.map((campaign) => (
-                <div key={campaign.id} className="border border-neutral-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm text-neutral-800">{campaign.name}</h3>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      campaign.status === '진행중' ? 'bg-neutral-100 text-neutral-800' :
-                      campaign.status === '완료' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {campaign.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-600 mb-2">{campaign.period}</p>
-                  <div className="w-full bg-neutral-200 rounded-full h-1">
-                    <div
-                      className="bg-neutral-600 h-1 rounded-full transition-all duration-300"
-                      style={{ width: `${campaign.progress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-1">진행률: {campaign.progress}%</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 작업 일정 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">작업 일정</h2>
-            <div className="mb-3">
-              <h3 className="text-sm text-neutral-800 mb-2">{mockHospitalDetails.schedule.month}</h3>
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
-                  <div key={day} className="text-center text-xs text-neutral-500 py-1">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {/* 빈 칸들 (1일 이전) */}
-                {Array.from({ length: 14 }, (_, i) => (
-                  <div key={`empty-${i}`} className="text-center py-1 text-xs text-neutral-400"></div>
-                ))}
-                {/* 날짜들 */}
-                {Array.from({ length: 31 }, (_, day) => {
-                  const dayNumber = day + 1;
-                  const event = mockHospitalDetails.schedule.events.find(e => e.day === dayNumber);
-                  return (
-                    <div
-                      key={dayNumber}
-                      className={`text-center py-1 text-xs text-neutral-700 relative ${
-                        dayNumber === 15 ? 'bg-neutral-600 text-white rounded-full' : ''
-                      }`}
-                    >
-                      {dayNumber}
-                      {event && (
-                        <div className={`w-1 h-1 rounded-full mx-auto mt-1 ${
-                          event.type === 'post' ? 'bg-neutral-600' :
-                          event.type === 'review' ? 'bg-blue-600' :
-                          'bg-green-600'
-                        }`}></div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 작업 대기 섹션 */}
-      <div className="px-6 mb-6">
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-lg text-neutral-900 mb-4">작업 대기</h2>
-          <div className="flex space-x-4 overflow-x-auto pb-2">
-            {mockWaitingTasks.map((task) => (
-              <div key={task.id} className="bg-white border border-neutral-200 rounded-lg p-3 min-w-64 flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">
-                    {task.id}
-                  </span>
-                  <i className="fa-solid fa-clock text-neutral-400 text-xs"></i>
-                </div>
-                <h4 className="text-sm text-neutral-800 mb-2">{task.title}</h4>
-                <p className="text-xs text-neutral-600 mb-2">{task.description}</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1">
-                    <img
-                      src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${task.assignee}`}
-                      alt="User"
-                      className="w-5 h-5 rounded-full"
-                    />
-                    <span className="text-xs text-neutral-600">{task.assignee}</span>
-                  </div>
-                  <span className="text-xs text-neutral-500">대기중</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 칸반 보드 (진행 중 캠페인 포스트 현황) */}
-      <div className="px-6 mb-6">
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-lg text-neutral-900 mb-4">진행 중 캠페인 포스트 현황 (칸반)</h2>
-
-          {/* 정상 진행 섹션 */}
-          <div className="mb-4">
-            <h3 className="text-md text-neutral-800 mb-3">정상 진행</h3>
-            <div className="flex space-x-4 overflow-x-auto pb-2">
-              {/* 자료 제공 완료 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">1. 자료 제공 완료</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">2</span>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-011</span>
-                      <i className="fa-solid fa-check text-neutral-600 text-xs"></i>
-                    </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">관절 영양제 정보</h5>
-                    <p className="text-xs text-neutral-600 mb-2">자료 제공 완료</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=김의사" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">김의사</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">완료</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI 생성 성공 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">3. AI 생성_성공</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-014</span>
-                      <i className="fa-solid fa-robot text-neutral-600 text-xs"></i>
-                    </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">척추 건강 체크</h5>
-                    <p className="text-xs text-neutral-600 mb-2">AI 생성 완료</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=AI Agent" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">AI Agent</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">생성완료</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 어드민 사후 검토 중 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">4. 어드민 사후 검토 중</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-016</span>
-                      <i className="fa-solid fa-search text-neutral-600 text-xs"></i>
-                    </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">스포츠 부상 예방</h5>
-                    <p className="text-xs text-neutral-600 mb-2">사후 검토 중</p>
-                    <div className="flex items-center justify-between">
-                      <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">승인</button>
-                      <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">반려</button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=관리자" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">관리자</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">검토중</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 이슈 발생 섹션 */}
-          <div>
-            <h3 className="text-md text-neutral-800 mb-3">이슈 발생</h3>
-            <div className="flex space-x-4 overflow-x-auto pb-2">
-              {/* AI 생성 실패 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">3. AI 생성_실패</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">FAIL-001</span>
-                      <i className="fa-solid fa-times-circle text-neutral-600 text-xs"></i>
-                    </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">관절염 진단법</h5>
-                    <p className="text-xs text-neutral-600 mb-2">AI 생성 실패</p>
-                    <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700 mb-2">재시도</button>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=AI Agent" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">AI Agent</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">실패</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 고객 검토 지연 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">5. 고객 검토 지연</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">DELAY-001</span>
-                      <i className="fa-solid fa-clock text-neutral-600 text-xs"></i>
-                    </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">환자 교육 자료</h5>
-                    <p className="text-xs text-neutral-600 mb-2">검토 기한 초과</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=이간호사" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">이간호사</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">지연</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 게시 상태 섹션 */}
-      <div className="px-6 mb-6">
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {/* 게시 대기 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">게시 대기</h2>
-            <div className="space-y-3">
-              {mockPublishPending.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-calendar-alt text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <p className="text-xs text-neutral-600 mb-2">게시 예정: {item.scheduledDate}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <img
-                        src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${item.avatar}`}
-                        alt="User"
-                        className="w-5 h-5 rounded-full"
-                      />
-                      <span className="text-xs text-neutral-600">{item.assignee}</span>
-                    </div>
-                    <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">
-                      즉시게시
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 게시 완료 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">게시 완료</h2>
-            <div className="space-y-3">
-              {mockPublishCompleted.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-check-circle text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <p className="text-xs text-neutral-600 mb-2">게시됨: {item.publishedDate}</p>
-                  <div className="flex justify-between text-xs text-neutral-600 mb-2">
-                    <span>조회수: {item.views.toLocaleString()}</span>
-                    <span>좋아요: {item.likes}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <img
-                        src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${item.avatar}`}
-                        alt="User"
-                        className="w-5 h-5 rounded-full"
-                      />
-                      <span className="text-xs text-neutral-600">{item.assignee}</span>
-                    </div>
-                    <button className="px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded hover:bg-neutral-200">
-                      상세보기
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 모니터링 섹션 */}
-      <div className="px-6 mb-6">
-        <div className="grid grid-cols-2 gap-4">
-          {/* 모니터링 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">모니터링</h2>
-            <div className="space-y-3">
-              {mockMonitoring.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <div className="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.views.toLocaleString()}</div>
-                      <div>조회수</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.likes}</div>
-                      <div>좋아요</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.shares}</div>
-                      <div>공유</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-600">성과: {item.performance}</span>
-                    <span className="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">{item.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 모니터링 이슈 발생 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-4">모니터링 이슈 발생</h2>
-            <div className="space-y-3">
-              {mockMonitoringIssues.map((item) => (
-                <div key={item.id} className="bg-neutral-50 border border-neutral-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
-                    <i className="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
-                  </div>
-                  <h4 className="text-sm text-neutral-800 mb-2">{item.title}</h4>
-                  <div className="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.views}</div>
-                      <div>조회수</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.likes}</div>
-                      <div>좋아요</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-neutral-900">{item.shares}</div>
-                      <div>공유</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-600">성과: {item.performance}</span>
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">{item.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 성과 모니터링 섹션 */}
-      <div className="px-6 pb-6">
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg text-neutral-900">성과 모니터링</h2>
-            <div className="flex space-x-2">
-              <button className="px-3 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg hover:bg-neutral-200">7일</button>
-              <button className="px-3 py-1 bg-neutral-600 text-white text-xs rounded-lg">30일</button>
-              <button className="px-3 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg hover:bg-neutral-200">90일</button>
-            </div>
-          </div>
-
-          {/* 4개 성과 카드 */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-3 bg-neutral-50 rounded-lg">
-              <div className="text-2xl text-neutral-900 mb-1">{(mockPerformanceStats.totalViews / 1000).toFixed(1)}K</div>
-              <p className="text-xs text-neutral-600">총 조회수</p>
-              <p className="text-xs text-green-600 mt-1">{mockPerformanceStats.totalViewsChange}</p>
-            </div>
-            <div className="text-center p-3 bg-neutral-50 rounded-lg">
-              <div className="text-2xl text-neutral-900 mb-1">{mockPerformanceStats.likes}</div>
-              <p className="text-xs text-neutral-600">좋아요</p>
-              <p className="text-xs text-green-600 mt-1">{mockPerformanceStats.likesChange}</p>
-            </div>
-            <div className="text-center p-3 bg-neutral-50 rounded-lg">
-              <div className="text-2xl text-neutral-900 mb-1">{mockPerformanceStats.shares}</div>
-              <p className="text-xs text-neutral-600">공유</p>
-              <p className="text-xs text-red-600 mt-1">{mockPerformanceStats.sharesChange}</p>
-            </div>
-            <div className="text-center p-3 bg-neutral-50 rounded-lg">
-              <div className="text-2xl text-neutral-900 mb-1">{mockPerformanceStats.engagement}</div>
-              <p className="text-xs text-neutral-600">참여율</p>
-              <p className="text-xs text-green-600 mt-1">{mockPerformanceStats.engagementChange}</p>
-            </div>
-          </div>
-
-          {/* 유입량 추이 그래프 */}
-          <div className="mb-6">
-            <h3 className="text-sm text-neutral-800 mb-3">유입량 추이</h3>
-            <div className="h-64 bg-neutral-50 rounded-lg p-4 flex items-end justify-between">
-              <div className="flex items-end space-x-2 w-full">
-                {mockTrafficData.map((data, index) => (
-                  <div
-                    key={index}
-                    className="bg-neutral-600 rounded-t flex-1"
-                    style={{ height: `${(data.views / 4000) * 200}px`, minWidth: '20px' }}
-                  ></div>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-neutral-500">
-              <span>1월 1일</span>
-              <span>1월 8일</span>
-              <span>1월 15일</span>
-            </div>
-          </div>
-
-          {/* 인기 포스트 TOP 5 */}
-          <div>
-            <h3 className="text-sm text-neutral-800 mb-3">인기 포스트 TOP 5</h3>
-            <div className="space-y-2">
-              {mockTopPosts.map((post) => (
-                <div key={post.rank} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <span className={`w-6 h-6 text-white text-xs rounded-full flex items-center justify-center ${
-                      post.rank === 1 ? 'bg-neutral-900' :
-                      post.rank === 2 ? 'bg-neutral-700' :
-                      post.rank === 3 ? 'bg-neutral-600' :
-                      post.rank === 4 ? 'bg-neutral-500' :
-                      'bg-neutral-400'
-                    }`}>
-                      {post.rank}
-                    </span>
-                    <div>
-                      <h4 className="text-sm text-neutral-800">{post.title}</h4>
-                      <p className="text-xs text-neutral-600">{post.publishedDate}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-neutral-900">{post.views.toLocaleString()}</div>
-                    <div className="text-xs text-neutral-600">조회수</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

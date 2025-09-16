@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
+import Input from '@/components/shared/Input';
 import { adminApi } from '@/services/api';
 import type { Hospital } from '@/types/common';
 

@@ -219,7 +219,7 @@ export const getTableStats = async (tableName: string) => {
   } catch (error) {
     return {
       table_name: tableName,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       has_data: false
     };
   }

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { clientApi } from '@/services/api';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
+import Input from '@/components/shared/Input';
 
 interface HospitalProfile {
   id: number;

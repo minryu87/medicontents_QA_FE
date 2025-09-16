@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import { Badge } from '@/components/shared/Badge';
+import Button from '@/components/shared/Button';
 import { formatDateTime } from '@/lib/utils';
 
 interface LogEntry {

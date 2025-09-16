@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import Button from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import { Badge } from '@/components/shared/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shared/Tabs';
+import Button from '@/components/shared/Button';
 import { adminApi } from '@/services/api';
 import type { Hospital, Campaign, Post, User } from '@/types/common';
 import { formatDateTime } from '@/lib/utils';

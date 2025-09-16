@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getCaseStudies } from '@/services/publicApi';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
 import { TrendingUp, Users, Calendar, Award, Quote, ArrowUp } from 'lucide-react';
 
 interface CaseStudy {

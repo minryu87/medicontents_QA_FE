@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import { Badge } from '@/components/shared/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shared/Tabs';
+import Button from '@/components/shared/Button';
+import Input from '@/components/shared/Input';
 import { adminApi } from '@/services/api';
 
 interface MedicalService {

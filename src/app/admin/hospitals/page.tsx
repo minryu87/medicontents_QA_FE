@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import { Badge } from '@/components/shared/Badge';
+import Button from '@/components/shared/Button';
+import Input from '@/components/shared/Input';
 import { formatDate, truncateText } from '@/lib/utils';
 import { adminApi } from '@/services/api';
 import type { Hospital } from '@/types/common';

@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminApi } from '@/services/api';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
 import type { Campaign as BaseCampaign } from '@/types/common';
 
 interface Campaign extends BaseCampaign {

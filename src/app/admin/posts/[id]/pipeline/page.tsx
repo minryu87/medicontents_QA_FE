@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Card';
+import { Badge } from '@/components/shared/Badge';
+import Button from '@/components/shared/Button';
 import { formatDateTime } from '@/lib/utils';
 import { adminApi } from '@/services/api';
 import type { Post, AgentExecutionLog, PipelineResult } from '@/types/common';

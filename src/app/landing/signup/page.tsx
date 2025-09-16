@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import Navigation from '@/components/layout/Navigation';
+import { Card } from '@/components/shared/Card';
+import Button from '@/components/shared/Button';
+import Navigation from '@/components/shared/Navigation';
 
 interface SignupData {
   // 병원 정보
