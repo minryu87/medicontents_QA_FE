@@ -25,6 +25,7 @@ export interface Hospital {
   address_keywords?: string[];
   hospital_keywords?: string[];
   business_card_image?: string;
+  logo_image?: string;
   map_link?: string;
   created_at: string;
   updated_at?: string;

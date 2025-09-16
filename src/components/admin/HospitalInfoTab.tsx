@@ -12,9 +12,14 @@ interface SummaryCard {
 interface BasicInfo {
   name: string;
   specialty: string;
+  logoImage?: string;
   manager: string;
-  contact: string;
   joinDate: string;
+  contact: string;
+  address?: string;
+  website?: string;
+  mapLink?: string;
+  description?: string;
   status: string;
 }
 
@@ -117,40 +122,78 @@ export default function HospitalInfoTab({
           {/* 병원 기본 정보 */}
           <div className="bg-white rounded-xl shadow-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">병원 기본 정보</h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* 로고 이미지와 병원명 */}
               <div className="flex items-center space-x-3">
-                <img
-                  src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${basicInfo.name}`}
-                  alt="Hospital"
-                  className="w-12 h-12 rounded-lg"
-                />
+                {basicInfo.logoImage ? (
+                  <img
+                    src={basicInfo.logoImage.replace('@', '')}
+                    alt={`${basicInfo.name} 로고`}
+                    className="w-24 h-12 rounded-lg object-contain bg-white border"
+                  />
+                ) : (
+                  <div className="w-24 h-12 rounded-lg bg-neutral-100 flex items-center justify-center">
+                    <i className="fa-solid fa-hospital text-neutral-600"></i>
+                  </div>
+                )}
                 <div>
-                  <h3 className="text-neutral-800 text-sm">{basicInfo.name}</h3>
+                  <h3 className="text-neutral-800 text-base font-medium">{basicInfo.name}</h3>
                   <p className="text-xs text-neutral-600">{basicInfo.specialty}</p>
                 </div>
               </div>
+
+              {/* 상세 정보 2column */}
               <div className="border-t border-neutral-100 pt-3">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-neutral-500">담당자</span>
-                    <p className="text-neutral-800">{basicInfo.manager}</p>
+                    <span className="text-neutral-500 block mb-1">담당자</span>
+                    <p className="text-neutral-800">{basicInfo.manager || '미정'}</p>
                   </div>
                   <div>
-                    <span className="text-neutral-500">연락처</span>
-                    <p className="text-neutral-800">{basicInfo.contact}</p>
+                    <span className="text-neutral-500 block mb-1">가입일</span>
+                    <p className="text-neutral-800">{basicInfo.joinDate || '미정'}</p>
                   </div>
                   <div>
-                    <span className="text-neutral-500">가입일</span>
-                    <p className="text-neutral-800">{basicInfo.joinDate}</p>
+                    <span className="text-neutral-500 block mb-1">연락처</span>
+                    <p className="text-neutral-800">{basicInfo.contact || '미정'}</p>
                   </div>
                   <div>
-                    <span className="text-neutral-500">상태</span>
-                    <span className="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">
-                      {basicInfo.status}
-                    </span>
+                    <span className="text-neutral-500 block mb-1">주소</span>
+                    <p className="text-neutral-800">{basicInfo.address || '미정'}</p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500 block mb-1">웹사이트</span>
+                    <p className="text-neutral-800">
+                      {basicInfo.website ? (
+                        <a href={basicInfo.website} target="_blank" rel="noopener noreferrer"
+                           className="text-blue-600 hover:text-blue-800 underline">
+                          {basicInfo.website}
+                        </a>
+                      ) : '미정'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500 block mb-1">지도 링크</span>
+                    <p className="text-neutral-800">
+                      {basicInfo.mapLink ? (
+                        <a href={basicInfo.mapLink} target="_blank" rel="noopener noreferrer"
+                           className="text-blue-600 hover:text-blue-800 underline">
+                          지도 보기
+                        </a>
+                      ) : '미정'}
+                    </p>
                   </div>
                 </div>
               </div>
+
+              {/* 병원 설명 1column */}
+              {basicInfo.description && (
+                <div className="border-t border-neutral-100 pt-3">
+                  <span className="text-neutral-500 text-xs block mb-2">병원 소개</span>
+                  <p className="text-neutral-800 text-sm leading-relaxed">{basicInfo.description}</p>
+                </div>
+              )}
+
               <button className="w-full mt-4 px-3 py-2 bg-neutral-600 text-white text-sm rounded-lg hover:bg-neutral-700">
                 병원 정보 수정
               </button>
@@ -233,3 +276,4 @@ export default function HospitalInfoTab({
     </>
   );
 }
+

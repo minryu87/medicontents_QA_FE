@@ -13,6 +13,7 @@ interface HospitalWithCampaigns {
   specialty?: string;
   activeCampaigns: number;
   averageProgress?: number; // 캠페인 평균 진행률
+  logo_image?: string;
   isSelected?: boolean;
 }
 
@@ -21,6 +22,7 @@ export default function HospitalWorkPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<HospitalWithCampaigns | null>(null);
+  const [selectedHospitalDetail, setSelectedHospitalDetail] = useState<any>(null);
   const [selectedHospitalCampaigns, setSelectedHospitalCampaigns] = useState<any[]>([]);
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
@@ -39,6 +41,7 @@ export default function HospitalWorkPage() {
           name: hospital.name,
           specialty: '병원', // 기본값, 실제로는 더 구체적인 정보 필요
           activeCampaigns: hospital.active_campaigns || 0,
+          logo_image: hospital.logo_image,
           isSelected: false
         }));
 
@@ -57,13 +60,32 @@ export default function HospitalWorkPage() {
   const handleHospitalSelect = async (hospital: HospitalWithCampaigns) => {
     setSelectedHospital(hospital);
 
-    // 선택된 병원의 캠페인 정보를 가져와서 평균 진행률 계산
+    // 선택된 병원의 상세 정보, 담당자 정보, 캠페인 정보를 병렬로 가져오기
     try {
-      const campaigns = await adminApi.getCampaigns({ hospital_id: hospital.id, status: 'active' });
+      const [hospitalDetail, hospitalAdmin, campaigns] = await Promise.allSettled([
+        adminApi.getHospital(hospital.id),
+        adminApi.getHospitalAdmin(hospital.id),
+        adminApi.getCampaigns({ hospital_id: hospital.id, status: 'active' })
+      ]);
 
-      if (campaigns && campaigns.length > 0) {
+      // 병원 상세 정보 저장
+      if (hospitalDetail.status === 'fulfilled') {
+        setSelectedHospitalDetail(hospitalDetail.value);
+      }
+
+      // 담당자 정보 처리 및 병원 상세 정보 업데이트
+      if (hospitalDetail.status === 'fulfilled' && hospitalAdmin.status === 'fulfilled' && hospitalAdmin.value?.username) {
+        const updatedDetail = {
+          ...hospitalDetail.value,
+          admin: hospitalAdmin.value.username
+        };
+        setSelectedHospitalDetail(updatedDetail);
+      }
+
+      // 캠페인 정보 처리
+      if (campaigns.status === 'fulfilled' && campaigns.value && campaigns.value.length > 0) {
         // 각 캠페인의 진행률 계산 (completed_post_count / target_post_count * 100)
-        const progresses = campaigns.map(campaign => {
+        const progresses = campaigns.value.map((campaign: any) => {
           if (campaign.target_post_count && campaign.target_post_count > 0) {
             return (campaign.completed_post_count || 0) / campaign.target_post_count * 100;
           }
@@ -71,14 +93,14 @@ export default function HospitalWorkPage() {
         });
 
         // 평균 진행률 계산
-        const averageProgress = progresses.reduce((sum, progress) => sum + progress, 0) / progresses.length;
+        const averageProgress = progresses.reduce((sum: number, progress: number) => sum + progress, 0) / progresses.length;
 
         // 선택된 병원 정보 업데이트
         const updatedHospital = { ...hospital, averageProgress };
         setSelectedHospital(updatedHospital);
 
         // 캠페인 데이터를 UI용 포맷으로 변환
-        const uiCampaigns = campaigns.map(campaign => ({
+        const uiCampaigns = campaigns.value.map((campaign: any) => ({
           id: campaign.id.toString(),
           name: campaign.name,
           status: campaign.status === 'active' ? '진행중' : campaign.status,
@@ -98,11 +120,12 @@ export default function HospitalWorkPage() {
         setSelectedHospitalCampaigns([]);
       }
     } catch (error) {
-      console.error('캠페인 정보 로드 실패:', error);
-      // 에러 시에도 병원 선택은 유지하되 진행률은 기본값 사용
+      console.error('병원 정보 로드 실패:', error);
+      // 에러 시에도 병원 선택은 유지하되 기본값 사용
       const updatedHospital = { ...hospital, averageProgress: 0 };
       setSelectedHospital(updatedHospital);
       setSelectedHospitalCampaigns([]);
+      setSelectedHospitalDetail(null);
     }
   };
 
@@ -173,18 +196,23 @@ export default function HospitalWorkPage() {
                   onClick={() => handleHospitalSelect(hospital)}
                 >
                   <div className="text-center">
-                    <h3 className={`text-sm mb-1 ${hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-800'}`}>
+                    <h3 className={`text-sm mb-2 ${hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-800'}`}>
                       {hospital.name}
                     </h3>
-                    <p className={`text-xs mb-2 ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                      {hospital.specialty}
-                    </p>
-                    <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                      hospital.id === selectedHospital?.id ? 'bg-white bg-opacity-20' : 'bg-neutral-100'
+                    <div className={`w-20 h-10 rounded-lg mx-auto mb-2 flex items-center justify-center bg-white border ${
+                      hospital.id === selectedHospital?.id ? 'border-white border-opacity-30' : 'border-neutral-200'
                     }`}>
-                      <i className={`fa-solid fa-hospital text-xs ${
-                        hospital.id === selectedHospital?.id ? 'text-white' : 'text-neutral-600'
-                      }`}></i>
+                      {hospital.logo_image ? (
+                        <img
+                          src={hospital.logo_image.replace('@', '')}
+                          alt={`${hospital.name} 로고`}
+                          className="w-16 h-8 object-contain"
+                        />
+                      ) : (
+                        <i className={`fa-solid fa-hospital text-sm ${
+                          hospital.id === selectedHospital?.id ? 'text-neutral-600' : 'text-neutral-400'
+                        }`}></i>
+                      )}
                     </div>
                     <p className={`text-xs ${hospital.id === selectedHospital?.id ? 'text-neutral-200' : 'text-neutral-600'}`}>
                       활성 캠페인: {hospital.activeCampaigns}개
@@ -240,11 +268,18 @@ export default function HospitalWorkPage() {
                    summaryCards={createSummaryCards(selectedHospital)}
                    basicInfo={{
                      name: selectedHospital.name,
-                     specialty: '병원', // 기본값
-                     manager: '담당자 미정', // 실제 데이터 필요
-                     contact: '연락처 미정', // 실제 데이터 필요
-                     joinDate: '가입일 미정', // 실제 데이터 필요
-                     status: '활성'
+                     specialty: '병원',
+                     logoImage: selectedHospital.logo_image,
+                     manager: selectedHospitalDetail?.admin || '담당자 미정',
+                     joinDate: selectedHospitalDetail?.created_at
+                       ? new Date(selectedHospitalDetail.created_at).toLocaleDateString('ko-KR')
+                       : '가입일 미정',
+                     contact: selectedHospitalDetail?.phone || '연락처 미정',
+                     address: selectedHospitalDetail?.address,
+                     website: selectedHospitalDetail?.website,
+                     mapLink: selectedHospitalDetail?.map_link,
+                     description: selectedHospitalDetail?.description,
+                     status: selectedHospitalDetail?.is_active ? '활성' : '비활성'
                    }}
                    campaigns={selectedHospitalCampaigns}
                    schedule={{
@@ -306,7 +341,7 @@ const createSummaryCards = (hospital: HospitalWithCampaigns | null) => {
     {
       id: 'urgent',
       title: '🚨 긴급 처리 필요',
-      value: null, // 데이터 없음 표시
+      value: undefined, // 데이터 없음 표시
       description: '표시할 데이터가 없습니다.'
     },
     {
@@ -319,13 +354,13 @@ const createSummaryCards = (hospital: HospitalWithCampaigns | null) => {
     {
       id: 'performance',
       title: '성과 모니터링',
-      value: null, // 데이터 없음 표시
+      value: undefined, // 데이터 없음 표시
       description: '표시할 데이터가 없습니다.'
     },
     {
       id: 'activity',
       title: '최근 활동',
-      activities: null // 데이터 없음 표시
+      activities: undefined // 데이터 없음 표시
     }
   ];
 };

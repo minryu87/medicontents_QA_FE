@@ -178,6 +178,20 @@ export class AdminApiService {
     return response.data.hospitals || [];
   }
 
+  async getHospital(hospitalId: number): Promise<Hospital> {
+    const response = await api.get(`/api/v1/user/hospitals/${hospitalId}`);
+    return response.data;
+  }
+
+  async getHospitalAdmin(hospitalId: number): Promise<{username: string} | null> {
+    try {
+      const response = await api.get(`/api/v1/user/hospitals/${hospitalId}/admin`);
+      return response.data.admin || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   // 에이전트 모니터링 API
   async getAgentStats() {
     const response = await api.get('/api/v1/admin/agents/stats');
