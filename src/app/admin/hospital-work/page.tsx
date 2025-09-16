@@ -28,6 +28,24 @@ export default function HospitalWorkPage() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
+  const [showCampaignTooltip, setShowCampaignTooltip] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.campaign-tooltip') && !target.closest('.campaign-selector')) {
+        setShowCampaignTooltip(false);
+      }
+    };
+
+    if (showCampaignTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCampaignTooltip]);
 
   useEffect(() => {
     const loadHospitals = async () => {
@@ -313,39 +331,115 @@ export default function HospitalWorkPage() {
 
       {/* 탭 메뉴 */}
       <div className="px-6 py-4 bg-white border-b border-neutral-100">
-        <div className="flex space-x-1">
-          <button
-            onClick={() => handleTabChange('hospital-info')}
-            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'hospital-info'
-                ? 'bg-neutral-600 text-white'
-                : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
-            }`}
-          >
-            병원 정보
-          </button>
-          <button
-            onClick={() => handleTabChange('work-management')}
-            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'work-management'
-                ? 'bg-neutral-600 text-white'
-                : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
-            }`}
-          >
-            작업 관리
-          </button>
-          <button
-            onClick={() => handleTabChange('monitoring')}
-            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'monitoring'
-                ? 'bg-neutral-600 text-white'
-                : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
-            }`}
-          >
-            모니터링
-          </button>
+        <div className="flex items-center" style={{ justifyContent: 'space-between', paddingRight: '120px' }}>
+          <div className="flex space-x-1">
+            <button
+              onClick={() => handleTabChange('hospital-info')}
+              className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'hospital-info'
+                  ? 'bg-neutral-600 text-white'
+                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+              }`}
+            >
+              병원 정보
+            </button>
+            <button
+              onClick={() => handleTabChange('work-management')}
+              className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'work-management'
+                  ? 'bg-neutral-600 text-white'
+                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+              }`}
+            >
+              작업 관리
+            </button>
+            <button
+              onClick={() => handleTabChange('monitoring')}
+              className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'monitoring'
+                  ? 'bg-neutral-600 text-white'
+                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+              }`}
+            >
+              모니터링
+            </button>
+          </div>
+
+          {/* 작업 관리 탭용 캠페인 선택기 */}
+          {activeTab === 'work-management' && selectedHospital && (
+            <div className="relative">
+              <div
+                className="campaign-selector border border-neutral-200 rounded-lg p-3 hover:bg-neutral-50 transition-colors duration-200 cursor-pointer"
+                onClick={() => setShowCampaignTooltip(!showCampaignTooltip)}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm text-neutral-800">
+                    {selectedHospitalCampaigns.length > 0
+                      ? selectedHospitalCampaigns[0]?.name || '캠페인 없음'
+                      : '캠페인 없음'
+                    }
+                  </h3>
+                  <div className="flex items-center space-x-1">
+                    <button className="p-1 text-neutral-500 hover:text-neutral-700">
+                      <i className="fa-solid fa-chevron-left text-sm"></i>
+                    </button>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      selectedHospitalCampaigns.length > 0 && selectedHospitalCampaigns[0]?.status === '진행중'
+                        ? 'bg-neutral-100 text-neutral-800' :
+                      selectedHospitalCampaigns.length > 0 && selectedHospitalCampaigns[0]?.status === '완료'
+                        ? 'bg-green-100 text-green-800' :
+                        'bg-blue-100 text-blue-800'
+                    }`}>
+                      {selectedHospitalCampaigns.length > 0
+                        ? selectedHospitalCampaigns[0]?.status || '대기'
+                        : '없음'
+                      }
+                    </span>
+                    <button className="p-1 text-neutral-500 hover:text-neutral-700">
+                      <i className="fa-solid fa-chevron-right text-sm"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 캠페인 상세 정보 툴팁 */}
+              {showCampaignTooltip && selectedHospitalCampaigns.length > 0 && (
+                <div className="campaign-tooltip absolute top-full left-0 mt-2 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg p-4 z-50">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-lg text-neutral-900 font-medium">
+                        {selectedHospitalCampaigns[0]?.name}
+                      </h4>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        selectedHospitalCampaigns[0]?.status === '진행중'
+                          ? 'bg-neutral-100 text-neutral-800' :
+                        selectedHospitalCampaigns[0]?.status === '완료'
+                          ? 'bg-green-100 text-green-800' :
+                          'bg-blue-100 text-blue-800'
+                      }`}>
+                        {selectedHospitalCampaigns[0]?.status}
+                      </span>
+                    </div>
+
+                    <div className="text-sm text-neutral-600">
+                      <p><strong>기간:</strong> {selectedHospitalCampaigns[0]?.period || '미정'}</p>
+                      <p><strong>진행률:</strong> {selectedHospitalCampaigns[0]?.progress || 0}%</p>
+                      <p><strong>담당자:</strong> {selectedHospitalCampaigns[0]?.creator_username || '미정'}</p>
+                    </div>
+
+                    {selectedHospitalCampaigns[0]?.description && (
+                      <div className="text-sm text-neutral-700 bg-neutral-50 p-2 rounded">
+                        <strong>설명:</strong> {selectedHospitalCampaigns[0].description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
 
       {/* 탭별 콘텐츠 */}
              {activeTab === 'hospital-info' && (
