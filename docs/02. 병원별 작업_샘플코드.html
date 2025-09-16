@@ -1,0 +1,1740 @@
+<html class=""><head>
+    
+    
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.FontAwesomeConfig = {
+            autoReplaceSvg: 'nest', // Options: 'nest', 'remove', 'replace'
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  
+      
+  <style>
+    * { font-family: 'Inter', sans-serif;
+    }
+  
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+  
+      
+  <style>
+    .highlighted-section {
+      outline: 2px solid #3F20FB;
+      background-color: rgba(63, 32, 251, 0.1);
+    }
+  
+    .edit-button {
+      position: absolute;
+      z-index: 1000;
+    }
+  </style>
+  
+      
+  <style>
+     :root {
+            /* Base colors */
+            --color-base: #ffffff;
+            --color-base-50: #f9fafb;
+            --color-base-100: #f3f4f6;
+            --color-base-200: #e5e7eb;
+            --color-base-300: #d1d5db;
+            --color-base-400: #9ca3af;
+            --color-base-500: #6b7280;
+            --color-base-600: #4b5563;  
+            --color-base-700: #374151;
+            --color-base-800: #1f2937;  
+            --color-base-900: #111827;
+            --color-base-content: #1f2937;
+  
+            /* Primary colors */
+            --color-primary: #3b82f6;
+            --color-primary-50: #eff6ff;
+            --color-primary-100: #dbeafe;
+            --color-primary-200: #bfdbfe;
+            --color-primary-300: #93c5fd;
+            --color-primary-400: #60a5fa;
+            --color-primary-500: #3b82f6;
+            --color-primary-600: #2563eb;
+            --color-primary-700: #1d4ed8;
+            --color-primary-800: #1e40af;
+            --color-primary-900: #1e3a8a;
+            --color-primary-focus: #2563eb;
+            --color-primary-content: #ffffff;
+  
+            /* Secondary colors */
+            --color-secondary: #8b5cf6;
+            --color-secondary-50: #f5f3ff;
+            --color-secondary-100: #ede9fe;
+            --color-secondary-200: #ddd6fe;
+            --color-secondary-300: #c4b5fd;
+            --color-secondary-400: #a78bfa;
+            --color-secondary-500: #8b5cf6;
+            --color-secondary-600: #7c3aed;
+            --color-secondary-700: #6d28d9;
+            --color-secondary-800: #5b21b6;
+            --color-secondary-900: #4c1d95;
+            --color-secondary-focus: #7c3aed;
+            --color-secondary-content: #ffffff;
+  
+            /* Accent colors */
+            --color-accent: #f472b6;
+            --color-accent-50: #fdf2f8;
+            --color-accent-100: #fce7f3;
+            --color-accent-200: #fbcfe8;
+            --color-accent-300: #f9a8d4;
+            --color-accent-400: #f472b6;
+            --color-accent-500: #ec4899;
+            --color-accent-600: #db2777;
+            --color-accent-700: #be185d;
+            --color-accent-800: #9d174d;
+            --color-accent-900: #831843;
+            --color-accent-focus: #db2777;
+            --color-accent-content: #ffffff;
+  
+            /* Neutral colors */
+            --color-neutral: #6b7280;
+            --color-neutral-50: #f9fafb;
+            --color-neutral-100: #f3f4f6;
+            --color-neutral-200: #e5e7eb;
+            --color-neutral-300: #d1d5db;
+            --color-neutral-400: #9ca3af;
+            --color-neutral-500: #6b7280;
+            --color-neutral-600: #4b5563;
+            --color-neutral-700: #374151;
+            --color-neutral-800: #1f2937;
+            --color-neutral-900: #111827;
+            --color-neutral-focus: #4b5563;
+            --color-neutral-content: #ffffff;
+  
+            /* Info colors */
+            --color-info: #3b82f6;
+            --color-info-50: #eff6ff;
+            --color-info-100: #dbeafe;
+            --color-info-200: #bfdbfe;
+            --color-info-300: #93c5fd;
+            --color-info-400: #60a5fa;
+            --color-info-500: #3b82f6;
+            --color-info-600: #2563eb;
+            --color-info-700: #1d4ed8;
+            --color-info-800: #1e40af;
+            --color-info-900: #1e3a8a;
+            --color-info-focus: #2563eb;
+            --color-info-content: #ffffff;
+  
+            /* Success colors */
+            --color-success: #10b981;
+            --color-success-50: #ecfdf5;
+            --color-success-100: #d1fae5;
+            --color-success-200: #a7f3d0;
+            --color-success-300: #6ee7b7;
+            --color-success-400: #34d399;
+            --color-success-500: #10b981;
+            --color-success-600: #059669;
+            --color-success-700: #047857;
+            --color-success-800: #065f46;
+            --color-success-900: #064e3b;
+            --color-success-focus: #059669;
+            --color-success-content: #ffffff;
+  
+            /* Warning colors */
+            --color-warning: #f59e0b;
+            --color-warning-50: #fffbeb;
+            --color-warning-100: #fef3c7;
+            --color-warning-200: #fde68a;
+            --color-warning-300: #fcd34d;
+            --color-warning-400: #fbbf24;
+            --color-warning-500: #f59e0b;
+            --color-warning-600: #d97706;
+            --color-warning-700: #b45309;
+            --color-warning-800: #92400e;
+            --color-warning-900: #78350f;
+            --color-warning-focus: #d97706;
+            --color-warning-content: #ffffff;
+  
+            /* Error colors */
+            --color-error: #ef4444;
+            --color-error-50: #fef2f2;
+            --color-error-100: #fee2e2;
+            --color-error-200: #fecaca;
+            --color-error-300: #fca5a5;
+            --color-error-400: #f87171;
+            --color-error-500: #ef4444;
+            --color-error-600: #dc2626;
+            --color-error-700: #b91c1c;
+            --color-error-800: #991b1b;
+            --color-error-900: #7f1d1d;
+            --color-error-focus: #dc2626;
+            --color-error-content: #ffffff;
+          }
+  </style>
+  
+      
+  <style>
+  /* Dark theme */
+          .dark {
+            /* Base colors */
+            --color-base: #1f2937;
+            --color-base-50: #111827;
+            --color-base-100: #1f2937;
+            --color-base-200: #374151;
+            --color-base-300: #4b5563;
+            --color-base-400: #6b7280;
+            --color-base-500: #9ca3af;
+            --color-base-600: #d1d5db;
+            --color-base-700: #e5e7eb;
+            --color-base-800: #f3f4f6;
+            --color-base-900: #f9fafb;
+            --color-base-content: #f9fafb;
+  
+            /* Primary colors */
+            --color-primary: #60a5fa;
+            --color-primary-50: #1e3a8a;
+            --color-primary-100: #1e40af;
+            --color-primary-200: #1d4ed8;
+            --color-primary-300: #2563eb;
+            --color-primary-400: #3b82f6;
+            --color-primary-500: #60a5fa;
+            --color-primary-600: #93c5fd;
+            --color-primary-700: #bfdbfe;
+            --color-primary-800: #dbeafe;
+            --color-primary-900: #eff6ff;
+            --color-primary-focus: #3b82f6;
+            --color-primary-content: #1f2937;
+  
+            /* Secondary colors */
+            --color-secondary: #a78bfa;
+            --color-secondary-50: #4c1d95;
+            --color-secondary-100: #5b21b6;
+            --color-secondary-200: #6d28d9;
+            --color-secondary-300: #7c3aed;
+            --color-secondary-400: #8b5cf6;
+            --color-secondary-500: #a78bfa;
+            --color-secondary-600: #c4b5fd;
+            --color-secondary-700: #ddd6fe;
+            --color-secondary-800: #ede9fe;
+            --color-secondary-900: #f5f3ff;
+            --color-secondary-focus: #8b5cf6;
+            --color-secondary-content: #1f2937;
+  
+            /* Accent colors */
+            --color-accent: #f472b6;
+            --color-accent-50: #831843;
+            --color-accent-100: #9d174d;
+            --color-accent-200: #be185d;
+            --color-accent-300: #db2777;
+            --color-accent-400: #ec4899;
+            --color-accent-500: #f472b6;
+            --color-accent-600: #f9a8d4;
+            --color-accent-700: #fbcfe8;
+            --color-accent-800: #fce7f3;
+            --color-accent-900: #fdf2f8;
+            --color-accent-focus: #ec4899;
+            --color-accent-content: #1f2937;
+  
+            /* Neutral colors remain the same as light theme */
+  
+            /* Info colors */
+            --color-info: #60a5fa;
+            --color-info-50: #1e3a8a;
+            --color-info-100: #1e40af;
+            --color-info-200: #1d4ed8;
+            --color-info-300: #2563eb;
+            --color-info-400: #3b82f6;
+            --color-info-500: #60a5fa;
+            --color-info-600: #93c5fd;
+            --color-info-700: #bfdbfe;
+            --color-info-800: #dbeafe;
+            --color-info-900: #eff6ff;
+            --color-info-focus: #3b82f6;
+            --color-info-content: #1f2937;
+  
+            /* Success colors */
+            --color-success: #34d399;
+            --color-success-50: #064e3b;
+            --color-success-100: #065f46;
+            --color-success-200: #047857;
+            --color-success-300: #059669;
+            --color-success-400: #10b981;
+            --color-success-500: #34d399;
+            --color-success-600: #6ee7b7;
+            --color-success-700: #a7f3d0;
+            --color-success-800: #d1fae5;
+            --color-success-900: #ecfdf5;
+            --color-success-focus: #10b981;
+            --color-success-content: #1f2937;
+  
+            /* Warning colors */
+            --color-warning: #fbbf24;
+            --color-warning-50: #78350f;
+            --color-warning-100: #92400e;
+            --color-warning-200: #b45309;
+            --color-warning-300: #d97706;
+            --color-warning-400: #f59e0b;
+            --color-warning-500: #fbbf24;
+            --color-warning-600: #fcd34d;
+            --color-warning-700: #fde68a;
+            --color-warning-800: #fef3c7;
+            --color-warning-900: #fffbeb;
+            --color-warning-focus: #f59e0b;
+            --color-warning-content: #1f2937;
+  
+            /* Error colors */
+            --color-error: #f87171;
+            --color-error-50: #7f1d1d;
+            --color-error-100: #991b1b;
+            --color-error-200: #b91c1c;
+            --color-error-300: #dc2626;
+            --color-error-400: #ef4444;
+            --color-error-500: #f87171;
+            --color-error-600: #fca5a5;
+            --color-error-700: #fecaca;
+            --color-error-800: #fee2e2;
+            --color-error-900: #fef2f2;
+            --color-error-focus: #ef4444;
+            --color-error-content: #1f2937;
+          }
+  </style>
+  
+      
+    <script>tailwind.config = {
+    "theme": {
+      "extend": {
+        "colors": {
+          "transparent": "transparent",
+          "current": "currentColor",
+          "black": "#000000",
+          "white": "#ffffff",
+          "gray": {
+            "50": "#f9fafb",
+            "100": "#f3f4f6",
+            "200": "#e5e7eb",
+            "300": "#d1d5db",
+            "400": "#9ca3af",
+            "500": "#6b7280",
+            "600": "#4b5563",
+            "700": "#374151",
+            "800": "#1f2937",
+            "900": "#111827"
+          },
+          "red": {
+            "50": "#fef2f2",
+            "100": "#fee2e2",
+            "200": "#fecaca",
+            "300": "#fca5a5",
+            "400": "#f87171",
+            "500": "#ef4444",
+            "600": "#dc2626",
+            "700": "#b91c1c",
+            "800": "#991b1b",
+            "900": "#7f1d1d"
+          },
+          "yellow": {
+            "50": "#fffbeb",
+            "100": "#fef3c7",
+            "200": "#fde68a",
+            "300": "#fcd34d",
+            "400": "#fbbf24",
+            "500": "#f59e0b",
+            "600": "#d97706",
+            "700": "#b45309",
+            "800": "#92400e",
+            "900": "#78350f"
+          },
+          "green": {
+            "50": "#ecfdf5",
+            "100": "#d1fae5",
+            "200": "#a7f3d0",
+            "300": "#6ee7b7",
+            "400": "#34d399",
+            "500": "#10b981",
+            "600": "#059669",
+            "700": "#047857",
+            "800": "#065f46",
+            "900": "#064e3b"
+          },
+          "blue": {
+            "50": "#eff6ff",
+            "100": "#dbeafe",
+            "200": "#bfdbfe",
+            "300": "#93c5fd",
+            "400": "#60a5fa",
+            "500": "#3b82f6",
+            "600": "#2563eb",
+            "700": "#1d4ed8",
+            "800": "#1e40af",
+            "900": "#1e3a8a"
+          },
+          "indigo": {
+            "50": "#eef2ff",
+            "100": "#e0e7ff",
+            "200": "#c7d2fe",
+            "300": "#a5b4fc",
+            "400": "#818cf8",
+            "500": "#6366f1",
+            "600": "#4f46e5",
+            "700": "#4338ca",
+            "800": "#3730a3",
+            "900": "#312e81"
+          },
+          "purple": {
+            "50": "#f5f3ff",
+            "100": "#ede9fe",
+            "200": "#ddd6fe",
+            "300": "#c4b5fd",
+            "400": "#a78bfa",
+            "500": "#8b5cf6",
+            "600": "#7c3aed",
+            "700": "#6d28d9",
+            "800": "#5b21b6",
+            "900": "#4c1d95"
+          },
+          "pink": {
+            "50": "#fdf2f8",
+            "100": "#fce7f3",
+            "200": "#fbcfe8",
+            "300": "#f9a8d4",
+            "400": "#f472b6",
+            "500": "#ec4899",
+            "600": "#db2777",
+            "700": "#be185d",
+            "800": "#9d174d",
+            "900": "#831843"
+          },
+          "primary": {
+            "50": "var(--color-primary-50)",
+            "100": "var(--color-primary-100)",
+            "200": "var(--color-primary-200)",
+            "300": "var(--color-primary-300)",
+            "400": "var(--color-primary-400)",
+            "500": "var(--color-primary-500)",
+            "600": "var(--color-primary-600)",
+            "700": "var(--color-primary-700)",
+            "800": "var(--color-primary-800)",
+            "900": "var(--color-primary-900)",
+            "DEFAULT": "var(--color-primary)",
+            "focus": "var(--color-primary-focus)",
+            "content": "var(--color-primary-content)"
+          },
+          "secondary": {
+            "50": "var(--color-secondary-50)",
+            "100": "var(--color-secondary-100)",
+            "200": "var(--color-secondary-200)",
+            "300": "var(--color-secondary-300)",
+            "400": "var(--color-secondary-400)",
+            "500": "var(--color-secondary-500)",
+            "600": "var(--color-secondary-600)",
+            "700": "var(--color-secondary-700)",
+            "800": "var(--color-secondary-800)",
+            "900": "var(--color-secondary-900)",
+            "DEFAULT": "var(--color-secondary)",
+            "focus": "var(--color-secondary-focus)",
+            "content": "var(--color-secondary-content)"
+          },
+          "accent": {
+            "50": "var(--color-accent-50)",
+            "100": "var(--color-accent-100)",
+            "200": "var(--color-accent-200)",
+            "300": "var(--color-accent-300)",
+            "400": "var(--color-accent-400)",
+            "500": "var(--color-accent-500)",
+            "600": "var(--color-accent-600)",
+            "700": "var(--color-accent-700)",
+            "800": "var(--color-accent-800)",
+            "900": "var(--color-accent-900)",
+            "DEFAULT": "var(--color-accent)",
+            "focus": "var(--color-accent-focus)",
+            "content": "var(--color-accent-content)"
+          },
+          "neutral": {
+            "50": "var(--color-neutral-50)",
+            "100": "var(--color-neutral-100)",
+            "200": "var(--color-neutral-200)",
+            "300": "var(--color-neutral-300)",
+            "400": "var(--color-neutral-400)",
+            "500": "var(--color-neutral-500)",
+            "600": "var(--color-neutral-600)",
+            "700": "var(--color-neutral-700)",
+            "800": "var(--color-neutral-800)",
+            "900": "var(--color-neutral-900)",
+            "DEFAULT": "var(--color-neutral)",
+            "focus": "var(--color-neutral-focus)",
+            "content": "var(--color-neutral-content)"
+          },
+          "info": {
+            "50": "var(--color-info-50)",
+            "100": "var(--color-info-100)",
+            "200": "var(--color-info-200)",
+            "300": "var(--color-info-300)",
+            "400": "var(--color-info-400)",
+            "500": "var(--color-info-500)",
+            "600": "var(--color-info-600)",
+            "700": "var(--color-info-700)",
+            "800": "var(--color-info-800)",
+            "900": "var(--color-info-900)",
+            "DEFAULT": "var(--color-info)",
+            "focus": "var(--color-info-focus)",
+            "content": "var(--color-info-content)"
+          },
+          "success": {
+            "50": "var(--color-success-50)",
+            "100": "var(--color-success-100)",
+            "200": "var(--color-success-200)",
+            "300": "var(--color-success-300)",
+            "400": "var(--color-success-400)",
+            "500": "var(--color-success-500)",
+            "600": "var(--color-success-600)",
+            "700": "var(--color-success-700)",
+            "800": "var(--color-success-800)",
+            "900": "var(--color-success-900)",
+            "DEFAULT": "var(--color-success)",
+            "focus": "var(--color-success-focus)",
+            "content": "var(--color-success-content)"
+          },
+          "warning": {
+            "50": "var(--color-warning-50)",
+            "100": "var(--color-warning-100)",
+            "200": "var(--color-warning-200)",
+            "300": "var(--color-warning-300)",
+            "400": "var(--color-warning-400)",
+            "500": "var(--color-warning-500)",
+            "600": "var(--color-warning-600)",
+            "700": "var(--color-warning-700)",
+            "800": "var(--color-warning-800)",
+            "900": "var(--color-warning-900)",
+            "DEFAULT": "var(--color-warning)",
+            "focus": "var(--color-warning-focus)",
+            "content": "var(--color-warning-content)"
+          },
+          "error": {
+            "50": "var(--color-error-50)",
+            "100": "var(--color-error-100)",
+            "200": "var(--color-error-200)",
+            "300": "var(--color-error-300)",
+            "400": "var(--color-error-400)",
+            "500": "var(--color-error-500)",
+            "600": "var(--color-error-600)",
+            "700": "var(--color-error-700)",
+            "800": "var(--color-error-800)",
+            "900": "var(--color-error-900)",
+            "DEFAULT": "var(--color-error)",
+            "focus": "var(--color-error-focus)",
+            "content": "var(--color-error-content)"
+          },
+          "danger": {
+            "50": "var(--color-error-50)",
+            "100": "var(--color-error-100)",
+            "200": "var(--color-error-200)",
+            "300": "var(--color-error-300)",
+            "400": "var(--color-error-400)",
+            "500": "var(--color-error-500)",
+            "600": "var(--color-error-600)",
+            "700": "var(--color-error-700)",
+            "800": "var(--color-error-800)",
+            "900": "var(--color-error-900)",
+            "DEFAULT": "var(--color-error)",
+            "focus": "var(--color-error-focus)",
+            "content": "var(--color-error-content)"
+          },
+          "failure": {
+            "50": "var(--color-error-50)",
+            "100": "var(--color-error-100)",
+            "200": "var(--color-error-200)",
+            "300": "var(--color-error-300)",
+            "400": "var(--color-error-400)",
+            "500": "var(--color-error-500)",
+            "600": "var(--color-error-600)",
+            "700": "var(--color-error-700)",
+            "800": "var(--color-error-800)",
+            "900": "var(--color-error-900)",
+            "DEFAULT": "var(--color-error)",
+            "focus": "var(--color-error-focus)",
+            "content": "var(--color-error-content)"
+          }
+        },
+        "fontFamily": {}
+      }
+    },
+    "variants": {
+      "extend": {
+        "backgroundColor": [
+          "active",
+          "group-hover"
+        ],
+        "textColor": [
+          "active",
+          "group-hover"
+        ]
+      }
+    },
+    "plugins": []
+  };</script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap"><style>
+    .highlighted-section {
+      outline: 2px solid #3F20FB;
+      background-color: rgba(63, 32, 251, 0.1);
+    }
+  
+    .edit-button {
+      position: absolute;
+      z-index: 1000;
+    }
+  
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  
+    html, body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    </style></head>
+  
+                <body class="h-full text-base-content">
+                  <div class="flex bg-neutral-50">
+    <!-- Sidebar Navigation -->
+    <div id="sidebar" class="w-64 bg-white shadow-lg flex flex-col">
+      <!-- Logo & Header -->
+      <div class="p-4 border-b border-neutral-100">
+        <div class="flex items-center justify-between">
+          <h1 class="text-lg text-neutral-800">MediContents</h1>
+          <button class="text-neutral-500 hover:text-neutral-700">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Navigation Menu -->
+      <nav class="flex-1 p-3 space-y-1">
+        <span class="flex items-center px-3 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-chart-line w-4 mr-2"></i>
+          <span>대시보드</span>
+        </span>
+        <span class="flex items-center px-3 py-2 bg-neutral-50 text-neutral-600 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-hospital w-4 mr-2"></i>
+          <span>병원 관리</span>
+        </span>
+        <span class="flex items-center px-3 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-calendar-alt w-4 mr-2"></i>
+          <span>캠페인</span>
+        </span>
+        <span class="flex items-center px-3 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-file-alt w-4 mr-2"></i>
+          <span>포스팅</span>
+        </span>
+        <span class="flex items-center px-3 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-robot w-4 mr-2"></i>
+          <span>AI 에이전트</span>
+        </span>
+        <span class="flex items-center px-3 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-chart-bar w-4 mr-2"></i>
+          <span>분석</span>
+        </span>
+        <span class="flex items-center px-3 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg cursor-pointer text-sm">
+          <i class="fa-solid fa-cog w-4 mr-2"></i>
+          <span>시스템 설정</span>
+        </span>
+      </nav>
+      
+      <!-- Weekly Schedule Widget -->
+      <div class="mx-3 mb-3 p-3 bg-neutral-50 rounded-lg">
+        <h3 class="text-xs text-neutral-600 mb-2">주간 게시 현황</h3>
+        <div class="flex justify-between items-end">
+          <div class="text-center">
+            <div class="w-3 h-6 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">월</span>
+          </div>
+          <div class="text-center">
+            <div class="w-3 h-4 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">화</span>
+          </div>
+          <div class="text-center">
+            <div class="w-3 h-2 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">수</span>
+          </div>
+          <div class="text-center">
+            <div class="w-3 h-8 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">목</span>
+          </div>
+          <div class="text-center">
+            <div class="w-3 h-5 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">금</span>
+          </div>
+          <div class="text-center">
+            <div class="w-3 h-1 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">토</span>
+          </div>
+          <div class="text-center">
+            <div class="w-3 h-1 bg-neutral-600 rounded-sm mb-1"></div>
+            <span class="text-xs text-neutral-500">일</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- User Profile -->
+      <div class="p-3 border-t border-neutral-100">
+        <div class="flex items-center">
+          <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=12345" alt="Admin" class="w-8 h-8 rounded-full mr-2">
+          <div class="flex-1">
+            <div class="text-xs text-neutral-800">관리자</div>
+            <div class="text-xs text-neutral-500">admin@medi.com</div>
+          </div>
+          <button class="text-neutral-500 hover:text-neutral-700">
+            <i class="fa-solid fa-sign-out-alt text-sm"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      
+      <!-- Header Section -->
+      <div id="header" class="bg-white border-b border-neutral-200 px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-xl text-neutral-900">서울대병원 관리</h1>
+            <p class="text-neutral-600 text-sm mt-1">2025년 1월 15일 수요일</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button class="px-3 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 text-sm">
+              <i class="fa-solid fa-plus mr-1"></i>
+              새 캠페인
+            </button>
+            <button class="p-2 text-neutral-500 hover:text-neutral-700">
+              <i class="fa-solid fa-bell"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Hospital Carousel Section -->
+      <div id="hospital-carousel" class="px-6 py-4 bg-white border-b border-neutral-100">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg text-neutral-900">병원 목록</h2>
+          <div class="flex space-x-2">
+            <button class="p-2 text-neutral-500 hover:text-neutral-700">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button class="p-2 text-neutral-500 hover:text-neutral-700">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+        <div class="flex space-x-4 overflow-x-auto pb-2">
+          <div class="bg-neutral-600 text-white rounded-lg p-3 min-w-48 flex-shrink-0 shadow-lg">
+            <div class="text-center">
+              <h3 class="text-white text-sm mb-1">서울대병원</h3>
+              <p class="text-xs text-neutral-200 mb-2">정형외과</p>
+              <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full mx-auto mb-2 flex items-center justify-center">
+                <i class="fa-solid fa-hospital text-white text-xs"></i>
+              </div>
+              <p class="text-xs text-neutral-200">활성 캠페인: 3개</p>
+            </div>
+          </div>
+          <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-48 flex-shrink-0">
+            <div class="text-center">
+              <h3 class="text-neutral-800 text-sm mb-1">강남세브란스</h3>
+              <p class="text-xs text-neutral-600 mb-2">피부과</p>
+              <div class="w-8 h-8 bg-neutral-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                <i class="fa-solid fa-hospital text-neutral-600 text-xs"></i>
+              </div>
+              <p class="text-xs text-neutral-600">활성 캠페인: 2개</p>
+            </div>
+          </div>
+          <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-48 flex-shrink-0">
+            <div class="text-center">
+              <h3 class="text-neutral-800 text-sm mb-1">아산병원</h3>
+              <p class="text-xs text-neutral-600 mb-2">내과</p>
+              <div class="w-8 h-8 bg-neutral-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                <i class="fa-solid fa-hospital text-neutral-600 text-xs"></i>
+              </div>
+              <p class="text-xs text-neutral-600">활성 캠페인: 1개</p>
+            </div>
+          </div>
+          <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-48 flex-shrink-0">
+            <div class="text-center">
+              <h3 class="text-neutral-800 text-sm mb-1">삼성서울병원</h3>
+              <p class="text-xs text-neutral-600 mb-2">안과</p>
+              <div class="w-8 h-8 bg-neutral-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                <i class="fa-solid fa-hospital text-neutral-600 text-xs"></i>
+              </div>
+              <p class="text-xs text-neutral-600">활성 캠페인: 4개</p>
+            </div>
+          </div>
+          <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-48 flex-shrink-0">
+            <div class="text-center">
+              <h3 class="text-neutral-800 text-sm mb-1">서울성모병원</h3>
+              <p class="text-xs text-neutral-600 mb-2">치과</p>
+              <div class="w-8 h-8 bg-neutral-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                <i class="fa-solid fa-hospital text-neutral-600 text-xs"></i>
+              </div>
+              <p class="text-xs text-neutral-600">활성 캠페인: 2개</p>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Hospital Summary Section -->
+      <div id="hospital-summary" class="px-6 py-4">
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm text-neutral-900">🚨 긴급 처리 필요</h2>
+              <div class="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-exclamation text-neutral-600 text-xs"></i>
+              </div>
+            </div>
+            <div class="text-2xl text-neutral-900 mb-1">2건</div>
+            <p class="text-xs text-neutral-600">게시 지연, 자료 누락</p>
+            <button class="w-full mt-3 px-3 py-2 bg-neutral-600 text-white text-xs rounded-lg hover:bg-neutral-700">
+              즉시 처리
+            </button>
+          </div>
+  
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm text-neutral-900">캠페인 진행률</h2>
+              <div class="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
+              </div>
+            </div>
+            <div class="text-2xl text-neutral-900 mb-1">78%</div>
+            <p class="text-xs text-neutral-600">3개 캠페인 평균</p>
+            <div class="w-full bg-neutral-200 rounded-full h-1 mt-3">
+              <div class="bg-neutral-600 h-1 rounded-full" style="width: 78%"></div>
+            </div>
+          </div>
+  
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm text-neutral-900">성과 모니터링</h2>
+              <div class="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-eye text-neutral-600 text-xs"></i>
+              </div>
+            </div>
+            <div class="text-2xl text-neutral-900 mb-1">12.3K</div>
+            <p class="text-xs text-neutral-600">이번 주 총 조회수</p>
+            <p class="text-xs text-neutral-600 mt-1">+15% vs 지난주</p>
+          </div>
+  
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm text-neutral-900">최근 활동</h2>
+              <div class="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-clock text-neutral-600 text-xs"></i>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="text-xs text-neutral-800">포스트 승인 완료</div>
+              <div class="text-xs text-neutral-500">15분 전</div>
+              <div class="text-xs text-neutral-800">캠페인 데이터 업데이트</div>
+              <div class="text-xs text-neutral-500">1시간 전</div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Hospital Details & Campaign Info -->
+      <div id="hospital-details" class="px-6">
+        <div class="grid grid-cols-3 gap-6 mb-6">
+          <!-- Hospital Basic Info -->
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <h2 class="text-lg text-neutral-900 mb-4">병원 기본 정보</h2>
+            <div class="space-y-3">
+              <div class="flex items-center space-x-3">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=98765" alt="Hospital" class="w-12 h-12 rounded-lg">
+                <div>
+                  <h3 class="text-neutral-800 text-sm">서울대학교병원</h3>
+                  <p class="text-xs text-neutral-600">정형외과</p>
+                </div>
+              </div>
+              <div class="border-t border-neutral-100 pt-3">
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span class="text-neutral-500">담당자</span>
+                    <p class="text-neutral-800">김의사</p>
+                  </div>
+                  <div>
+                    <span class="text-neutral-500">연락처</span>
+                    <p class="text-neutral-800">02-2072-2114</p>
+                  </div>
+                  <div>
+                    <span class="text-neutral-500">가입일</span>
+                    <p class="text-neutral-800">2024.03.15</p>
+                  </div>
+                  <div>
+                    <span class="text-neutral-500">상태</span>
+                    <span class="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">활성</span>
+                  </div>
+                </div>
+              </div>
+              <button class="w-full mt-4 px-3 py-2 bg-neutral-600 text-white text-sm rounded-lg hover:bg-neutral-700">
+                병원 정보 수정
+              </button>
+            </div>
+          </div>
+  
+          <!-- Active Campaigns -->
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <h2 class="text-lg text-neutral-900 mb-4">진행 중 캠페인</h2>
+            <div class="space-y-3">
+              <div class="border border-neutral-200 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm text-neutral-800">무릎 관절염 치료</h3>
+                  <span class="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">진행중</span>
+                </div>
+                <p class="text-xs text-neutral-600 mb-2">2025.01.01 ~ 2025.03.31</p>
+                <div class="w-full bg-neutral-200 rounded-full h-1">
+                  <div class="bg-neutral-600 h-1 rounded-full" style="width: 65%"></div>
+                </div>
+                <p class="text-xs text-neutral-500 mt-1">진행률: 65%</p>
+              </div>
+              
+              <div class="border border-neutral-200 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm text-neutral-800">척추 건강 관리</h3>
+                  <span class="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">완료</span>
+                </div>
+                <p class="text-xs text-neutral-600 mb-2">2024.10.01 ~ 2024.12.31</p>
+                <div class="w-full bg-neutral-200 rounded-full h-1">
+                  <div class="bg-neutral-600 h-1 rounded-full" style="width: 100%"></div>
+                </div>
+                <p class="text-xs text-neutral-500 mt-1">진행률: 100%</p>
+              </div>
+              
+              <div class="border border-neutral-200 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm text-neutral-800">스포츠 손상 예방</h3>
+                  <span class="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">준비중</span>
+                </div>
+                <p class="text-xs text-neutral-600 mb-2">2025.02.01 ~ 2025.04.30</p>
+                <div class="w-full bg-neutral-200 rounded-full h-1">
+                  <div class="bg-neutral-600 h-1 rounded-full" style="width: 15%"></div>
+                </div>
+                <p class="text-xs text-neutral-500 mt-1">진행률: 15%</p>
+              </div>
+            </div>
+          </div>
+  
+          <!-- Work Calendar -->
+          <div class="bg-white rounded-xl shadow-lg p-4">
+            <h2 class="text-lg text-neutral-900 mb-4">작업 일정</h2>
+            <div class="mb-3">
+              <h3 class="text-sm text-neutral-800 mb-2">1월 2025</h3>
+              <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center text-xs text-neutral-500 py-1">일</div>
+                <div class="text-center text-xs text-neutral-500 py-1">월</div>
+                <div class="text-center text-xs text-neutral-500 py-1">화</div>
+                <div class="text-center text-xs text-neutral-500 py-1">수</div>
+                <div class="text-center text-xs text-neutral-500 py-1">목</div>
+                <div class="text-center text-xs text-neutral-500 py-1">금</div>
+                <div class="text-center text-xs text-neutral-500 py-1">토</div>
+              </div>
+              <div class="grid grid-cols-7 gap-1">
+                <div class="text-center py-1 text-xs text-neutral-400"></div>
+                <div class="text-center py-1 text-xs text-neutral-400"></div>
+                <div class="text-center py-1 text-xs text-neutral-400"></div>
+                <div class="text-center py-1 text-xs text-neutral-700">1</div>
+                <div class="text-center py-1 text-xs text-neutral-700">2</div>
+                <div class="text-center py-1 text-xs text-neutral-700">3</div>
+                <div class="text-center py-1 text-xs text-neutral-700">4</div>
+                <div class="text-center py-1 text-xs text-neutral-700">5</div>
+                <div class="text-center py-1 text-xs text-neutral-700">6</div>
+                <div class="text-center py-1 text-xs text-neutral-700">7</div>
+                <div class="text-center py-1 text-xs text-neutral-700">8</div>
+                <div class="text-center py-1 text-xs text-neutral-700">9</div>
+                <div class="text-center py-1 text-xs text-neutral-700">10</div>
+                <div class="text-center py-1 text-xs text-neutral-700">11</div>
+                <div class="text-center py-1 text-xs text-neutral-700">12</div>
+                <div class="text-center py-1 text-xs text-neutral-700">13</div>
+                <div class="text-center py-1 text-xs text-neutral-700">14</div>
+                <div class="text-center py-1 text-xs text-neutral-700 bg-neutral-600 text-white rounded-full">15</div>
+                <div class="text-center py-1 text-xs text-neutral-700 relative">
+                  16
+                  <div class="w-1 h-1 bg-neutral-600 rounded-full mx-auto mt-1"></div>
+                </div>
+                <div class="text-center py-1 text-xs text-neutral-700 relative">
+                  17
+                  <div class="w-1 h-1 bg-neutral-600 rounded-full mx-auto mt-1"></div>
+                </div>
+                <div class="text-center py-1 text-xs text-neutral-700">18</div>
+                <div class="text-center py-1 text-xs text-neutral-700">19</div>
+                <div class="text-center py-1 text-xs text-neutral-700 relative">
+                  20
+                  <div class="w-1 h-1 bg-neutral-600 rounded-full mx-auto mt-1"></div>
+                </div>
+                <div class="text-center py-1 text-xs text-neutral-700">21</div>
+                <div class="text-center py-1 text-xs text-neutral-700 relative">
+                  22
+                  <div class="w-1 h-1 bg-neutral-600 rounded-full mx-auto mt-1"></div>
+                </div>
+                <div class="text-center py-1 text-xs text-neutral-700">23</div>
+                <div class="text-center py-1 text-xs text-neutral-700">24</div>
+                <div class="text-center py-1 text-xs text-neutral-700">25</div>
+                <div class="text-center py-1 text-xs text-neutral-700">26</div>
+                <div class="text-center py-1 text-xs text-neutral-700">27</div>
+                <div class="text-center py-1 text-xs text-neutral-700">28</div>
+                <div class="text-center py-1 text-xs text-neutral-700">29</div>
+                <div class="text-center py-1 text-xs text-neutral-700">30</div>
+                <div class="text-center py-1 text-xs text-neutral-700">31</div>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="flex items-center text-xs">
+                <div class="w-2 h-2 bg-neutral-600 rounded-full mr-2"></div>
+                <span class="text-neutral-600">포스팅 예정</span>
+              </div>
+              <div class="flex items-center text-xs">
+                <div class="w-2 h-2 bg-neutral-600 rounded-full mr-2"></div>
+                <span class="text-neutral-600">검토 마감</span>
+              </div>
+              <div class="flex items-center text-xs">
+                <div class="w-2 h-2 bg-neutral-600 rounded-full mr-2"></div>
+                <span class="text-neutral-600">캠페인 종료</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Main Kanban Section -->
+      <div id="main-kanban" class="px-6 mb-6">
+    <!-- 작업 대기 섹션 -->
+    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+      <h2 class="text-lg text-neutral-900 mb-4">작업 대기</h2>
+      <div class="flex space-x-4 overflow-x-auto pb-2">
+        <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-64 flex-shrink-0">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">WAIT-001</span>
+            <i class="fa-solid fa-clock text-neutral-400 text-xs"></i>
+          </div>
+          <h4 class="text-sm text-neutral-800 mb-2">관절 건강 교육자료</h4>
+          <p class="text-xs text-neutral-600 mb-2">병원 측 자료 대기 중</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-1">
+              <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=wait01" alt="User" class="w-5 h-5 rounded-full">
+              <span class="text-xs text-neutral-600">김의사</span>
+            </div>
+            <span class="text-xs text-neutral-500">대기중</span>
+          </div>
+        </div>
+  
+        <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-64 flex-shrink-0">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">WAIT-002</span>
+            <i class="fa-solid fa-clock text-neutral-400 text-xs"></i>
+          </div>
+          <h4 class="text-sm text-neutral-800 mb-2">수술 후 관리법</h4>
+          <p class="text-xs text-neutral-600 mb-2">의료진 검토 대기</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-1">
+              <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=wait02" alt="User" class="w-5 h-5 rounded-full">
+              <span class="text-xs text-neutral-600">이간호사</span>
+            </div>
+            <span class="text-xs text-neutral-500">대기중</span>
+          </div>
+        </div>
+  
+        <div class="bg-white border border-neutral-200 rounded-lg p-3 min-w-64 flex-shrink-0">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">WAIT-003</span>
+            <i class="fa-solid fa-clock text-neutral-400 text-xs"></i>
+          </div>
+          <h4 class="text-sm text-neutral-800 mb-2">재활 운동 가이드</h4>
+          <p class="text-xs text-neutral-600 mb-2">콘텐츠 기획 대기</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-1">
+              <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=wait03" alt="User" class="w-5 h-5 rounded-full">
+              <span class="text-xs text-neutral-600">박물리치료사</span>
+            </div>
+            <span class="text-xs text-neutral-500">대기중</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- 칸반 메인 섹션 -->
+    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+      <h2 class="text-lg text-neutral-900 mb-4">진행 중 캠페인 포스트 현황 (칸반)</h2>
+      
+      <!-- 첫번째 줄: 정상 진행 -->
+      <div class="mb-4">
+        <h3 class="text-md text-neutral-800 mb-3">정상 진행</h3>
+        <div class="flex space-x-4 overflow-x-auto pb-2">
+          <!-- 1: 자료 제공 완료 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">1. 자료 제공 완료</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">2</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-011</span>
+                  <i class="fa-solid fa-check text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">관절 영양제 정보</h5>
+                <p class="text-xs text-neutral-600 mb-2">자료 제공 완료</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11011" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">김의사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">완료</span>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-012</span>
+                  <i class="fa-solid fa-check text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">운동 치료법</h5>
+                <p class="text-xs text-neutral-600 mb-2">자료 제공 완료</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11012" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">이간호사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">완료</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 2: 어드민 사전 검토 중 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">2. 어드민 사전 검토 중</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-013</span>
+                  <i class="fa-solid fa-eye text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">무릎 관절 관리법</h5>
+                <p class="text-xs text-neutral-600 mb-2">어드민 검토 중</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11013" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">관리자</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">검토중</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 3: AI 생성_성공 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">3. AI 생성_성공</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">2</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-014</span>
+                  <i class="fa-solid fa-robot text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">척추 건강 체크</h5>
+                <p class="text-xs text-neutral-600 mb-2">AI 생성 완료</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11014" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">AI Agent</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">생성완료</span>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-015</span>
+                  <i class="fa-solid fa-robot text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">관절염 예방법</h5>
+                <p class="text-xs text-neutral-600 mb-2">AI 생성 완료</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11015" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">AI Agent</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">생성완료</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 4: 어드민 사후 검토 중 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">4. 어드민 사후 검토 중</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-016</span>
+                  <i class="fa-solid fa-search text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">스포츠 부상 예방</h5>
+                <p class="text-xs text-neutral-600 mb-2">사후 검토 중</p>
+                <div class="flex items-center space-x-2 mb-2">
+                  <button class="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">승인</button>
+                  <button class="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">반려</button>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11016" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">관리자</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">검토중</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 5: 고객 검토 중 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">5. 고객 검토 중</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-017</span>
+                  <i class="fa-solid fa-user-md text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">노인 관절 건강</h5>
+                <p class="text-xs text-neutral-600 mb-2">의료진 검토 중</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11017" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">김의사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">검토중</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 6: 게시 대기 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">6. 게시 대기</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-018</span>
+                  <i class="fa-solid fa-calendar-check text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">관절 영양소 가이드</h5>
+                <p class="text-xs text-neutral-600 mb-2">게시 예정: 1월 17일</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=11018" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">김의사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">대기중</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- 두번째 줄: 이슈 발생 -->
+      <div>
+        <h3 class="text-md text-neutral-800 mb-3">이슈 발생</h3>
+        <div class="flex space-x-4 overflow-x-auto pb-2">
+          <!-- 1: 자료 제공 지연 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">1. 자료 제공 지연</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">2</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">ISSUE-001</span>
+                  <i class="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">수술 전 준비사항</h5>
+                <p class="text-xs text-neutral-600 mb-2">자료 제공 3일 지연</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=issue01" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">김의사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">지연</span>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">ISSUE-002</span>
+                  <i class="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">재활 운동 영상</h5>
+                <p class="text-xs text-neutral-600 mb-2">촬영 일정 지연</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=issue02" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">박물리치료사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">지연</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 빈 공간 (2번 위치) -->
+          <div class="min-w-56 flex-shrink-0"></div>
+  
+          <!-- 3: AI 생성_실패 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">3. AI 생성_실패</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">FAIL-001</span>
+                  <i class="fa-solid fa-times-circle text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">관절염 진단법</h5>
+                <p class="text-xs text-neutral-600 mb-2">AI 생성 실패</p>
+                <button class="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700 mb-2">재시도</button>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=fail01" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">AI Agent</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">실패</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 빈 공간 (4번 위치) -->
+          <div class="min-w-56 flex-shrink-0"></div>
+  
+          <!-- 5: 고객 검토 지연 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">5. 고객 검토 지연</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">DELAY-001</span>
+                  <i class="fa-solid fa-clock text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">환자 교육 자료</h5>
+                <p class="text-xs text-neutral-600 mb-2">검토 기한 초과</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=delay01" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">이간호사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">지연</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- 6: 생성 취소 -->
+          <div class="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm text-neutral-800">6. 생성 취소</h4>
+              <span class="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+            </div>
+            <div class="space-y-3">
+              <div class="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">CANCEL-001</span>
+                  <i class="fa-solid fa-ban text-neutral-600 text-xs"></i>
+                </div>
+                <h5 class="text-sm text-neutral-800 mb-2">특수 치료법 소개</h5>
+                <p class="text-xs text-neutral-600 mb-2">병원 측 요청으로 취소</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-1">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=cancel01" alt="User" class="w-5 h-5 rounded-full">
+                    <span class="text-xs text-neutral-600">김의사</span>
+                  </div>
+                  <span class="text-xs text-neutral-500">취소</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- 게시 상태 섹션 -->
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div class="bg-white rounded-xl shadow-lg p-4">
+        <h2 class="text-lg text-neutral-900 mb-4">게시 대기</h2>
+        <div class="space-y-3">
+          <div class="bg-white border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">READY-001</span>
+              <i class="fa-solid fa-calendar-alt text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">관절 건강 체크리스트</h4>
+            <p class="text-xs text-neutral-600 mb-2">게시 예정: 1월 17일 09:00</p>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-1">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=ready01" alt="User" class="w-5 h-5 rounded-full">
+                <span class="text-xs text-neutral-600">김의사</span>
+              </div>
+              <button class="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">즉시게시</button>
+            </div>
+          </div>
+          
+          <div class="bg-white border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">READY-002</span>
+              <i class="fa-solid fa-calendar-alt text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">수술 후 재활 운동</h4>
+            <p class="text-xs text-neutral-600 mb-2">게시 예정: 1월 18일 14:00</p>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-1">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=ready02" alt="User" class="w-5 h-5 rounded-full">
+                <span class="text-xs text-neutral-600">박물리치료사</span>
+              </div>
+              <button class="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">즉시게시</button>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <div class="bg-white rounded-xl shadow-lg p-4">
+        <h2 class="text-lg text-neutral-900 mb-4">게시 완료</h2>
+        <div class="space-y-3">
+          <div class="bg-white border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">DONE-001</span>
+              <i class="fa-solid fa-check-circle text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">겨울철 관절 관리</h4>
+            <p class="text-xs text-neutral-600 mb-2">게시됨: 1월 15일 09:00</p>
+            <div class="flex justify-between text-xs text-neutral-600 mb-2">
+              <span>조회수: 1,234</span>
+              <span>좋아요: 89</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-1">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=done01" alt="User" class="w-5 h-5 rounded-full">
+                <span class="text-xs text-neutral-600">김의사</span>
+              </div>
+              <button class="px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded hover:bg-neutral-200">상세보기</button>
+            </div>
+          </div>
+          
+          <div class="bg-white border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">DONE-002</span>
+              <i class="fa-solid fa-check-circle text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">무릎 관절염 초기 증상</h4>
+            <p class="text-xs text-neutral-600 mb-2">게시됨: 1월 14일 14:00</p>
+            <div class="flex justify-between text-xs text-neutral-600 mb-2">
+              <span>조회수: 892</span>
+              <span>좋아요: 67</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-1">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=done02" alt="User" class="w-5 h-5 rounded-full">
+                <span class="text-xs text-neutral-600">이간호사</span>
+              </div>
+              <button class="px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded hover:bg-neutral-200">상세보기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- 모니터링 섹션 -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow-lg p-4">
+        <h2 class="text-lg text-neutral-900 mb-4">모니터링</h2>
+        <div class="space-y-3">
+          <div class="bg-white border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">MON-001</span>
+              <i class="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">겨울철 관절 관리</h4>
+            <div class="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">1,234</div>
+                <div>조회수</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">89</div>
+                <div>좋아요</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">23</div>
+                <div>공유</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-neutral-600">성과: 목표 대비 112%</span>
+              <span class="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">정상</span>
+            </div>
+          </div>
+          
+          <div class="bg-white border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">MON-002</span>
+              <i class="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">무릎 관절염 초기 증상</h4>
+            <div class="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">892</div>
+                <div>조회수</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">67</div>
+                <div>좋아요</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">15</div>
+                <div>공유</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-neutral-600">성과: 목표 대비 89%</span>
+              <span class="bg-neutral-100 text-neutral-800 px-2 py-1 rounded text-xs">정상</span>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <div class="bg-white rounded-xl shadow-lg p-4">
+        <h2 class="text-lg text-neutral-900 mb-4">모니터링 이슈 발생</h2>
+        <div class="space-y-3">
+          <div class="bg-neutral-50 border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">ALERT-001</span>
+              <i class="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">척추 건강 체크포인트</h4>
+            <div class="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">234</div>
+                <div>조회수</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">12</div>
+                <div>좋아요</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">2</div>
+                <div>공유</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-neutral-600">성과: 목표 대비 23%</span>
+              <span class="bg-neutral-200 text-neutral-800 px-2 py-1 rounded text-xs">저조</span>
+            </div>
+            <button class="w-full mt-2 px-3 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">분석 요청</button>
+          </div>
+          
+          <div class="bg-neutral-50 border border-neutral-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">ALERT-002</span>
+              <i class="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
+            </div>
+            <h4 class="text-sm text-neutral-800 mb-2">관절 영양제 가이드</h4>
+            <div class="grid grid-cols-3 gap-2 text-xs text-neutral-600 mb-2">
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">156</div>
+                <div>조회수</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">8</div>
+                <div>좋아요</div>
+              </div>
+              <div class="text-center">
+                <div class="text-sm text-neutral-900">1</div>
+                <div>공유</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-neutral-600">성과: 목표 대비 15%</span>
+              <span class="bg-neutral-200 text-neutral-800 px-2 py-1 rounded text-xs">저조</span>
+            </div>
+            <button class="w-full mt-2 px-3 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">분석 요청</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+      <!-- Performance Monitoring Section -->
+      <div id="performance-monitoring" class="px-6 pb-6">
+        <div class="bg-white rounded-xl shadow-lg p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg text-neutral-900">성과 모니터링</h2>
+            <div class="flex space-x-2">
+              <button class="px-3 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg hover:bg-neutral-200">7일</button>
+              <button class="px-3 py-1 bg-neutral-600 text-white text-xs rounded-lg">30일</button>
+              <button class="px-3 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg hover:bg-neutral-200">90일</button>
+            </div>
+          </div>
+  
+          <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="text-center p-3 bg-neutral-50 rounded-lg">
+              <div class="text-2xl text-neutral-900 mb-1">12.3K</div>
+              <p class="text-xs text-neutral-600">총 조회수</p>
+              <p class="text-xs text-neutral-600 mt-1">+15.2%</p>
+            </div>
+            <div class="text-center p-3 bg-neutral-50 rounded-lg">
+              <div class="text-2xl text-neutral-900 mb-1">847</div>
+              <p class="text-xs text-neutral-600">좋아요</p>
+              <p class="text-xs text-neutral-600 mt-1">+23.1%</p>
+            </div>
+            <div class="text-center p-3 bg-neutral-50 rounded-lg">
+              <div class="text-2xl text-neutral-900 mb-1">156</div>
+              <p class="text-xs text-neutral-600">공유</p>
+              <p class="text-xs text-neutral-600 mt-1">-5.3%</p>
+            </div>
+            <div class="text-center p-3 bg-neutral-50 rounded-lg">
+              <div class="text-2xl text-neutral-900 mb-1">3.2%</div>
+              <p class="text-xs text-neutral-600">참여율</p>
+              <p class="text-xs text-neutral-600 mt-1">+0.8%</p>
+            </div>
+          </div>
+  
+          <!-- Traffic Chart -->
+          <div class="mb-6">
+            <h3 class="text-sm text-neutral-800 mb-3">유입량 추이</h3>
+            <div class="h-64 bg-neutral-50 rounded-lg p-4 flex items-end justify-between">
+              <div class="flex items-end space-x-2 w-full">
+                <div class="bg-neutral-600 rounded-t" style="height: 40px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 60px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 80px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 100px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 120px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 90px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 110px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 140px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 160px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 180px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 150px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 170px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 200px; width: 20px;"></div>
+                <div class="bg-neutral-600 rounded-t" style="height: 190px; width: 20px;"></div>
+              </div>
+            </div>
+            <div class="flex justify-between mt-2 text-xs text-neutral-500">
+              <span>1월 1일</span>
+              <span>1월 8일</span>
+              <span>1월 15일</span>
+            </div>
+          </div>
+  
+          <!-- Top Performing Posts -->
+          <div>
+            <h3 class="text-sm text-neutral-800 mb-3">인기 포스트 TOP 5</h3>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <span class="w-6 h-6 bg-neutral-600 text-white text-xs rounded-full flex items-center justify-center">1</span>
+                  <div>
+                    <h4 class="text-sm text-neutral-800">겨울철 관절 관리법</h4>
+                    <p class="text-xs text-neutral-600">1월 15일 게시</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-neutral-900">2,456</div>
+                  <div class="text-xs text-neutral-600">조회수</div>
+                </div>
+              </div>
+  
+              <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <span class="w-6 h-6 bg-neutral-500 text-white text-xs rounded-full flex items-center justify-center">2</span>
+                  <div>
+                    <h4 class="text-sm text-neutral-800">무릎 관절염 초기 증상</h4>
+                    <p class="text-xs text-neutral-600">1월 12일 게시</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-neutral-900">1,892</div>
+                  <div class="text-xs text-neutral-600">조회수</div>
+                </div>
+              </div>
+  
+              <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <span class="w-6 h-6 bg-neutral-400 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                  <div>
+                    <h4 class="text-sm text-neutral-800">척추 건강 체크포인트</h4>
+                    <p class="text-xs text-neutral-600">1월 10일 게시</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-neutral-900">1,567</div>
+                  <div class="text-xs text-neutral-600">조회수</div>
+                </div>
+              </div>
+  
+              <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <span class="w-6 h-6 bg-neutral-300 text-neutral-700 text-xs rounded-full flex items-center justify-center">4</span>
+                  <div>
+                    <h4 class="text-sm text-neutral-800">운동 전후 스트레칭</h4>
+                    <p class="text-xs text-neutral-600">1월 8일 게시</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-neutral-900">1,234</div>
+                  <div class="text-xs text-neutral-600">조회수</div>
+                </div>
+              </div>
+  
+              <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <span class="w-6 h-6 bg-neutral-300 text-neutral-700 text-xs rounded-full flex items-center justify-center">5</span>
+                  <div>
+                    <h4 class="text-sm text-neutral-800">관절 영양제 가이드</h4>
+                    <p class="text-xs text-neutral-600">1월 6일 게시</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-neutral-900">987</div>
+                  <div class="text-xs text-neutral-600">조회수</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Floating Chat Button -->
+      <div class="fixed bottom-6 right-6">
+        <button class="w-12 h-12 bg-neutral-600 text-white rounded-full shadow-lg hover:bg-neutral-700 hover:shadow-xl transition-all flex items-center justify-center">
+          <i class="fa-solid fa-comment"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+                
+              
+            </body></html>
