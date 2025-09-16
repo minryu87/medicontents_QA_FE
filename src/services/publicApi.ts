@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '@/lib/config';
+import type { LandingAgentPerformance } from '@/types/common';
 
 const publicApi = axios.create({
   baseURL: `${config.apiUrl}/api/v1/public`,
@@ -14,7 +15,7 @@ export const getPublicStats = async () => {
   return response.data;
 };
 
-export const getAgentPerformance = async () => {
+export const getAgentPerformance = async (): Promise<LandingAgentPerformance[]> => {
   const response = await publicApi.get('/agent-performance');
   return response.data;
 };

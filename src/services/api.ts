@@ -3,16 +3,26 @@
  */
 
 import api from '@/lib/api';
-import type { 
-  Post, 
-  Hospital, 
-  Campaign, 
-  AgentExecutionLog, 
-  PipelineResult, 
+import type {
+  Post,
+  Hospital,
+  Campaign,
+  AgentExecutionLog,
+  PipelineResult,
   AgentResult,
   User,
   Notification,
-  PaginationInfo 
+  PaginationInfo,
+  AdminReview,
+  AdminRevision,
+  ClientReview,
+  WorkflowLog,
+  UniversalImage,
+  LandingAgentPerformance,
+  ContentVersion,
+  AdminReviewList,
+  WorkflowLogList,
+  UniversalImageList
 } from '@/types/common';
 
 export class AdminApiService {
@@ -184,6 +194,23 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 통합 대시보드 API (권장)
+  async getDashboardData(): Promise<{
+    stats: any;
+    activities: any[];
+    system_status: any;
+    agent_performance: any[];
+    quality_metrics: any;
+    processing_status: any;
+    alerts: any[];
+    hospitals: any[];
+    agent_logs: any[];
+    posts_by_status: any;
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard');
+    return response.data;
+  }
+
   // 포스트 검토 API
   async submitPostReview(postId: string, reviewData: any): Promise<any> {
     const response = await api.post(`/api/v1/admin/posts/${postId}/review`, reviewData);
@@ -194,6 +221,158 @@ export class AdminApiService {
   async getCampaignPosts(campaignId: number): Promise<any[]> {
     const response = await api.get(`/api/v1/admin/campaigns/${campaignId}/posts`);
     return response.data.posts || [];
+  }
+
+  // 새로운 대시보드 API들
+
+  // 알림 관리 API
+  async getAdminNotifications(skip: number = 0, limit: number = 50, isRead?: boolean): Promise<Notification[]> {
+    const params: any = { skip, limit };
+    if (isRead !== undefined) params.is_read = isRead;
+
+    const response = await api.get('/api/v1/admin/notifications', { params });
+    return response.data.notifications || [];
+  }
+
+  async getUnreadNotificationCount(): Promise<number> {
+    const response = await api.get('/api/v1/admin/notifications/unread-count');
+    return response.data.unread_count || 0;
+  }
+
+  async markAdminNotificationAsRead(notificationId: number): Promise<Notification> {
+    const response = await api.put(`/api/v1/admin/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  async markAllAdminNotificationsAsRead(): Promise<{ updated_count: number }> {
+    const response = await api.put('/api/v1/admin/notifications/mark-all-read');
+    return response.data;
+  }
+
+  // 워크플로우 로그 관리 API
+  async getWorkflowLogs(params?: {
+    skip?: number;
+    limit?: number;
+    post_id?: string;
+    action_type?: string;
+    action_by?: number;
+  }): Promise<WorkflowLogList> {
+    const response = await api.get('/api/v1/admin/workflows', { params });
+    return response.data;
+  }
+
+  async getWorkflowStats(): Promise<{
+    total_logs_30d: number;
+    action_type_stats: Record<string, number>;
+    user_stats: Record<string, number>;
+  }> {
+    const response = await api.get('/api/v1/admin/workflows/stats/overview');
+    return response.data;
+  }
+
+  async getRecentWorkflowActivity(limit: number = 20): Promise<Array<{
+    id: string;
+    type: string;
+    action: string;
+    post_id: string;
+    action_by: number;
+    notes?: string;
+    timestamp: string;
+  }>> {
+    const response = await api.get('/api/v1/admin/workflows/recent-activity', {
+      params: { limit }
+    });
+    return response.data;
+  }
+
+  async getPostWorkflowHistory(postId: string): Promise<WorkflowLog[]> {
+    const response = await api.get(`/api/v1/admin/workflows/post/${postId}/history`);
+    return response.data;
+  }
+
+  // 관리자 검토 API
+  async getAdminReviews(params?: {
+    skip?: number;
+    limit?: number;
+    post_id?: string;
+    reviewer_id?: number;
+    review_status?: string;
+  }): Promise<AdminReviewList> {
+    const response = await api.get('/api/v1/admin/reviews', { params });
+    return response.data;
+  }
+
+  async getAdminReview(reviewId: number): Promise<AdminReview> {
+    const response = await api.get(`/api/v1/admin/reviews/${reviewId}`);
+    return response.data;
+  }
+
+  async createAdminReview(reviewData: {
+    post_id: string;
+    reviewer_id: number;
+    review_status: string;
+    review_notes?: string;
+    revision_instructions?: string;
+    edit_request_id?: number;
+  }): Promise<AdminReview> {
+    const response = await api.post('/api/v1/admin/reviews', reviewData);
+    return response.data;
+  }
+
+  async updateAdminReview(reviewId: number, updateData: Partial<AdminReview>): Promise<AdminReview> {
+    const response = await api.put(`/api/v1/admin/reviews/${reviewId}`, updateData);
+    return response.data;
+  }
+
+  // 범용 이미지 관리 API
+  async getUniversalImages(params?: {
+    skip?: number;
+    limit?: number;
+    entity_type?: string;
+    entity_id?: number;
+    image_type?: string;
+  }): Promise<UniversalImageList> {
+    const response = await api.get('/api/v1/admin/images', { params });
+    return response.data;
+  }
+
+  async getUniversalImage(imageId: number): Promise<UniversalImage> {
+    const response = await api.get(`/api/v1/admin/images/${imageId}`);
+    return response.data;
+  }
+
+  async createUniversalImage(imageData: Partial<UniversalImage>): Promise<UniversalImage> {
+    const response = await api.post('/api/v1/admin/images', imageData);
+    return response.data;
+  }
+
+  async updateUniversalImage(imageId: number, updateData: Partial<UniversalImage>): Promise<UniversalImage> {
+    const response = await api.put(`/api/v1/admin/images/${imageId}`, updateData);
+    return response.data;
+  }
+
+  async deleteUniversalImage(imageId: number): Promise<void> {
+    await api.delete(`/api/v1/admin/images/${imageId}`);
+  }
+
+  // 콘텐츠 버전 관리 API
+  async getContentVersions(params?: {
+    skip?: number;
+    limit?: number;
+    post_id?: string;
+  }): Promise<ContentVersion[]> {
+    const response = await api.get('/api/v1/admin/content-versions', { params });
+    return response.data.versions || [];
+  }
+
+  async getContentVersion(versionId: number): Promise<ContentVersion> {
+    const response = await api.get(`/api/v1/admin/content-versions/${versionId}`);
+    return response.data;
+  }
+
+  async createContentVersion(versionData: Partial<ContentVersion>): Promise<ContentVersion> {
+    const response = await api.post('/api/v1/admin/content-versions', versionData);
+    return response.data;
   }
 }
 
@@ -374,8 +553,31 @@ export class ClientApiService {
     return response.data;
   }
 
-  async getPostReviews(postId: string): Promise<any[]> {
+  async getPostReviews(postId: string): Promise<ClientReview[]> {
     const response = await api.get(`/api/v1/client/posts/${postId}/reviews`);
+    return response.data;
+  }
+
+  // 클라이언트 검토 관리 API
+  async createClientReview(reviewData: {
+    post_id: string;
+    review_status: string;
+    review_notes?: string;
+    revision_instructions?: string;
+    edit_request_id?: number;
+  }): Promise<ClientReview> {
+    const response = await api.post('/api/v1/client/reviews', reviewData);
+    return response.data;
+  }
+
+  async updateClientReview(reviewId: number, updateData: Partial<ClientReview>): Promise<ClientReview> {
+    const response = await api.put(`/api/v1/client/reviews/${reviewId}`, updateData);
+    return response.data;
+  }
+
+  // 워크플로우 조회 API
+  async getPostWorkflowLogs(postId: string): Promise<WorkflowLog[]> {
+    const response = await api.get(`/api/v1/client/posts/${postId}/workflows`);
     return response.data;
   }
 

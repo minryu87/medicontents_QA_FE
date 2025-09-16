@@ -9,15 +9,14 @@ const getApiUrl = (): string => {
     return 'https://medicontents-qa-be-u45006.vm.elestio.app';
   }
 
-  // 개발 환경에서는 환경 변수 또는 기본값 사용
-  const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  // 개발 환경에서는 localhost 하드코딩 (환경 변수 무시)
   console.log('🔍 Config Debug:', {
     NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_API_URL: envApiUrl,
-    finalUrl: envApiUrl || 'http://localhost:8000'
+    message: '개발 환경: localhost:8000 하드코딩 사용',
+    finalUrl: 'http://localhost:8000'
   });
 
-  return envApiUrl || 'http://localhost:8000';
+  return 'http://localhost:8000';
 };
 
 const apiUrl = getApiUrl();

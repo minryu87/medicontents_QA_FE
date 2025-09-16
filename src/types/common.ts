@@ -154,3 +154,184 @@ export interface DateRange {
   from?: Date;
   to?: Date;
 }
+
+// 새로운 모델 타입 정의들 (백엔드 Models/Schemas 기반)
+
+export interface AdminReview {
+  id: number;
+  post_id: string;
+  reviewer_id: number;
+  review_status: 'pending' | 'approved' | 'revision_requested' | 'rejected';
+  review_notes?: string;
+  revision_instructions?: string;
+  edit_request_id?: number;
+  reviewed_at: string;
+  created_at: string;
+  updated_at: string;
+  reviewer?: User;
+}
+
+export interface AdminRevision {
+  id: number;
+  post_id: string;
+  admin_id: number;
+  revision_type: 'direct_edit' | 'instruction' | 'edit_agent';
+  original_content?: any;
+  revised_content?: any;
+  revision_notes?: string;
+  edit_result_id?: number;
+  created_at: string;
+  updated_at?: string;
+  admin?: User;
+}
+
+export interface ClientReview {
+  id: number;
+  post_id: string;
+  client_id: number;
+  review_status: 'pending' | 'approved' | 'revision_requested';
+  review_notes?: string;
+  revision_instructions?: string;
+  edit_request_id?: number;
+  reviewed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowLog {
+  id: number;
+  post_id: string;
+  from_status?: string;
+  to_status?: string;
+  action_type: 'status_change' | 'content_update' | 'approval' | 'review' | 'revision';
+  action_by: number;
+  action_notes?: string;
+  created_at: string;
+  updated_at?: string;
+  actor?: User;
+}
+
+export interface UniversalImage {
+  id: number;
+  entity_type: 'hospital' | 'post' | 'user' | 'clinic';
+  entity_id: number;
+  image_type: 'business_card' | 'logo' | 'interior' | 'before' | 'after' | 'process';
+  image_category?: 'before' | 'after' | 'process';
+  original_filename?: string;
+  file_size?: number;
+  mime_type?: string;
+  width?: number;
+  height?: number;
+  s3_bucket?: string;
+  s3_key?: string;
+  cdn_url?: string;
+  alt_text?: string;
+  caption?: string;
+  sort_order: number;
+  is_active: boolean;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LandingAgentPerformance {
+  id: number;
+  agent_type: string;
+  avg_execution_time?: number;
+  success_rate?: number;
+  total_executions: number;
+  updated_at: string;
+}
+
+export interface ContentVersion {
+  id: number;
+  post_id: string;
+  version_number: number;
+  title?: string;
+  content?: string;
+  created_by: number;
+  created_at: string;
+  creator?: User;
+}
+
+// API 응답 타입들
+export interface AdminReviewList {
+  items: AdminReview[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface AdminRevisionList {
+  items: AdminRevision[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface ClientReviewList {
+  items: ClientReview[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface WorkflowLogList {
+  items: WorkflowLog[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface UniversalImageList {
+  items: UniversalImage[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface LandingAgentPerformanceList {
+  items: LandingAgentPerformance[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface ContentVersionList {
+  items: ContentVersion[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+// 필터 및 검색 타입들
+export interface NotificationFilter {
+  is_read?: boolean;
+  notification_type?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface WorkflowLogFilter {
+  post_id?: string;
+  action_type?: string;
+  action_by?: number;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface AdminReviewFilter {
+  post_id?: string;
+  reviewer_id?: number;
+  review_status?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface UniversalImageFilter {
+  entity_type?: string;
+  entity_id?: number;
+  image_type?: string;
+  is_active?: boolean;
+  is_primary?: boolean;
+}

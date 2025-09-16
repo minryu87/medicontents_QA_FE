@@ -1,202 +1,114 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { clientApi } from '@/services/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { Progress } from '@/components/ui/Progress';
-import { StatusBadge, WorkflowProgress } from '@/components/ui/StatusBadge';
-import {
-  formatDateTime,
-  getStatusActions,
-  getActionButtonStyle,
-  getActionButtonText,
-  getStatusPriority
-} from '@/lib/utils';
 
-interface DashboardStats {
-  totalPosts: number;
-  pendingPosts: number;
-  completedPosts: number;
-  averageQualityScore: number;
-  approvalRate: number;
-}
-
-interface UrgentMaterial {
-  id: number;
-  post_id: string;
-  title: string;
-  created_at: string;
-  campaign_name: string;
-  days_since_creation: number;
-}
-
-interface OldReview {
-  id: number;
-  post_id: string;
-  title: string;
-  created_at: string;
-  pipeline_completed_at: string;
-  campaign_name: string;
-  days_waiting: number;
-}
-
-interface MaterialNeeded {
-  id: number;
-  post_id: string;
-  title: string;
-  status: string;
-  created_at: string;
-  campaign_name: string;
-  material_status: string;
-}
-
-interface ReviewNeeded {
-  id: number;
-  post_id: string;
-  title: string;
-  status: string;
-  created_at: string;
-  quality_score: number;
-  seo_score: number;
-  legal_score: number;
-  campaign_name: string;
-}
-
-interface RecentPublished {
-  id: number;
-  post_id: string;
-  title: string;
-  status: string;
-  publish_date: string;
-  created_at: string;
-  quality_score: number;
-  campaign_name: string;
-}
-
-interface CampaignWithPosts {
-  campaign: {
-    id: number;
-    name: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    target_post_count: number;
-    status: string;
-    total_posts: number;
-    completed_posts: number;
-    review_pending: number;
-    materials_needed: number;
-    progress: number;
-  };
-  posts: Array<{
-    id: number;
-    post_id: string;
-    title: string;
-    status: string;
-    created_at: string;
-    quality_score: number;
-    seo_score: number;
-    legal_score: number;
-    material_status: string;
-  }>;
-}
-
+// 실제 API에서 가져올 데이터들
 export default function ClientDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [urgentMaterials, setUrgentMaterials] = useState<UrgentMaterial[]>([]);
-  const [oldReviews, setOldReviews] = useState<OldReview[]>([]);
-  const [materialsNeeded, setMaterialsNeeded] = useState<MaterialNeeded[]>([]);
-  const [reviewNeeded, setReviewNeeded] = useState<ReviewNeeded[]>([]);
-  const [recentPublished, setRecentPublished] = useState<RecentPublished[]>([]);
-  const [campaignsWithPosts, setCampaignsWithPosts] = useState<CampaignWithPosts[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+
+  // 실제 API에서 가져올 데이터들
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [postsByStatus, setPostsByStatus] = useState<any>({});
+  const [campaignsWithPosts, setCampaignsWithPosts] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardData();
-
-    // 실시간 업데이트 (5분마다)
-    const interval = setInterval(loadDashboardData, 300000);
-    return () => clearInterval(interval);
   }, []);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
 
-      // 실제 API 호출로 데이터 로드
+      // 실제 API 호출들
       const [
-        statsData,
-        actionRequiredData,
-        statusSummaryData,
-        campaignsData
-      ] = await Promise.all([
+        statsRes,
+        activitiesRes,
+        actionRequiredRes,
+        statusSummaryRes,
+        campaignsRes
+      ] = await Promise.allSettled([
         clientApi.getDashboardStats(),
+        Promise.resolve([]), // 최근 활동 API가 아직 없으므로 빈 배열
         clientApi.getActionRequiredPosts(),
         clientApi.getPostsStatusSummary(),
         clientApi.getCampaignsWithPosts()
       ]);
 
-      setStats(statsData);
-      setUrgentMaterials(actionRequiredData.urgent_materials);
-      setOldReviews(actionRequiredData.old_reviews);
-      setMaterialsNeeded(statusSummaryData.materials_needed);
-      setReviewNeeded(statusSummaryData.review_needed);
-      setRecentPublished(statusSummaryData.recent_published);
-      setCampaignsWithPosts(campaignsData);
+      // 각 API 결과를 상태에 저장
+      if (statsRes.status === 'fulfilled') {
+        setDashboardStats(statsRes.value);
+      }
+
+      if (activitiesRes.status === 'fulfilled') {
+        setRecentActivities(activitiesRes.value);
+      }
+
+      if (campaignsRes.status === 'fulfilled') {
+        setCampaignsWithPosts(campaignsRes.value);
+      }
+
+      // 포스트 상태별 데이터 구성
+      if (actionRequiredRes.status === 'fulfilled' && statusSummaryRes.status === 'fulfilled') {
+        const actionData = actionRequiredRes.value;
+        const statusData = statusSummaryRes.value;
+
+        setPostsByStatus({
+          material_waiting: statusData.materials_needed || [],
+          client_review: statusData.review_needed || [],
+          urgent_materials: actionData.urgent_materials || [],
+          old_reviews: actionData.old_reviews || []
+        });
+      }
+
+      // 포스트 데이터 로드 (상태별 분류)
+      await loadPostsByStatus();
 
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
-      // 에러 시 기본 데이터 설정
-      setStats({
-        totalPosts: 0,
-        pendingPosts: 0,
-        completedPosts: 0,
-        averageQualityScore: 0.0,
-        approvalRate: 0.0
-      });
-      setUrgentMaterials([]);
-      setOldReviews([]);
-      setMaterialsNeeded([]);
-      setReviewNeeded([]);
-      setRecentPublished([]);
-      setCampaignsWithPosts([]);
+      // 에러 발생 시 빈 데이터로 설정
+      setFallbackData();
     } finally {
       setLoading(false);
     }
   };
 
-  const renderActionButtons = (post: any) => {
-    const actions = getStatusActions(post.status);
-    if (actions.length === 0) return null;
+  const loadPostsByStatus = async () => {
+    try {
+      // 각 상태별 포스트 조회
+      const statusFilters = [
+        { status: 'material_waiting', limit: 5 },    // 자료 제공 필요
+        { status: 'client_review', limit: 5 },       // 검토 필요
+        { status: 'final_approved', limit: 5 },      // 승인 대기
+        { status: 'published', limit: 5 }            // 게시 완료
+      ];
 
-    return (
-      <div className="flex flex-wrap gap-2 mt-3">
-        {actions.map((action) => (
-          <Link
-            key={action}
-            href={
-              action.includes('materials')
-                ? `/client/posts/${post.post_id}/materials`
-                : action === 'review_content'
-                ? `/client/posts/${post.post_id}/review`
-                : `/client/posts/${post.post_id}`
-            }
-          >
-            <Button
-              size="sm"
-              className={getActionButtonStyle(action)}
-            >
-              {getActionButtonText(action)}
-            </Button>
-          </Link>
-        ))}
-      </div>
-    );
+      const postsData: any = {};
+
+      for (const filter of statusFilters) {
+        try {
+          const response = await clientApi.getPosts({ ...filter });
+          postsData[filter.status] = response || [];
+        } catch (error) {
+          console.warn(`${filter.status} 포스트 조회 실패:`, error);
+          postsData[filter.status] = [];
+        }
+      }
+
+      setPostsByStatus((prev: any) => ({ ...prev, ...postsData }));
+    } catch (error) {
+      console.error('포스트 데이터 로드 실패:', error);
+      setPostsByStatus({});
+    }
+  };
+
+  const setFallbackData = () => {
+    // API 호출 실패 시 빈 데이터 설정
+    setDashboardStats(null);
+    setRecentActivities([]);
+    setPostsByStatus({});
+    setCampaignsWithPosts([]);
   };
 
   if (loading) {
@@ -211,423 +123,314 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="p-6">
-      {/* 헤더 */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">클라이언트 대시보드</h1>
-            <p className="text-gray-600 mt-2">콘텐츠 생성 현황 및 작업 관리</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">실시간 업데이트</span>
+    <div className="h-full bg-neutral-50">
+      {/* Main Content Area */}
+      <div className="overflow-y-auto">
+
+        {/* Header Section */}
+        <div className="bg-white border-b border-neutral-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl text-neutral-900">내 콘텐츠 현황</h1>
+              <p className="text-neutral-600 text-sm mt-1">
+                {new Date().toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  weekday: 'long'
+                })}
+                {dashboardStats && (
+                  <span className="ml-4 text-xs">
+                    총 {dashboardStats.totalPosts || 0}개 포스트 · 진행중 {dashboardStats.pendingPosts || 0}개
+                  </span>
+                )}
+              </p>
             </div>
-            <span className="text-sm text-gray-500">
-              마지막 업데이트: {formatDateTime(new Date().toISOString())}
-            </span>
+            <div className="flex items-center space-x-3">
+              <button className="px-3 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 text-sm">
+                <i className="fa-solid fa-plus mr-1"></i>
+                새 포스트
+              </button>
+              <button className="p-2 text-neutral-500 hover:text-neutral-700">
+                <i className="fa-solid fa-bell"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Alert Cards Section */}
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-3 gap-4">
+            {/* 긴급 처리 필요 */}
+            <div className="bg-white rounded-xl shadow-lg p-3">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm text-neutral-900">🚨 긴급 작업</h2>
+                <span className="text-xs text-neutral-500">실시간</span>
+              </div>
+              <div className="space-y-2">
+                {(postsByStatus.urgent_materials?.length > 0 || postsByStatus.old_reviews?.length > 0) ? (
+                  <>
+                    {postsByStatus.urgent_materials?.length > 0 && (
+                      <div className="flex items-start space-x-2">
+                        <div className="w-4 h-4 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <i className="fa-solid fa-clock text-red-600 text-xs"></i>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-neutral-800">자료 제공 지연</p>
+                          <p className="text-xs text-neutral-500 mt-1">{postsByStatus.urgent_materials.length}건</p>
+                        </div>
+                        <button className="px-2 py-1 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700">
+                          바로가기
+                        </button>
+                      </div>
+                    )}
+                    {postsByStatus.old_reviews?.length > 0 && (
+                      <div className="flex items-start space-x-2">
+                        <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <i className="fa-solid fa-exclamation-triangle text-orange-600 text-xs"></i>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-neutral-800">검토 오래됨</p>
+                          <p className="text-xs text-neutral-500 mt-1">{postsByStatus.old_reviews.length}건</p>
+                        </div>
+                        <button className="px-2 py-1 bg-orange-600 text-white text-xs rounded-lg hover:bg-orange-700">
+                          확인
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-neutral-500">긴급한 작업이 없습니다</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 현황 모니터 */}
+            <div className="bg-white rounded-xl shadow-lg p-3">
+              <h2 className="text-sm text-neutral-900 mb-3">콘텐츠 현황</h2>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center p-2 bg-neutral-50 rounded-lg">
+                  <div className="w-4 h-4 bg-blue-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                    <i className="fa-solid fa-file-alt text-white text-xs"></i>
+                  </div>
+                  <h3 className="text-xs text-neutral-800">자료 대기</h3>
+                  <p className="text-xs text-neutral-600">
+                    {postsByStatus.material_waiting?.length || 0}건
+                  </p>
+                </div>
+
+                <div className="text-center p-2 bg-neutral-50 rounded-lg">
+                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                    <i className="fa-solid fa-eye text-white text-xs"></i>
+                  </div>
+                  <h3 className="text-xs text-neutral-800">검토 대기</h3>
+                  <p className="text-xs text-neutral-600">
+                    {postsByStatus.client_review?.length || 0}건
+                  </p>
+                </div>
+
+                <div className="text-center p-2 bg-neutral-50 rounded-lg">
+                  <div className="w-4 h-4 bg-purple-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                    <i className="fa-solid fa-check text-white text-xs"></i>
+                  </div>
+                  <h3 className="text-xs text-neutral-800">승인 완료</h3>
+                  <p className="text-xs text-neutral-600">
+                    {postsByStatus.final_approved?.length || 0}건
+                  </p>
+                </div>
+
+                <div className="text-center p-2 bg-neutral-50 rounded-lg">
+                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                    <i className="fa-solid fa-paper-plane text-white text-xs"></i>
+                  </div>
+                  <h3 className="text-xs text-neutral-800">게시 완료</h3>
+                  <p className="text-xs text-neutral-600">
+                    {postsByStatus.published?.length || 0}건
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 최근 활동 */}
+            <div className="bg-white rounded-xl shadow-lg p-3">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm text-neutral-900">최근 활동</h2>
+                <button className="text-neutral-600 hover:text-neutral-700 text-xs">전체보기</button>
+              </div>
+              <div className="space-y-2">
+                {recentActivities && recentActivities.length > 0 ? (
+                  recentActivities.slice(0, 3).map((activity: any, index: number) => (
+                    <div key={index} className="flex items-start space-x-2">
+                      <div className="w-4 h-4 bg-neutral-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i className={`fa-solid fa-${activity.type === 'post_completed' ? 'check' : activity.type === 'post_created' ? 'plus' : 'info'} text-neutral-600 text-xs`}></i>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-neutral-800">{activity.description}</p>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {new Date(activity.timestamp).toLocaleString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-neutral-500">최근 활동이 없습니다</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 오늘의 작업 섹션 */}
+        <div className="px-6">
+          <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
+            <h2 className="text-lg text-neutral-900 mb-3">내 작업 목록</h2>
+            <div className="flex space-x-4 overflow-x-auto pb-2">
+              {/* 자료 제공 필요 칸반 */}
+              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
+                <h3 className="text-sm text-neutral-800 mb-2 text-center">자료 제공 필요</h3>
+                <div className="space-y-2">
+                  {postsByStatus.material_waiting?.length > 0 ? (
+                    postsByStatus.material_waiting.slice(0, 3).map((post: any) => (
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
+                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
+                        <p className="text-xs text-neutral-600 mt-1">{post.campaign_name || '캠페인 미정'}</p>
+                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(자료 제공)</button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 검토 필요 칸반 */}
+              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
+                <h3 className="text-sm text-neutral-800 mb-2 text-center">검토 필요</h3>
+                <div className="space-y-2">
+                  {postsByStatus.client_review?.length > 0 ? (
+                    postsByStatus.client_review.slice(0, 3).map((post: any) => (
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
+                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
+                        <p className="text-xs text-neutral-600 mt-1">{post.campaign_name || '캠페인 미정'}</p>
+                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(검토하기)</button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 승인 대기 칸반 */}
+              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
+                <h3 className="text-sm text-neutral-800 mb-2 text-center">승인 대기</h3>
+                <div className="space-y-2">
+                  {postsByStatus.final_approved?.length > 0 ? (
+                    postsByStatus.final_approved.slice(0, 3).map((post: any) => (
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
+                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
+                        <p className="text-xs text-neutral-600 mt-1">{post.campaign_name || '캠페인 미정'}</p>
+                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(확인하기)</button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 게시 완료 칸반 */}
+              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
+                <h3 className="text-sm text-neutral-800 mb-2 text-center">게시 완료</h3>
+                <div className="space-y-2">
+                  {postsByStatus.published?.length > 0 ? (
+                    postsByStatus.published.slice(0, 3).map((post: any) => (
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
+                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
+                        <p className="text-xs text-neutral-600 mt-1">{post.campaign_name || '캠페인 미정'}</p>
+                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(보기)</button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 캠페인 현황 */}
+        <div className="px-6">
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg text-neutral-900">캠페인 현황</h2>
+              <span className="text-neutral-600 hover:text-neutral-700 text-xs cursor-pointer">전체보기 →</span>
+            </div>
+            <div className="flex space-x-3 overflow-x-auto pb-2">
+              {campaignsWithPosts && campaignsWithPosts.length > 0 ? (
+                campaignsWithPosts.slice(0, 3).map((campaignData: any) => (
+                  <div
+                    key={campaignData.campaign.id}
+                    className="bg-white border-2 rounded-lg p-3 min-w-48 flex-shrink-0 border-neutral-200"
+                  >
+                    <div className="text-center">
+                      <h3 className="text-neutral-800 text-sm">{campaignData.campaign.name}</h3>
+                      <p className="text-xs text-neutral-600 mb-2">{campaignData.campaign.description || '진행중인 캠페인'}</p>
+                      <div className="w-10 h-10 bg-neutral-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                        <i className="fa-solid fa-bullhorn text-neutral-600 text-sm"></i>
+                      </div>
+                      <p className="text-xs text-neutral-600">진행률</p>
+                      <p className={`text-xs mt-1 text-neutral-500`}>
+                        {campaignData.campaign.completed_posts || 0}/{campaignData.campaign.target_post_count || 0}건
+                      </p>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {Math.round(((campaignData.campaign.completed_posts || 0) / (campaignData.campaign.target_post_count || 1)) * 100)}% 완료
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 w-full">
+                  <p className="text-neutral-500">진행 중인 캠페인이 없습니다</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 빠른 작업 섹션 */}
+        <div className="px-6 pb-6">
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <h2 className="text-lg text-neutral-900 mb-3">빠른 작업</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { icon: 'fa-plus', title: '새 포스트 생성', action: 'create' },
+                { icon: 'fa-file-alt', title: '자료 제공', action: 'materials' },
+                { icon: 'fa-eye', title: '콘텐츠 검토', action: 'review' },
+                { icon: 'fa-chart-line', title: '성과 확인', action: 'analytics' }
+              ].map((action, index) => (
+                <button
+                  key={index}
+                  className="flex flex-col items-center p-3 border-2 border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center mb-2">
+                    <i className={`fa-solid ${action.icon} text-neutral-600 text-sm`}></i>
+                  </div>
+                  <span className="text-xs text-neutral-700">{action.title}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* 긴급 조치 필요 알림 */}
-      {(urgentMaterials.length > 0 || oldReviews.length > 0) && (
-        <Card className="mb-6 border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-red-800">
-              <span className="text-2xl">🚨</span>
-              <span>긴급 조치 필요</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {urgentMaterials.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-red-700 mb-2">🚨 자료 제공 지연 ({urgentMaterials.length}건)</h4>
-                  <div className="space-y-2">
-                    {urgentMaterials.slice(0, 3).map((material) => (
-                      <div key={material.id} className="flex items-center justify-between p-3 bg-white rounded border border-red-200">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <StatusBadge status="initial" variant="priority" size="sm" />
-                            <span className="text-xs text-red-600 font-medium">
-                              {material.days_since_creation}일 지연
-                            </span>
-                          </div>
-                          <p className="font-medium">{material.title}</p>
-                          <p className="text-sm text-gray-600">
-                            {material.campaign_name}
-                          </p>
-                        </div>
-                        {renderActionButtons(material)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {oldReviews.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-red-700 mb-2">⏰ 검토 대기 오래됨 ({oldReviews.length}건)</h4>
-                  <div className="space-y-2">
-                    {oldReviews.slice(0, 3).map((review) => (
-                      <div key={review.id} className="flex items-center justify-between p-3 bg-white rounded border border-orange-200">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <StatusBadge status="client_review" variant="priority" size="sm" />
-                            <span className="text-xs text-orange-600 font-medium">
-                              {review.days_waiting}일 대기
-                            </span>
-                          </div>
-                          <p className="font-medium">{review.title}</p>
-                          <p className="text-sm text-gray-600">
-                            {review.campaign_name}
-                          </p>
-                        </div>
-                        {renderActionButtons(review)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 메인 대시보드 */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">개요</TabsTrigger>
-          <TabsTrigger value="campaigns">캠페인</TabsTrigger>
-          <TabsTrigger value="materials">자료 제공</TabsTrigger>
-          <TabsTrigger value="reviews">검토</TabsTrigger>
-          <TabsTrigger value="published">게시됨</TabsTrigger>
-        </TabsList>
-
-        {/* 개요 탭 */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* 주요 통계 */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">전체 포스트</p>
-                      <p className="text-2xl font-bold">{stats.totalPosts}</p>
-                    </div>
-                    <div className="text-2xl">📝</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">자료 필요</p>
-                      <p className="text-2xl font-bold text-blue-600">{materialsNeeded.length}</p>
-                    </div>
-                    <div className="text-2xl">📋</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">검토 필요</p>
-                      <p className="text-2xl font-bold text-purple-600">{reviewNeeded.length}</p>
-                    </div>
-                    <div className="text-2xl">👀</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">평균 품질</p>
-                      <p className="text-2xl font-bold text-green-600">{stats.averageQualityScore.toFixed(1)}</p>
-                    </div>
-                    <div className="text-2xl">⭐</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* 빠른 작업 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>빠른 작업</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/client/posts/create">
-                  <Button className="w-full h-16 flex flex-col items-center justify-center space-y-1">
-                    <span className="text-2xl">➕</span>
-                    <span className="text-sm">새 포스트 생성</span>
-                  </Button>
-                </Link>
-
-                <Link href="#materials">
-                  <Button
-                    variant="secondary"
-                    className="w-full h-16 flex flex-col items-center justify-center space-y-1"
-                    onClick={() => setActiveTab('materials')}
-                  >
-                    <span className="text-2xl">📋</span>
-                    <span className="text-sm">자료 제공 ({materialsNeeded.length})</span>
-                  </Button>
-                </Link>
-
-                <Link href="#reviews">
-                  <Button
-                    variant="secondary"
-                    className="w-full h-16 flex flex-col items-center justify-center space-y-1"
-                    onClick={() => setActiveTab('reviews')}
-                  >
-                    <span className="text-2xl">👀</span>
-                    <span className="text-sm">검토하기 ({reviewNeeded.length})</span>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 캠페인 탭 */}
-        <TabsContent value="campaigns" className="space-y-6">
-          {campaignsWithPosts.length > 0 ? (
-            <div className="space-y-6">
-              {campaignsWithPosts.map((campaignData) => (
-                <Card key={campaignData.campaign.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{campaignData.campaign.name}</CardTitle>
-                        <p className="text-sm text-gray-600 mt-1">{campaignData.campaign.description}</p>
-                      </div>
-                      <Badge variant="outline">
-                        {campaignData.campaign.status === 'active' ? '진행중' : '완료'}
-                      </Badge>
-                    </div>
-
-                    {/* 캠페인 진행률 */}
-                    <div className="mt-4">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>진행률</span>
-                        <span>{campaignData.campaign.progress}% ({campaignData.campaign.completed_posts}/{campaignData.campaign.target_post_count})</span>
-                      </div>
-                      <Progress value={campaignData.campaign.progress} className="h-2" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {/* 포스트 상태 요약 */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <div className="text-lg font-bold text-blue-600">{campaignData.campaign.materials_needed}</div>
-                        <div className="text-xs text-blue-700">자료 필요</div>
-                      </div>
-                      <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                        <div className="text-lg font-bold text-yellow-600">{campaignData.campaign.review_pending}</div>
-                        <div className="text-xs text-yellow-700">검토 대기</div>
-                      </div>
-                      <div className="text-center p-3 bg-green-50 rounded-lg">
-                        <div className="text-lg font-bold text-green-600">{campaignData.campaign.completed_posts}</div>
-                        <div className="text-xs text-green-700">완료</div>
-                      </div>
-                      <div className="text-center p-3 bg-purple-50 rounded-lg">
-                        <div className="text-lg font-bold text-purple-600">{campaignData.campaign.total_posts}</div>
-                        <div className="text-xs text-purple-700">전체</div>
-                      </div>
-                    </div>
-
-                    {/* 포스트 목록 */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium">포스트 현황</h4>
-                      {campaignData.posts.slice(0, 5).map((post) => (
-                        <div key={post.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium">{post.title}</p>
-                            <p className="text-sm text-gray-600">
-                              생성: {formatDateTime(post.created_at)}
-                              {post.quality_score && ` • 품질: ${post.quality_score.toFixed(1)}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <StatusBadge status={post.status} size="sm" />
-                            {(post.status === 'initial' || post.status === 'hospital_processing') && (
-                              <Link href={`/client/posts/${post.post_id}/materials`}>
-                                <Button size="sm">자료 제공</Button>
-                              </Link>
-                            )}
-                            {post.status === 'client_review' && (
-                              <Link href={`/client/posts/${post.post_id}/review`}>
-                                <Button size="sm" variant="secondary">검토</Button>
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4">📊</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">진행 중인 캠페인이 없습니다</h3>
-              <p className="text-gray-600">새로운 캠페인이 시작되면 여기에 표시됩니다.</p>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* 자료 제공 탭 */}
-        <TabsContent value="materials" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>자료 제공 필요한 포스트</CardTitle>
-              <p className="text-sm text-gray-600">AI 콘텐츠 생성을 위해 자료를 제공해야 하는 포스트들입니다.</p>
-            </CardHeader>
-            <CardContent>
-              {materialsNeeded.length > 0 ? (
-                <div className="space-y-4">
-                  {materialsNeeded.map((post) => (
-                    <div key={post.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{post.title}</h4>
-                        <p className="text-sm text-gray-600">
-                          {post.campaign_name} • 생성일: {formatDateTime(post.created_at)}
-                        </p>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <StatusBadge status={post.status} size="sm" />
-                          <Badge variant="outline" className="text-xs">
-                            자료: {post.material_status || '미제공'}
-                          </Badge>
-                        </div>
-                      </div>
-                      {renderActionButtons(post)}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-4">✅</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">모든 포스트에 자료가 제공되었습니다</h3>
-                  <p className="text-gray-600">새로운 포스트가 생성되면 여기에 표시됩니다.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 검토 탭 */}
-        <TabsContent value="reviews" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>검토 필요한 포스트</CardTitle>
-              <p className="text-sm text-gray-600">AI가 생성한 콘텐츠를 검토하고 승인해야 하는 포스트들입니다.</p>
-            </CardHeader>
-            <CardContent>
-              {reviewNeeded.length > 0 ? (
-                <div className="space-y-4">
-                  {reviewNeeded.map((post) => (
-                    <div key={post.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <StatusBadge status={post.status} size="sm" />
-                              <span className="text-xs text-gray-500">
-                                {post.campaign_name}
-                              </span>
-                            </div>
-                            <h4 className="font-medium">{post.title}</h4>
-                            <p className="text-sm text-gray-600">
-                              생성일: {formatDateTime(post.created_at)}
-                            </p>
-                          </div>
-                          {renderActionButtons(post)}
-                        </div>
-
-                      {/* 품질 점수 */}
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="text-center p-2 bg-blue-50 rounded">
-                          <div className="font-medium text-blue-700">SEO</div>
-                          <div className="text-lg font-bold">{post.seo_score?.toFixed(1) || 'N/A'}</div>
-                        </div>
-                        <div className="text-center p-2 bg-green-50 rounded">
-                          <div className="font-medium text-green-700">법적 준수</div>
-                          <div className="text-lg font-bold">{post.legal_score?.toFixed(1) || 'N/A'}</div>
-                        </div>
-                        <div className="text-center p-2 bg-purple-50 rounded">
-                          <div className="font-medium text-purple-700">종합 품질</div>
-                          <div className="text-lg font-bold">{post.quality_score?.toFixed(1) || 'N/A'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-4">✅</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">검토할 포스트가 없습니다</h3>
-                  <p className="text-gray-600">AI가 콘텐츠를 생성하면 여기에 표시됩니다.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 게시됨 탭 */}
-        <TabsContent value="published" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>게시된 포스트</CardTitle>
-              <p className="text-sm text-gray-600">성공적으로 게시된 콘텐츠들을 확인하세요.</p>
-            </CardHeader>
-            <CardContent>
-              {recentPublished.length > 0 ? (
-                <div className="space-y-4">
-                  {recentPublished.map((post) => (
-                    <div key={post.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{post.title}</h4>
-                        <p className="text-sm text-gray-600">
-                          {post.campaign_name} • 게시일: {formatDateTime(post.publish_date)}
-                        </p>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <StatusBadge status={post.status} size="sm" />
-                          {post.quality_score && (
-                            <Badge variant="outline" className="text-xs">
-                              품질: {post.quality_score.toFixed(1)}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Link href={`/blog/${post.post_id}`} target="_blank">
-                        <Button size="sm" variant="outline">블로그에서 보기</Button>
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-4">📄</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">게시된 포스트가 없습니다</h3>
-                  <p className="text-gray-600">콘텐츠가 게시되면 여기에 표시됩니다.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
