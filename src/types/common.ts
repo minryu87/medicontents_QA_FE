@@ -28,6 +28,7 @@ export interface Hospital {
   map_link?: string;
   created_at: string;
   updated_at?: string;
+  active_campaigns?: number; // 활성 캠페인 개수
 }
 
 export interface Campaign {

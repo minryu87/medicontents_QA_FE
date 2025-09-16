@@ -36,7 +36,7 @@ export default function HospitalWorkPage() {
           id: hospital.id,
           name: hospital.name,
           specialty: '병원', // 기본값, 실제로는 더 구체적인 정보 필요
-          activeCampaigns: 0, // TODO: 실제 활성 캠페인 수 계산 필요
+          activeCampaigns: hospital.active_campaigns || 0,
           isSelected: false
         }));
 
