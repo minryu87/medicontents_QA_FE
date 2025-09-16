@@ -29,6 +29,10 @@ export default function HospitalWorkPage() {
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
   const [showCampaignTooltip, setShowCampaignTooltip] = useState(false);
+  const [waitingTasks, setWaitingTasks] = useState<any[]>([]);
+  const [waitingTasksLoading, setWaitingTasksLoading] = useState(false);
+  const [kanbanPosts, setKanbanPosts] = useState<any>(null);
+  const [kanbanLoading, setKanbanLoading] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -218,6 +222,49 @@ export default function HospitalWorkPage() {
           setSelectedHospitalCampaigns([]);
           setCalendarEvents([]);
         }
+      // 작업 대기 포스트 조회
+      setWaitingTasksLoading(true);
+      try {
+        const waitingTasksData = await adminApi.getWaitingTasks(hospital.id, 20);
+        // API 응답을 UI에 맞게 변환
+        const formattedTasks = waitingTasksData.waiting_tasks.map(task => ({
+          id: task.post_id,
+          post_type: task.post_type,
+          title: task.title,
+          publish_date: task.publish_date,
+          created_at: task.created_at
+        }));
+        setWaitingTasks(formattedTasks);
+      } catch (error) {
+        console.error('작업 대기 데이터 조회 실패:', error);
+        setWaitingTasks([]);
+      } finally {
+        setWaitingTasksLoading(false);
+      }
+
+      // 칸반 포스트 조회
+      setKanbanLoading(true);
+      try {
+        const kanbanData = await adminApi.getKanbanPosts(hospital.id);
+        setKanbanPosts(kanbanData);
+      } catch (error) {
+        console.error('칸반 데이터 조회 실패:', error);
+        setKanbanPosts({
+          material_completed: [],
+          admin_pre_review: [],
+          ai_completed: [],
+          admin_review: [],
+          client_review: [],
+          publish_scheduled: [],
+          material_delay: [],
+          ai_failed: [],
+          client_delay: [],
+          aborted: []
+        });
+      } finally {
+        setKanbanLoading(false);
+      }
+
     } catch (error) {
       console.error('병원 정보 로드 실패:', error);
       // 에러 시에도 병원 선택은 유지하되 기본값 사용
@@ -225,9 +272,25 @@ export default function HospitalWorkPage() {
       setSelectedHospital(updatedHospital);
       setSelectedHospitalCampaigns([]);
       setSelectedHospitalDetail(null);
+      setWaitingTasks([]);
+      setWaitingTasksLoading(false);
+      setKanbanPosts({
+        material_completed: [],
+        admin_pre_review: [],
+        ai_completed: [],
+        admin_review: [],
+        client_review: [],
+        publish_scheduled: [],
+        material_delay: [],
+        ai_failed: [],
+        client_delay: [],
+        aborted: []
+      });
+      setKanbanLoading(false);
       setCalendarEvents([]);
     }
   };
+
 
   const handleTabChange = (newTab: 'hospital-info' | 'work-management' | 'monitoring') => {
     setActiveTab(newTab);
@@ -381,9 +444,9 @@ export default function HospitalWorkPage() {
                   </h3>
                   <div className="flex items-center space-x-1">
                     <button className="p-1 text-neutral-500 hover:text-neutral-700">
-                      <i className="fa-solid fa-chevron-left text-sm"></i>
+                      <i className="fa-solid fa-chevron-left text-xs"></i>
                     </button>
-                    <span className={`px-2 py-1 rounded text-xs ${
+                    <span className={`px-1 py-1 rounded text-xs ${
                       selectedHospitalCampaigns.length > 0 && selectedHospitalCampaigns[0]?.status === '진행중'
                         ? 'bg-neutral-100 text-neutral-800' :
                       selectedHospitalCampaigns.length > 0 && selectedHospitalCampaigns[0]?.status === '완료'
@@ -396,7 +459,7 @@ export default function HospitalWorkPage() {
                       }
                     </span>
                     <button className="p-1 text-neutral-500 hover:text-neutral-700">
-                      <i className="fa-solid fa-chevron-right text-sm"></i>
+                      <i className="fa-solid fa-chevron-right text-xs"></i>
                     </button>
                   </div>
                 </div>
@@ -404,10 +467,10 @@ export default function HospitalWorkPage() {
 
               {/* 캠페인 상세 정보 툴팁 */}
               {showCampaignTooltip && selectedHospitalCampaigns.length > 0 && (
-                <div className="campaign-tooltip absolute top-full left-0 mt-2 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg p-4 z-50">
+                <div className="campaign-tooltip absolute top-full left-0 mt-2 w-120 bg-white border border-neutral-200 rounded-lg shadow-lg p-4 z-50">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-lg text-neutral-900 font-medium">
+                      <h4 className="text-sm text-neutral-900 font-medium">
                         {selectedHospitalCampaigns[0]?.name}
                       </h4>
                       <span className={`px-2 py-1 rounded text-xs ${
@@ -482,11 +545,14 @@ export default function HospitalWorkPage() {
       {activeTab === 'work-management' && (
         selectedHospital ? (
           <WorkManagementTab
-            waitingTasks={mockWaitingTasks}
+            waitingTasks={waitingTasks}
             publishPending={mockPublishPending}
             publishCompleted={mockPublishCompleted}
             monitoring={mockMonitoring}
             monitoringIssues={mockMonitoringIssues}
+            isLoadingWaitingTasks={waitingTasksLoading}
+            kanbanPosts={kanbanPosts}
+            isLoadingKanban={kanbanLoading}
           />
         ) : (
           <EmptyState

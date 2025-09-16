@@ -201,6 +201,36 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 작업 대기 포스트 목록 API
+  async getWaitingTasks(hospitalId?: number, limit: number = 10): Promise<{
+    waiting_tasks: any[];
+    total_count: number;
+  }> {
+    const params = new URLSearchParams();
+    if (hospitalId) params.append('hospital_id', hospitalId.toString());
+    params.append('limit', limit.toString());
+
+    const response = await api.get(`/api/v1/admin/posts/waiting-tasks?${params}`);
+    return response.data;
+  }
+
+  // 칸반 포스트 목록 API
+  async getKanbanPosts(hospitalId: number): Promise<{
+    material_completed: any[];
+    admin_pre_review: any[];
+    ai_completed: any[];
+    admin_review: any[];
+    client_review: any[];
+    publish_scheduled: any[];
+    material_delay: any[];
+    ai_failed: any[];
+    client_delay: any[];
+    aborted: any[];
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/kanban/${hospitalId}`);
+    return response.data;
+  }
+
   // 에이전트 모니터링 API
   async getAgentStats() {
     const response = await api.get('/api/v1/admin/agents/stats');

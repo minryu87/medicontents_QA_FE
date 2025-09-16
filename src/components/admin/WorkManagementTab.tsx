@@ -1,10 +1,11 @@
+import { useState } from 'react';
+
 interface WaitingTask {
   id: string;
+  post_type: string;
   title: string;
-  description: string;
-  assignee: string;
-  priority: string;
-  type: string;
+  publish_date?: string;
+  created_at?: string;
 }
 
 interface PublishItem {
@@ -34,6 +35,9 @@ interface WorkManagementTabProps {
   publishCompleted: PublishItem[];
   monitoring: MonitoringItem[];
   monitoringIssues: MonitoringItem[];
+  isLoadingWaitingTasks?: boolean;
+  kanbanPosts?: any;
+  isLoadingKanban?: boolean;
 }
 
 export default function WorkManagementTab({
@@ -41,39 +45,65 @@ export default function WorkManagementTab({
   publishPending,
   publishCompleted,
   monitoring,
-  monitoringIssues
+  monitoringIssues,
+  isLoadingWaitingTasks = false,
+  kanbanPosts,
+  isLoadingKanban = false
 }: WorkManagementTabProps) {
+  const [isWaitingTasksCollapsed, setIsWaitingTasksCollapsed] = useState(false);
+
   return (
     <>
       {/* 작업 대기 섹션 */}
-      <div className="px-6 mb-6">
+      <div className="px-6 py-4 mb-6">
         <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-lg text-neutral-900 mb-4">작업 대기</h2>
-          <div className="flex space-x-4 overflow-x-auto pb-2">
-            {waitingTasks.map((task) => (
-              <div key={task.id} className="bg-white border border-neutral-200 rounded-lg p-3 min-w-64 flex-shrink-0">
+          <div className="flex items-center space-x-3 mb-4">
+            <h2 className="text-lg text-neutral-900">작업 대기</h2>
+            <button
+              onClick={() => setIsWaitingTasksCollapsed(!isWaitingTasksCollapsed)}
+              className="flex items-center space-x-2 px-3 py-1 text-neutral-600 hover:text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors text-sm"
+            >
+              <span>{isWaitingTasksCollapsed ? '펼치기' : '접기'}</span>
+              <i className={`fa-solid ${isWaitingTasksCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}`}></i>
+            </button>
+          </div>
+          {!isWaitingTasksCollapsed && (
+            <div className="flex space-x-4 overflow-x-auto pb-2">
+              {isLoadingWaitingTasks ? (
+                <div className="flex items-center justify-center min-w-64 py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
+                  <span className="ml-2 text-neutral-600">작업 대기 로딩 중...</span>
+                </div>
+              ) : waitingTasks.length === 0 ? (
+                <div className="flex items-center justify-center min-w-64 py-8">
+                  <div className="text-center">
+                    <div className="text-neutral-400 mb-2">
+                      <i className="fa-solid fa-clipboard-list text-2xl"></i>
+                    </div>
+                    <p className="text-sm text-neutral-500">대기 중인 작업이 없습니다</p>
+                  </div>
+                </div>
+              ) : (
+                waitingTasks.map((task) => (
+              <div key={task.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">
                     {task.id}
                   </span>
-                  <i className="fa-solid fa-clock text-neutral-400 text-xs"></i>
+                  <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
+                    {task.post_type === 'informational' ? '정보성' : '치료사례'}
+                  </span>
                 </div>
-                <h4 className="text-sm text-neutral-800 mb-2">{task.title}</h4>
-                <p className="text-xs text-neutral-600 mb-2">{task.description}</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1">
-                    <img
-                      src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${task.assignee}`}
-                      alt="User"
-                      className="w-5 h-5 rounded-full"
-                    />
-                    <span className="text-xs text-neutral-600">{task.assignee}</span>
-                  </div>
-                  <span className="text-xs text-neutral-500">대기중</span>
+                <h4 className="text-sm text-neutral-800 mb-2 line-clamp-2">{task.title}</h4>
+                <div className="text-xs text-neutral-600 space-y-1">
+                  <p>게시예정: {task.publish_date ? new Date(task.publish_date).toLocaleDateString('ko-KR') : '미정'}</p>
+                  <p>생성일: {task.created_at ? new Date(task.created_at).toLocaleDateString('ko-KR') : '미정'}</p>
                 </div>
               </div>
-            ))}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -85,83 +115,273 @@ export default function WorkManagementTab({
           {/* 정상 진행 섹션 */}
           <div className="mb-4">
             <h3 className="text-md text-neutral-800 mb-3">정상 진행</h3>
-            <div className="flex space-x-4 overflow-x-auto pb-2">
-              {/* 자료 제공 완료 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div className="grid grid-cols-6 gap-4">
+              {/* 1: 자료 제공 완료 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm text-neutral-800">1. 자료 제공 완료</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">2</span>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.material_completed?.length || 0}
+                  </span>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-011</span>
-                      <i className="fa-solid fa-check text-neutral-600 text-xs"></i>
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">관절 영양제 정보</h5>
-                    <p className="text-xs text-neutral-600 mb-2">자료 제공 완료</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=김의사" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">김의사</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">완료</span>
+                  ) : kanbanPosts?.material_completed?.length > 0 ? (
+                    kanbanPosts.material_completed.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* AI 생성 성공 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+              {/* 2: 어드민 사전 검토 중 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm text-neutral-800">2. 어드민 사전 검토 중</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.admin_pre_review?.length || 0}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
+                    </div>
+                  ) : kanbanPosts?.admin_pre_review?.length > 0 ? (
+                    kanbanPosts.admin_pre_review.map((post: any) => (
+                      <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{post.post_id}</span>
+                          <i className="fa-solid fa-eye text-neutral-600 text-xs"></i>
+                        </div>
+                        <h5 className="text-sm text-neutral-800 mb-2">{post.title}</h5>
+                        <p className="text-xs text-neutral-600 mb-2">어드민 검토 중</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-1">
+                            <img src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${post.creator_name}`} alt="User" className="w-5 h-5 rounded-full" />
+                            <span className="text-xs text-neutral-600">{post.creator_name}</span>
+                          </div>
+                          <span className="text-xs text-neutral-500">검토중</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3: AI 생성_성공 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm text-neutral-800">3. AI 생성_성공</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.ai_completed?.length || 0}
+                  </span>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-014</span>
-                      <i className="fa-solid fa-robot text-neutral-600 text-xs"></i>
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">척추 건강 체크</h5>
-                    <p className="text-xs text-neutral-600 mb-2">AI 생성 완료</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=AI Agent" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">AI Agent</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">생성완료</span>
+                  ) : kanbanPosts?.ai_completed?.length > 0 ? (
+                    kanbanPosts.ai_completed.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* 어드민 사후 검토 중 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+              {/* 4: 어드민 사후 검토 중 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm text-neutral-800">4. 어드민 사후 검토 중</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.admin_review?.length || 0}
+                  </span>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">POST-016</span>
-                      <i className="fa-solid fa-search text-neutral-600 text-xs"></i>
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">스포츠 부상 예방</h5>
-                    <p className="text-xs text-neutral-600 mb-2">사후 검토 중</p>
-                    <div className="flex items-center justify-between">
-                      <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">승인</button>
-                      <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700">반려</button>
+                  ) : kanbanPosts?.admin_review?.length > 0 ? (
+                    kanbanPosts.admin_review.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=관리자" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">관리자</span>
-                      </div>
-                      <span className="text-xs text-neutral-500">검토중</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 5: 고객 검토 중 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm text-neutral-800">5. 고객 검토 중</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.client_review?.length || 0}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
-                  </div>
+                  ) : kanbanPosts?.client_review?.length > 0 ? (
+                    kanbanPosts.client_review.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 6: 게시 대기 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm text-neutral-800">6. 게시 대기</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.publish_scheduled?.length || 0}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
+                    </div>
+                  ) : kanbanPosts?.publish_scheduled?.length > 0 ? (
+                    kanbanPosts.publish_scheduled.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -170,55 +390,180 @@ export default function WorkManagementTab({
           {/* 이슈 발생 섹션 */}
           <div>
             <h3 className="text-md text-neutral-800 mb-3">이슈 발생</h3>
-            <div className="flex space-x-4 overflow-x-auto pb-2">
-              {/* AI 생성 실패 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+            <div className="grid grid-cols-6 gap-4">
+              {/* 1: 자료 제공 지연 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">3. AI 생성_실패</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+                  <h4 className="text-sm text-neutral-800">1. 자료 제공 지연</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.material_delay?.length || 0}
+                  </span>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">FAIL-001</span>
-                      <i className="fa-solid fa-times-circle text-neutral-600 text-xs"></i>
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">관절염 진단법</h5>
-                    <p className="text-xs text-neutral-600 mb-2">AI 생성 실패</p>
-                    <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700 mb-2">재시도</button>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=AI Agent" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">AI Agent</span>
+                  ) : kanbanPosts?.material_delay?.length > 0 ? (
+                    kanbanPosts.material_delay.map((post: any) => (
+                      <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{post.post_id}</span>
+                          <i className="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
+                        </div>
+                        <h5 className="text-sm text-neutral-800 mb-2">{post.title}</h5>
+                        <p className="text-xs text-neutral-600 mb-2">자료 제공 지연</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-1">
+                            <img src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${post.creator_name}`} alt="User" className="w-5 h-5 rounded-full" />
+                            <span className="text-xs text-neutral-600">{post.creator_name}</span>
+                          </div>
+                          <span className="text-xs text-neutral-500">지연</span>
+                        </div>
                       </div>
-                      <span className="text-xs text-neutral-500">실패</span>
+                    ))
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* 고객 검토 지연 */}
-              <div className="bg-neutral-50 rounded-lg p-4 min-w-56 flex-shrink-0">
+              {/* 빈 공간 (2번 위치) */}
+              <div className="w-48 flex-shrink-0"></div>
+
+              {/* 3: AI 생성_실패 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm text-neutral-800">5. 고객 검토 지연</h4>
-                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">1</span>
+                  <h4 className="text-sm text-neutral-800">3. AI 생성_실패</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.ai_failed?.length || 0}
+                  </span>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">DELAY-001</span>
-                      <i className="fa-solid fa-clock text-neutral-600 text-xs"></i>
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
-                    <h5 className="text-sm text-neutral-800 mb-2">환자 교육 자료</h5>
-                    <p className="text-xs text-neutral-600 mb-2">검토 기한 초과</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=이간호사" alt="User" className="w-5 h-5 rounded-full" />
-                        <span className="text-xs text-neutral-600">이간호사</span>
+                  ) : kanbanPosts?.ai_failed?.length > 0 ? (
+                    kanbanPosts.ai_failed.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 빈 공간 (4번 위치) */}
+              <div className="w-48 flex-shrink-0"></div>
+
+              {/* 5: 고객 검토 지연 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm text-neutral-800">5. 고객 검토 지연</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.client_delay?.length || 0}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
+                    </div>
+                  ) : kanbanPosts?.client_delay?.length > 0 ? (
+                    kanbanPosts.client_delay.map((post: any) => (
+                      <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{post.post_id}</span>
+                          <i className="fa-solid fa-clock text-neutral-600 text-xs"></i>
+                        </div>
+                        <h5 className="text-sm text-neutral-800 mb-2">{post.title}</h5>
+                        <p className="text-xs text-neutral-600 mb-2">검토 기한 초과</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-1">
+                            <img src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${post.creator_name}`} alt="User" className="w-5 h-5 rounded-full" />
+                            <span className="text-xs text-neutral-600">{post.creator_name}</span>
+                          </div>
+                          <span className="text-xs text-neutral-500">지연</span>
+                        </div>
                       </div>
-                      <span className="text-xs text-neutral-500">지연</span>
+                    ))
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
                     </div>
-                  </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 6: 생성 취소 */}
+              <div className="bg-neutral-50 rounded-lg p-4 w-48 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm text-neutral-800">6. 생성 취소</h4>
+                  <span className="bg-neutral-200 text-neutral-700 px-2 py-1 rounded text-xs">
+                    {kanbanPosts?.aborted?.length || 0}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {isLoadingKanban ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
+                    </div>
+                  ) : kanbanPosts?.aborted?.length > 0 ? (
+                    kanbanPosts.aborted.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                          </div>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-neutral-500 text-sm py-4">
+                      포스트 없음
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -234,7 +579,7 @@ export default function WorkManagementTab({
             <h2 className="text-lg text-neutral-900 mb-4">게시 대기</h2>
             <div className="space-y-3">
               {publishPending.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
+                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
                     <i className="fa-solid fa-calendar-alt text-neutral-600 text-xs"></i>
@@ -264,7 +609,7 @@ export default function WorkManagementTab({
             <h2 className="text-lg text-neutral-900 mb-4">게시 완료</h2>
             <div className="space-y-3">
               {publishCompleted.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
+                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
                     <i className="fa-solid fa-check-circle text-neutral-600 text-xs"></i>
@@ -303,7 +648,7 @@ export default function WorkManagementTab({
             <h2 className="text-lg text-neutral-900 mb-4">모니터링</h2>
             <div className="space-y-3">
               {monitoring.map((item) => (
-                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
+                <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3 w-48">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{item.id}</span>
                     <i className="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
