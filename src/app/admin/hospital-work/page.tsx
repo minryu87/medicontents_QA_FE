@@ -5,6 +5,7 @@ import { adminApi } from '@/services/api';
 import EmptyState from '@/components/admin/EmptyState';
 import HospitalInfoTab from '@/components/admin/HospitalInfoTab';
 import WorkManagementTab from '@/components/admin/WorkManagementTab';
+import PostingWorkTab from '@/components/admin/PostingWorkTab';
 import MonitoringTab from '@/components/admin/MonitoringTab';
 
 interface HospitalWithCampaigns {
@@ -27,7 +28,7 @@ export default function HospitalWorkPage() {
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'monitoring'>('hospital-info');
+  const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'posting-work' | 'monitoring'>('hospital-info');
   const [showCampaignTooltip, setShowCampaignTooltip] = useState(false);
   const [waitingTasks, setWaitingTasks] = useState<any[]>([]);
   const [waitingTasksLoading, setWaitingTasksLoading] = useState(false);
@@ -35,6 +36,9 @@ export default function HospitalWorkPage() {
   const [kanbanLoading, setKanbanLoading] = useState(false);
   const [statusPosts, setStatusPosts] = useState<any>(null);
   const [statusPostsLoading, setStatusPostsLoading] = useState(false);
+  const [selectedPostForWork, setSelectedPostForWork] = useState<any>(null);
+  const [postingWorkPosts, setPostingWorkPosts] = useState<any[]>([]);
+  const [postingWorkPostsLoading, setPostingWorkPostsLoading] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -284,6 +288,21 @@ export default function HospitalWorkPage() {
                setStatusPostsLoading(false);
              }
 
+             // 포스팅 작업용 포스트 조회
+             setPostingWorkPostsLoading(true);
+             try {
+               const postingWorkData = await adminApi.getPostsForPostingWork(hospital.id);
+               console.log('포스팅 작업용 포스트 데이터:', postingWorkData);
+               console.log('포스팅 작업용 포스트 데이터 타입:', typeof postingWorkData);
+               console.log('포스팅 작업용 포스트 데이터 길이:', postingWorkData?.length);
+               setPostingWorkPosts(postingWorkData);
+             } catch (error) {
+               console.error('포스팅 작업용 포스트 데이터 조회 실패:', error);
+               setPostingWorkPosts([]);
+             } finally {
+               setPostingWorkPostsLoading(false);
+             }
+
     } catch (error) {
       console.error('병원 정보 로드 실패:', error);
       // 에러 시에도 병원 선택은 유지하되 기본값 사용
@@ -313,12 +332,14 @@ export default function HospitalWorkPage() {
                monitoring_issue: []
              });
              setStatusPostsLoading(false);
+             setPostingWorkPosts([]);
+             setPostingWorkPostsLoading(false);
              setCalendarEvents([]);
     }
   };
 
 
-  const handleTabChange = (newTab: 'hospital-info' | 'work-management' | 'monitoring') => {
+  const handleTabChange = (newTab: 'hospital-info' | 'work-management' | 'posting-work' | 'monitoring') => {
     setActiveTab(newTab);
   };
 
@@ -432,26 +453,36 @@ export default function HospitalWorkPage() {
             >
               병원 정보
             </button>
-            <button
-              onClick={() => handleTabChange('work-management')}
-              className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'work-management'
-                  ? 'bg-neutral-600 text-white'
-                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
-              }`}
-            >
-              작업 관리
-            </button>
-            <button
-              onClick={() => handleTabChange('monitoring')}
-              className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'monitoring'
-                  ? 'bg-neutral-600 text-white'
-                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
-              }`}
-            >
-              모니터링
-            </button>
+                   <button
+                     onClick={() => handleTabChange('work-management')}
+                     className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                       activeTab === 'work-management'
+                         ? 'bg-neutral-600 text-white'
+                         : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+                     }`}
+                   >
+                     작업 관리
+                   </button>
+                   <button
+                     onClick={() => handleTabChange('posting-work')}
+                     className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                       activeTab === 'posting-work'
+                         ? 'bg-neutral-600 text-white'
+                         : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+                     }`}
+                   >
+                     포스팅 작업
+                   </button>
+                   <button
+                     onClick={() => handleTabChange('monitoring')}
+                     className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                       activeTab === 'monitoring'
+                         ? 'bg-neutral-600 text-white'
+                         : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
+                     }`}
+                   >
+                     모니터링
+                   </button>
           </div>
 
           {/* 작업 관리 탭용 캠페인 선택기 */}
@@ -568,29 +599,47 @@ export default function HospitalWorkPage() {
         )
       )}
 
-      {activeTab === 'work-management' && (
-        selectedHospital ? (
-          <WorkManagementTab
-            waitingTasks={waitingTasks}
-            publishPending={statusPosts?.publish_scheduled || []}
-            publishCompleted={statusPosts?.published || []}
-            monitoring={statusPosts?.monitoring || []}
-            monitoringIssues={statusPosts?.monitoring_issue || []}
-            isLoadingWaitingTasks={waitingTasksLoading}
-            kanbanPosts={kanbanPosts}
-            isLoadingKanban={kanbanLoading}
-            statusPostsLoading={statusPostsLoading}
-          />
-        ) : (
-          <EmptyState
-            icon="fa-tasks"
-            title="병원을 선택해주세요"
-            description="병원 목록에서 병원을 선택하면 작업 현황을 확인할 수 있습니다."
-          />
-        )
-      )}
+             {activeTab === 'work-management' && (
+               selectedHospital ? (
+                 <WorkManagementTab
+                   waitingTasks={waitingTasks}
+                   publishPending={statusPosts?.publish_scheduled || []}
+                   publishCompleted={statusPosts?.published || []}
+                   monitoring={statusPosts?.monitoring || []}
+                   monitoringIssues={statusPosts?.monitoring_issue || []}
+                   isLoadingWaitingTasks={waitingTasksLoading}
+                   kanbanPosts={kanbanPosts}
+                   isLoadingKanban={kanbanLoading}
+                   statusPostsLoading={statusPostsLoading}
+                 />
+               ) : (
+                 <EmptyState
+                   icon="fa-tasks"
+                   title="병원을 선택해주세요"
+                   description="병원 목록에서 병원을 선택하면 작업 현황을 확인할 수 있습니다."
+                 />
+               )
+             )}
 
-      {activeTab === 'monitoring' && (
+             {activeTab === 'posting-work' && (
+               selectedHospital ? (
+                 <PostingWorkTab
+                   posts={postingWorkPosts}
+                   isLoading={postingWorkPostsLoading}
+                   selectedHospitalId={selectedHospital.id}
+                   onPostSelect={setSelectedPostForWork}
+                   selectedPost={selectedPostForWork}
+                 />
+               ) : (
+                 <EmptyState
+                   icon="fa-tools"
+                   title="병원을 선택해주세요"
+                   description="병원 목록에서 병원을 선택하면 포스팅 작업을 진행할 수 있습니다."
+                 />
+               )
+             )}
+
+             {activeTab === 'monitoring' && (
         selectedHospital ? (
           <MonitoringTab
             performanceStats={mockPerformanceStats}
@@ -614,31 +663,31 @@ export default function HospitalWorkPage() {
 // 병원별 요약 카드 생성 함수
 const createSummaryCards = (hospital: HospitalWithCampaigns | null) => {
   return [
-    {
-      id: 'urgent',
-      title: '🚨 긴급 처리 필요',
+  {
+    id: 'urgent',
+    title: '🚨 긴급 처리 필요',
       value: undefined, // 데이터 없음 표시
       description: '표시할 데이터가 없습니다.'
-    },
-    {
-      id: 'progress',
-      title: '캠페인 진행률',
+  },
+  {
+    id: 'progress',
+    title: '캠페인 진행률',
       value: hospital ? `${Math.round(hospital.averageProgress || 0)}%` : '0%',
       description: hospital ? `${hospital.activeCampaigns}개 캠페인 평균` : '캠페인 없음',
       progress: hospital?.averageProgress || 0
-    },
-    {
-      id: 'performance',
-      title: '성과 모니터링',
+  },
+  {
+    id: 'performance',
+    title: '성과 모니터링',
       value: undefined, // 데이터 없음 표시
       description: '표시할 데이터가 없습니다.'
-    },
-    {
-      id: 'activity',
-      title: '최근 활동',
+  },
+  {
+    id: 'activity',
+    title: '최근 활동',
       activities: undefined // 데이터 없음 표시
-    }
-  ];
+  }
+];
 };
 
 const mockHospitalDetails = {

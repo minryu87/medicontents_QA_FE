@@ -242,6 +242,58 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 포스팅 작업용 포스트 상세 정보 API
+  async getPostsForPostingWork(hospitalId: number): Promise<any[]> {
+    const response = await api.get(`/api/v1/blog-posts?hospital_id=${hospitalId}&limit=50`);
+    console.log('API Response:', response);
+    console.log('API Response Data:', response.data);
+    console.log('API Response Data Items:', response.data?.items);
+
+    // response.data가 직접 배열인 경우 처리
+    if (Array.isArray(response.data)) {
+      console.log('Response data is array:', response.data);
+      return response.data;
+    }
+
+    // response.data.items가 있는 경우
+    if (response.data?.items && Array.isArray(response.data.items)) {
+      console.log('Response data has items array:', response.data.items);
+      return response.data.items;
+    }
+
+    console.log('No valid data found, returning empty array');
+    return [];
+  }
+
+  // 포스트 상태 업데이트 API
+  async updatePostStatus(postId: string, status: string, notes?: string): Promise<any> {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/status`, {
+      status,
+      notes
+    });
+    return response.data;
+  }
+
+  // 포스트 자료 상태 업데이트 API
+  async updatePostMaterialsStatus(postId: string, status: string): Promise<any> {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/materials/status`, {
+      status
+    });
+    return response.data;
+  }
+
+  // AI 에이전트 실행 API
+  async executeAIAgent(postId: string, agentType: string): Promise<any> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/agents/${agentType}/execute`);
+    return response.data;
+  }
+
+  // 포스트 키워드 가이드 업데이트 API
+  async updatePostKeywordsGuide(postId: number, guideData: any): Promise<any> {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/keywords-guide`, guideData);
+    return response.data;
+  }
+
   // 에이전트 모니터링 API
   async getAgentStats() {
     const response = await api.get('/api/v1/admin/agents/stats');
