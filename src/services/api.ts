@@ -498,6 +498,22 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 가이드 제공 관련 API
+  async updateKeywordsGuide(postId: string, keywordsGuide: any) {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/keywords-guide`, keywordsGuide);
+    return response.data;
+  }
+
+  async updatePersona(postId: string, persona: any) {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/persona`, persona);
+    return response.data;
+  }
+
+  async updateEmojiLevel(postId: string, emojiLevel: number) {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/emoji-level`, { emoji_level_value: emojiLevel });
+    return response.data;
+  }
+
   // AI 파이프라인 실행
   async executeAIPipeline(postId: string): Promise<any> {
     const response = await api.post(`/api/v1/admin/posts/${postId}/pipeline/execute`);

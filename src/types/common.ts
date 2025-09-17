@@ -352,6 +352,32 @@ export interface CompletePostingWorkflow {
     name: string | null;
     address: string | null;
   } | null;
+  guide_provision_info?: {
+    hospital_info: any;
+    campaign_info: any;
+    post_medical_info: any;
+    treatment_info: any;
+    post_materials: any;
+    clinical_context: any;
+    publish_info: any;
+  };
+  guide_provision_input?: {
+    persona_selection: {
+      persona_name: string;
+      persona_description: string;
+    };
+    keywords_guide: {
+      region_keywords_guide: string[];
+      hospital_keywords_guide: string[];
+      symptom_keywords_guide: string[];
+      procedure_keywords_guide: string[];
+      treatment_keywords_guide: string[];
+      target_keywords_guide: string[];
+      writing_guide: string;
+      is_completed: boolean;
+      emoji_level_value: number;
+    };
+  };
   material_review: {
     materials: {
       treatment_info: {

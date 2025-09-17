@@ -583,6 +583,7 @@ export default function HospitalWorkPage() {
                    >
                      모니터링
                    </button>
+
           </div>
 
           {/* 작업 관리/포스팅 작업 탭용 캠페인 선택기 */}
@@ -756,6 +757,7 @@ export default function HospitalWorkPage() {
           />
         )
       )}
+
     </div>
   );
 }

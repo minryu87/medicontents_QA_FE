@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/services/api';
 import type { CompletePostingWorkflow } from '@/types/common';
+import GuideProvisionTab from '@/components/admin/GuideProvisionTab';
 
 interface Post {
   id: string;
@@ -609,86 +610,10 @@ export default function PostingWorkTab({
                     )}
 
                     {activeStep === 'admin-guide' && (
-                      <div className="space-y-4">
-                        <div className="bg-white p-4 rounded-lg border border-neutral-200">
-                          <h5 className="font-medium text-neutral-900 mb-4">어드민 가이드 제공</h5>
-
-                          <div className="space-y-4">
-                            {/* 기존 가이드 데이터 표시 */}
-                            {workflowData.guide_provision.keywords_guide && (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="p-3 bg-neutral-50 rounded">
-                                    <span className="text-sm font-medium text-neutral-700">지역 키워드:</span>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                      {workflowData.guide_provision.keywords_guide.region_keywords.join(', ') || '없음'}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-neutral-50 rounded">
-                                    <span className="text-sm font-medium text-neutral-700">병원 키워드:</span>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                      {workflowData.guide_provision.keywords_guide.hospital_keywords.join(', ') || '없음'}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-neutral-50 rounded">
-                                    <span className="text-sm font-medium text-neutral-700">증상 키워드:</span>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                      {workflowData.guide_provision.keywords_guide.symptom_keywords.join(', ') || '없음'}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-neutral-50 rounded">
-                                    <span className="text-sm font-medium text-neutral-700">진단 키워드:</span>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                      {workflowData.guide_provision.keywords_guide.procedure_keywords.join(', ') || '없음'}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-neutral-50 rounded">
-                                    <span className="text-sm font-medium text-neutral-700">치료 키워드:</span>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                      {workflowData.guide_provision.keywords_guide.treatment_keywords.join(', ') || '없음'}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-neutral-50 rounded">
-                                    <span className="text-sm font-medium text-neutral-700">타겟 키워드:</span>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                      {workflowData.guide_provision.keywords_guide.target_keywords.join(', ') || '없음'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* 작성 가이드 입력 */}
-                            <div>
-                              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                작성 가이드
-                              </label>
-                              <textarea
-                                value={guideText}
-                                onChange={(e) => setGuideText(e.target.value)}
-                                className="w-full h-40 p-3 border border-neutral-300 rounded resize-none"
-                                placeholder="AI 에이전트에게 제공할 가이드 및 지침을 작성하세요..."
-                              />
-                            </div>
-
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={saveGuide}
-                                disabled={isWorking || !guideText.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {isWorking ? '저장중...' : '가이드 저장'}
-                              </button>
-                              <button
-                                onClick={() => setActiveStep('ai-agent')}
-                                className="px-4 py-2 bg-neutral-600 text-white text-sm rounded hover:bg-neutral-700"
-                              >
-                                다음 단계
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <GuideProvisionTab
+                        postId={selectedPost.post_id}
+                        hospitalId={parseInt(selectedPost.id)}
+                      />
                     )}
 
                     {activeStep === 'ai-agent' && (
