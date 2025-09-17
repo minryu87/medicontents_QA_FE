@@ -44,7 +44,7 @@ export default function AdminHospitalDetail() {
 
         // 병원 정보 조회
         const hospitalData = await adminApi.getHospitals().then(hospitals =>
-          hospitals.find(h => h.id.toString() === hospitalId)
+          hospitals.hospitals?.find(h => h.id.toString() === hospitalId)
         );
 
         if (!hospitalData) {

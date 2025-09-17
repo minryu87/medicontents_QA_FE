@@ -20,7 +20,7 @@ export default function AdminHospitals() {
       try {
         setLoading(true);
         const hospitalsData = await adminApi.getHospitals();
-        setHospitals(hospitalsData);
+        setHospitals(hospitalsData.hospitals || []);
       } catch (error) {
         console.error('병원 목록 로드 실패:', error);
         setHospitals([]);

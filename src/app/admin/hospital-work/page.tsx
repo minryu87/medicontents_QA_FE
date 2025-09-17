@@ -232,10 +232,10 @@ export default function HospitalWorkPage() {
         const hospitalsData = await adminApi.getHospitals();
 
         // 병원 데이터를 UI에 맞는 형태로 변환
-        const hospitalsWithCampaigns: HospitalWithCampaigns[] = hospitalsData.map(hospital => ({
+        const hospitalsWithCampaigns: HospitalWithCampaigns[] = hospitalsData.hospitals.map(hospital => ({
           id: hospital.id,
           name: hospital.name,
-          specialty: '병원', // 기본값, 실제로는 더 구체적인 정보 필요
+          specialty: '병원',
           activeCampaigns: hospital.active_campaigns || 0,
           logo_image: hospital.logo_image,
           isSelected: false
@@ -482,7 +482,7 @@ export default function HospitalWorkPage() {
               <div className="flex items-center justify-center min-w-48 py-8">
                 <div className="text-center">
                   <div className="text-red-500 mb-2">⚠️</div>
-                  <p className="text-sm text-red-600">{error}</p>
+                  <p className="text-sm text-red-600">{String(error) || '알 수 없는 오류'}</p>
                   <button
                     onClick={() => window.location.reload()}
                     className="mt-2 px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200"

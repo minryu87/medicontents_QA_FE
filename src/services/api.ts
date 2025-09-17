@@ -174,9 +174,9 @@ export class AdminApiService {
   }
 
   // 병원 관리 API
-  async getHospitals(): Promise<Hospital[]> {
+  async getHospitals(): Promise<{ hospitals: Hospital[] }> {
     const response = await api.get('/api/v1/user/hospitals/');
-    return response.data.hospitals || [];
+    return response.data;
   }
 
   async getHospital(hospitalId: number): Promise<Hospital> {

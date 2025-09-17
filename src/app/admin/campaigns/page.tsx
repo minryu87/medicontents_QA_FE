@@ -38,7 +38,7 @@ export default function AdminCampaigns() {
         ]);
 
         setCampaigns(campaignsData);
-        setHospitals(hospitalsData);
+        setHospitals(hospitalsData.hospitals || []);
       } catch (error) {
         console.error('캠페인 데이터 로드 실패:', error);
         // 에러 시 빈 상태로 설정

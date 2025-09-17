@@ -39,7 +39,7 @@ export default function CreatePosts() {
           adminApi.getCampaigns()
         ]);
 
-        setHospitals(hospitalsData);
+        setHospitals(hospitalsData.hospitals || []);
         setCampaigns(campaignsData);
       } catch (error) {
         console.error('폼 데이터 로드 실패:', error);

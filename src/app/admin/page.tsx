@@ -101,7 +101,7 @@ export default function AdminDashboard() {
       }
 
       if (hospitalsRes.status === 'fulfilled') {
-        setHospitals(hospitalsRes.value);
+        setHospitals(hospitalsRes.value.hospitals || []);
       }
 
       if (agentLogsRes.status === 'fulfilled') {

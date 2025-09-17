@@ -43,7 +43,7 @@ export default function AdminPosts() {
 
         const postsList = postsData.posts || [];
         setPosts(postsList);
-        setHospitals(hospitalsData);
+        setHospitals(hospitalsData.hospitals || []);
 
         // 각 포스트의 워크플로우 데이터 로드
         if (postsList.length > 0) {

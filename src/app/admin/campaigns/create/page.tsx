@@ -50,7 +50,7 @@ export default function CreateCampaign() {
           fetch('/api/v1/medical-services/').then(res => res.json())
         ]);
 
-        setHospitals(hospitalsData);
+        setHospitals(hospitalsData.hospitals || []);
         setMedicalServices(servicesData.services || []);
       } catch (error) {
         console.error('폼 데이터 로드 실패:', error);
