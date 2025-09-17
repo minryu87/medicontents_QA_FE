@@ -22,7 +22,8 @@ import type {
   ContentVersion,
   AdminReviewList,
   WorkflowLogList,
-  UniversalImageList
+  UniversalImageList,
+  CompletePostingWorkflow
 } from '@/types/common';
 
 export class AdminApiService {
@@ -488,6 +489,24 @@ export class AdminApiService {
 
   async createContentVersion(versionData: Partial<ContentVersion>): Promise<ContentVersion> {
     const response = await api.post('/api/v1/admin/content-versions', versionData);
+    return response.data;
+  }
+
+  // 통합 포스팅 작업 워크플로우 데이터 조회
+  async getCompletePostingWorkflow(postId: string): Promise<CompletePostingWorkflow> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/complete-workflow`);
+    return response.data;
+  }
+
+  // AI 파이프라인 실행
+  async executeAIPipeline(postId: string): Promise<any> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/pipeline/execute`);
+    return response.data;
+  }
+
+  // 포스트 콘텐츠 업데이트
+  async updatePostContent(postId: string, contentData: any): Promise<any> {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/content`, contentData);
     return response.data;
   }
 }

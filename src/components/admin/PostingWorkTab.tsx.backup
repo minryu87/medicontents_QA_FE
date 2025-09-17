@@ -1,0 +1,535 @@
+import { useState, useEffect } from 'react';
+import { adminApi } from '@/services/api';
+import type { CompletePostingWorkflow } from '@/types/common';
+
+interface Post {
+  id: string;
+  post_id: string;
+  title: string;
+  status: string;
+  post_type: string;
+  publish_date?: string;
+  created_at?: string;
+  creator_name?: string;
+}
+
+interface PostingWorkTabProps {
+  posts?: Post[];
+  isLoading?: boolean;
+  selectedHospitalId?: number;
+  onPostSelect?: (post: Post | null) => void;
+  selectedPost?: Post | null;
+}
+
+export default function PostingWorkTab({
+  posts = [],
+  isLoading = false,
+  selectedHospitalId,
+  onPostSelect,
+  selectedPost
+}: PostingWorkTabProps) {
+  console.log('PostingWorkTab posts:', posts);
+  console.log('PostingWorkTab posts length:', posts?.length);
+  console.log('PostingWorkTab isLoading:', isLoading);
+  const [activeStep, setActiveStep] = useState<string>('material-review');
+  const [isWorking, setIsWorking] = useState(false);
+  const [guideText, setGuideText] = useState('');
+  const [publishDate, setPublishDate] = useState('');
+  const [publishTime, setPublishTime] = useState('');
+
+  const steps = [
+    { id: 'material-review', label: '자료 검토', icon: '📋' },
+    { id: 'admin-guide', label: '가이드 제공', icon: '📖' },
+    { id: 'ai-agent', label: 'AI 생성', icon: '🤖' },
+    { id: 'result-review', label: '결과 검토', icon: '👁️' },
+    { id: 'client-review', label: '클라이언트 검토', icon: '👤' },
+    { id: 'publish-ready', label: '게시 대기', icon: '🚀' }
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'initial': return 'bg-gray-100 text-gray-800';
+      case 'material_completed': return 'bg-blue-100 text-blue-800';
+      case 'guide_completed': return 'bg-green-100 text-green-800';
+      case 'agent_processing': return 'bg-yellow-100 text-yellow-800';
+      case 'agent_completed': return 'bg-purple-100 text-purple-800';
+      case 'admin_review': return 'bg-orange-100 text-orange-800';
+      case 'client_review': return 'bg-pink-100 text-pink-800';
+      case 'final_revision': return 'bg-indigo-100 text-indigo-800';
+      case 'publish_scheduled': return 'bg-emerald-100 text-emerald-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // 자료 검토 승인
+  const approveMaterials = async () => {
+    if (!selectedPost) return;
+    setIsWorking(true);
+    try {
+      await adminApi.updatePostMaterialsStatus(selectedPost.post_id, 'completed');
+      await adminApi.updatePostStatus(selectedPost.post_id, 'material_completed', '자료 검토 승인');
+      alert('자료가 승인되었습니다.');
+      setActiveStep('admin-guide');
+    } catch (error) {
+      console.error('자료 승인 실패:', error);
+      alert('자료 승인에 실패했습니다.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  // 자료 검토 반려
+  const rejectMaterials = async () => {
+    if (!selectedPost) return;
+    setIsWorking(true);
+    try {
+      await adminApi.updatePostStatus(selectedPost.post_id, 'initial', '자료 검토 반려 - 수정 필요');
+      alert('자료가 반려되었습니다.');
+    } catch (error) {
+      console.error('자료 반려 실패:', error);
+      alert('자료 반려에 실패했습니다.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  // 가이드 저장
+  const saveGuide = async () => {
+    if (!selectedPost || !guideText.trim()) return;
+    setIsWorking(true);
+    try {
+      await adminApi.updatePostKeywordsGuide(Number(selectedPost.id), {
+        writing_guide: guideText,
+        is_completed: true
+      });
+      await adminApi.updatePostStatus(selectedPost.post_id, 'guide_completed', '어드민 가이드 제공 완료');
+      alert('가이드가 저장되었습니다.');
+      setActiveStep('ai-agent');
+    } catch (error) {
+      console.error('가이드 저장 실패:', error);
+      alert('가이드 저장에 실패했습니다.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  // AI 에이전트 실행
+  const executeAIAgent = async () => {
+    if (!selectedPost) return;
+    setIsWorking(true);
+    try {
+      await adminApi.updatePostStatus(selectedPost.post_id, 'agent_processing', 'AI 에이전트 실행 시작');
+      // 실제 AI 에이전트 실행 API 호출 (현재는 시뮬레이션)
+      setTimeout(async () => {
+        try {
+          await adminApi.updatePostStatus(selectedPost.post_id, 'agent_completed', 'AI 생성 완료');
+          alert('AI 생성이 완료되었습니다.');
+          setActiveStep('result-review');
+        } catch (error) {
+          console.error('AI 상태 업데이트 실패:', error);
+        }
+      }, 3000); // 3초 시뮬레이션
+    } catch (error) {
+      console.error('AI 에이전트 실행 실패:', error);
+      alert('AI 에이전트 실행에 실패했습니다.');
+      setIsWorking(false);
+    }
+  };
+
+  // 결과 승인
+  const approveResult = async () => {
+    if (!selectedPost) return;
+    setIsWorking(true);
+    try {
+      await adminApi.updatePostStatus(selectedPost.post_id, 'admin_review', '어드민 검토 승인');
+      alert('결과가 승인되었습니다.');
+      setActiveStep('client-review');
+    } catch (error) {
+      console.error('결과 승인 실패:', error);
+      alert('결과 승인에 실패했습니다.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  // 게시 대기 전환
+  const schedulePublish = async () => {
+    if (!selectedPost || !publishDate) return;
+    setIsWorking(true);
+    try {
+      const publishDateTime = publishTime ? `${publishDate}T${publishTime}` : `${publishDate}T09:00`;
+      await adminApi.updatePostStatus(selectedPost.post_id, 'publish_scheduled', `게시 일정 설정: ${publishDateTime}`);
+      alert('게시 대기로 전환되었습니다.');
+      setActiveStep('material-review');
+      if (onPostSelect) onPostSelect(null);
+    } catch (error) {
+      console.error('게시 대기 전환 실패:', error);
+      alert('게시 대기 전환에 실패했습니다.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'initial': return '초기';
+      case 'material_completed': return '자료 완료';
+      case 'guide_completed': return '가이드 완료';
+      case 'agent_processing': return 'AI 처리중';
+      case 'agent_completed': return 'AI 완료';
+      case 'admin_review': return '어드민 검토';
+      case 'client_review': return '클라이언트 검토';
+      case 'final_revision': return '최종 수정';
+      case 'publish_scheduled': return '게시 대기';
+      default: return status;
+    }
+  };
+
+  return (
+    <div className="h-full bg-neutral-50 overflow-y-auto">
+      <div className="p-6">
+        {/* 헤더 */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900 mb-2">포스팅 작업</h1>
+          <p className="text-neutral-600">개별 포스트에 대한 상세 작업을 진행합니다</p>
+        </div>
+
+        <div className="grid grid-cols-12 gap-6">
+          {/* 포스트 목록 */}
+          <div className="col-span-4">
+            <div className="bg-white rounded-xl shadow-lg p-4">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-4">작업 대상 포스트</h2>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
+                  <span className="ml-2 text-neutral-600">포스트 로딩 중...</span>
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-neutral-400 mb-2">
+                    <i className="fa-solid fa-clipboard-list text-3xl"></i>
+                  </div>
+                  <p className="text-sm text-neutral-500">작업할 포스트가 없습니다</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {posts.map((post) => (
+                    <div
+                      key={post.id}
+                      onClick={() => {
+                        if (onPostSelect) onPostSelect(post);
+                        setActiveStep('material-review');
+                      }}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedPost?.id === post.id
+                          ? 'border-neutral-600 bg-neutral-50'
+                          : 'border-neutral-200 hover:border-neutral-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">
+                          {post.post_id}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${getStatusColor(post.status)}`}>
+                          {getStatusLabel(post.status)}
+                        </span>
+                      </div>
+                      <h4 className="text-sm text-neutral-800 mb-1 line-clamp-2">{post.title}</h4>
+                      <p className="text-xs text-neutral-500">
+                        {post.post_type === 'informational' ? '정보성' : '치료사례'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 작업 상세 */}
+          <div className="col-span-8">
+            {selectedPost ? (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                {/* 포스트 정보 */}
+                <div className="mb-6 pb-4 border-b border-neutral-200">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold text-neutral-900 mb-2">{selectedPost.title}</h2>
+                      <div className="flex items-center space-x-4 text-sm text-neutral-600">
+                        <span>포스트 ID: {selectedPost.post_id}</span>
+                        <span>유형: {selectedPost.post_type === 'informational' ? '정보성' : '치료사례'}</span>
+                        <span>생성자: {selectedPost.creator_name || '미정'}</span>
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(selectedPost.status)}`}>
+                      {getStatusLabel(selectedPost.status)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 작업 단계 */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">작업 진행 단계</h3>
+                  <div className="grid grid-cols-6 gap-4">
+                    {steps.map((step, index) => (
+                      <button
+                        key={step.id}
+                        onClick={() => setActiveStep(step.id)}
+                        className={`p-3 rounded-lg border-2 transition-all text-center ${
+                          activeStep === step.id
+                            ? 'border-neutral-600 bg-neutral-50'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">{step.icon}</div>
+                        <div className="text-xs font-medium text-neutral-700">{step.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 작업 콘텐츠 */}
+                <div className="bg-neutral-50 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-neutral-900 mb-4">
+                    {steps.find(s => s.id === activeStep)?.label}
+                  </h4>
+
+                  {activeStep === 'material-review' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h5 className="font-medium text-neutral-900 mb-2">고객 제공 자료 검토</h5>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded">
+                            <span className="text-sm">자료 제공 상태</span>
+                            <span className="text-sm font-medium text-green-600">완료됨</span>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded">
+                            <span className="text-sm">자료 품질</span>
+                            <span className="text-sm font-medium text-blue-600">양호</span>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex space-x-2">
+                          <button
+                            onClick={approveMaterials}
+                            disabled={isWorking}
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '처리중...' : '승인'}
+                          </button>
+                          <button
+                            onClick={rejectMaterials}
+                            disabled={isWorking}
+                            className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '처리중...' : '반려'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 'admin-guide' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h5 className="font-medium text-neutral-900 mb-2">어드민 가이드 제공</h5>
+                        <textarea
+                          value={guideText}
+                          onChange={(e) => setGuideText(e.target.value)}
+                          className="w-full h-32 p-3 border border-neutral-300 rounded resize-none"
+                          placeholder="AI 에이전트에게 제공할 가이드 및 지침을 작성하세요..."
+                        ></textarea>
+                        <div className="mt-4 flex space-x-2">
+                          <button
+                            onClick={saveGuide}
+                            disabled={isWorking || !guideText.trim()}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '저장중...' : '가이드 저장'}
+                          </button>
+                          <button
+                            onClick={() => setActiveStep('ai-agent')}
+                            className="px-4 py-2 bg-neutral-600 text-white text-sm rounded hover:bg-neutral-700"
+                          >
+                            다음 단계
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 'ai-agent' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h5 className="font-medium text-neutral-900 mb-2">AI 에이전트 실행</h5>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded">
+                            <span className="text-sm">AI 처리 상태</span>
+                            <span className="text-sm font-medium text-yellow-600">처리중</span>
+                          </div>
+                          <div className="bg-neutral-100 p-3 rounded">
+                            <div className="text-sm text-neutral-600 mb-2">진행 상황:</div>
+                            <div className="w-full bg-neutral-200 rounded-full h-2">
+                              <div className="bg-blue-600 h-2 rounded-full" style={{width: '60%'}}></div>
+                            </div>
+                            <div className="text-xs text-neutral-500 mt-1">60% 완료</div>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex space-x-2">
+                          <button
+                            onClick={() => setActiveStep('result-review')}
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                          >
+                            결과 검토
+                          </button>
+                          <button
+                            onClick={executeAIAgent}
+                            disabled={isWorking}
+                            className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '실행중...' : '재실행'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 'result-review' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h5 className="font-medium text-neutral-900 mb-2">AI 생성 결과 검토</h5>
+                        <div className="bg-neutral-50 p-4 rounded mb-4">
+                          <div className="text-sm text-neutral-600 mb-2">생성된 콘텐츠 미리보기:</div>
+                          <div className="bg-white p-3 rounded border text-sm">
+                            AI 에이전트가 생성한 콘텐츠가 여기에 표시됩니다...
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={approveResult}
+                            disabled={isWorking}
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '처리중...' : '승인'}
+                          </button>
+                          <button
+                            onClick={() => setActiveStep('admin-guide')}
+                            className="px-4 py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+                          >
+                            수정 요청
+                          </button>
+                          <button
+                            onClick={executeAIAgent}
+                            disabled={isWorking}
+                            className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '재생성중...' : '재생성'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 'client-review' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h5 className="font-medium text-neutral-900 mb-2">클라이언트 검토 및 피드백 반영</h5>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded">
+                            <span className="text-sm">클라이언트 검토 상태</span>
+                            <span className="text-sm font-medium text-orange-600">대기중</span>
+                          </div>
+                          <div className="bg-neutral-50 p-3 rounded">
+                            <div className="text-sm text-neutral-600 mb-2">클라이언트 피드백:</div>
+                            <div className="text-sm text-neutral-700">
+                              "제목을 더 구체적으로 바꿔주세요..."
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex space-x-2">
+                          <button
+                            onClick={() => setActiveStep('result-review')}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                          >
+                            피드백 반영
+                          </button>
+                          <button
+                            onClick={() => setActiveStep('publish-ready')}
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                          >
+                            검토 완료
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 'publish-ready' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h5 className="font-medium text-neutral-900 mb-2">게시 대기 상태 전환</h5>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                                게시 예정일
+                              </label>
+                              <input
+                                type="date"
+                                value={publishDate}
+                                onChange={(e) => setPublishDate(e.target.value)}
+                                className="w-full p-2 border border-neutral-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                                게시 예정시간
+                              </label>
+                              <input
+                                type="time"
+                                value={publishTime}
+                                onChange={(e) => setPublishTime(e.target.value)}
+                                className="w-full p-2 border border-neutral-300 rounded"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center p-3 bg-green-50 rounded">
+                            <div className="text-sm text-green-700">
+                              ✅ 모든 검토 과정이 완료되었습니다. 게시를 위한 준비가 완료되었습니다.
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex space-x-2">
+                          <button
+                            onClick={schedulePublish}
+                            disabled={isWorking || !publishDate}
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isWorking ? '전환중...' : '게시 대기로 전환'}
+                          </button>
+                          <button
+                            onClick={() => setActiveStep('client-review')}
+                            className="px-4 py-2 bg-neutral-600 text-white text-sm rounded hover:bg-neutral-700"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                <div className="text-neutral-400 mb-4">
+                  <i className="fa-solid fa-hand-pointer text-4xl"></i>
+                </div>
+                <h3 className="text-lg font-medium text-neutral-900 mb-2">포스트를 선택하세요</h3>
+                <p className="text-neutral-600">왼쪽 목록에서 작업할 포스트를 선택하면 상세 작업을 진행할 수 있습니다</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

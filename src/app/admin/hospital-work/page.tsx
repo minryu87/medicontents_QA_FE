@@ -39,6 +39,8 @@ export default function HospitalWorkPage() {
   const [selectedPostForWork, setSelectedPostForWork] = useState<any>(null);
   const [postingWorkPosts, setPostingWorkPosts] = useState<any[]>([]);
   const [postingWorkPostsLoading, setPostingWorkPostsLoading] = useState(false);
+  const [selectedCampaignForWork, setSelectedCampaignForWork] = useState<any>(null);
+  const [allPostingWorkPosts, setAllPostingWorkPosts] = useState<any[]>([]); // 필터링 전 전체 포스트
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,6 +58,170 @@ export default function HospitalWorkPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showCampaignTooltip]);
+
+  // 캠페인 선택에 따라 데이터 로드
+  useEffect(() => {
+    if (selectedCampaignForWork && selectedHospital) {
+      // 포스팅 작업 데이터 로드
+      loadPostsForCampaign(selectedCampaignForWork.id);
+
+      // 작업 관리 데이터 로드
+      loadWorkManagementDataForCampaign(selectedCampaignForWork.id);
+    } else {
+      // 캠페인이 선택되지 않은 경우 빈 데이터로 설정
+      setPostingWorkPosts([]);
+      setAllPostingWorkPosts([]);
+      setWaitingTasks([]);
+      setKanbanPosts({
+        material_completed: [],
+        admin_pre_review: [],
+        ai_completed: [],
+        admin_review: [],
+        client_review: [],
+        publish_scheduled: [],
+        material_delay: [],
+        ai_failed: [],
+        client_delay: [],
+        aborted: []
+      });
+      setStatusPosts({
+        publish_scheduled: [],
+        published: [],
+        monitoring: [],
+        monitoring_issue: []
+      });
+    }
+  }, [selectedCampaignForWork, selectedHospital]);
+
+  // 캠페인별 포스트 로드 함수 (포스팅 작업용)
+  const loadPostsForCampaign = async (campaignId: number) => {
+    if (!selectedHospital) return;
+
+    setPostingWorkPostsLoading(true);
+    try {
+      // 캠페인 ID로 포스트 조회 (새로운 API가 필요할 수 있음)
+      // 현재는 전체 포스트에서 필터링하는 방식으로 임시 구현
+      const allPosts = await adminApi.getPostsForPostingWork(selectedHospital.id);
+      const campaignPosts = allPosts.filter((post: any) => post.campaign_id === campaignId);
+      setPostingWorkPosts(campaignPosts);
+      setAllPostingWorkPosts(campaignPosts);
+    } catch (error) {
+      console.error('캠페인 포스트 로드 실패:', error);
+      setPostingWorkPosts([]);
+      setAllPostingWorkPosts([]);
+    } finally {
+      setPostingWorkPostsLoading(false);
+    }
+  };
+
+  // 캠페인별 작업 관리 데이터 로드 함수
+  const loadWorkManagementDataForCampaign = async (campaignId: number) => {
+    if (!selectedHospital) return;
+
+    // 모든 로딩 상태를 true로 설정
+    setWaitingTasksLoading(true);
+    setKanbanLoading(true);
+    setStatusPostsLoading(true);
+
+    try {
+      // 병렬로 작업 관리 데이터 로드
+      const [waitingTasksResult, kanbanResult, statusPostsResult] = await Promise.allSettled([
+        // 작업 대기 포스트 (캠페인별 필터링)
+        adminApi.getWaitingTasks(selectedHospital.id, 20).then(data => {
+          const filteredTasks = data.waiting_tasks.filter((task: any) => task.campaign_id === campaignId);
+          return filteredTasks.map(task => ({
+            id: task.post_id,
+            post_type: task.post_type,
+            title: task.title,
+            publish_date: task.publish_date,
+            created_at: task.created_at
+          }));
+        }),
+
+        // 칸반 포스트 (캠페인별 필터링이 필요하다면 여기에 추가)
+        adminApi.getKanbanPosts(selectedHospital.id),
+
+        // 상태별 포스트 (캠페인별 필터링)
+        adminApi.getPostsByStatus(selectedHospital.id).then(data => {
+          const filteredPosts = {
+            publish_scheduled: data.publish_scheduled?.filter((post: any) => post.campaign_id === campaignId) || [],
+            published: data.published?.filter((post: any) => post.campaign_id === campaignId) || [],
+            monitoring: data.monitoring?.filter((post: any) => post.campaign_id === campaignId) || [],
+            monitoring_issue: data.monitoring_issue?.filter((post: any) => post.campaign_id === campaignId) || []
+          };
+          return filteredPosts;
+        })
+      ]);
+
+      // 작업 대기 데이터 설정
+      if (waitingTasksResult.status === 'fulfilled') {
+        setWaitingTasks(waitingTasksResult.value);
+      } else {
+        console.error('작업 대기 데이터 로드 실패:', waitingTasksResult.reason);
+        setWaitingTasks([]);
+      }
+
+      // 칸반 데이터 설정
+      if (kanbanResult.status === 'fulfilled') {
+        // 칸반 데이터도 캠페인별로 필터링할 수 있다면 여기서 처리
+        setKanbanPosts(kanbanResult.value);
+      } else {
+        console.error('칸반 데이터 로드 실패:', kanbanResult.reason);
+        setKanbanPosts({
+          material_completed: [],
+          admin_pre_review: [],
+          ai_completed: [],
+          admin_review: [],
+          client_review: [],
+          publish_scheduled: [],
+          material_delay: [],
+          ai_failed: [],
+          client_delay: [],
+          aborted: []
+        });
+      }
+
+      // 상태별 포스트 데이터 설정
+      if (statusPostsResult.status === 'fulfilled') {
+        setStatusPosts(statusPostsResult.value);
+      } else {
+        console.error('상태별 포스트 데이터 로드 실패:', statusPostsResult.reason);
+        setStatusPosts({
+          publish_scheduled: [],
+          published: [],
+          monitoring: [],
+          monitoring_issue: []
+        });
+      }
+
+    } catch (error) {
+      console.error('작업 관리 데이터 로드 실패:', error);
+      // 에러 시 빈 데이터로 설정
+      setWaitingTasks([]);
+      setKanbanPosts({
+        material_completed: [],
+        admin_pre_review: [],
+        ai_completed: [],
+        admin_review: [],
+        client_review: [],
+        publish_scheduled: [],
+        material_delay: [],
+        ai_failed: [],
+        client_delay: [],
+        aborted: []
+      });
+      setStatusPosts({
+        publish_scheduled: [],
+        published: [],
+        monitoring: [],
+        monitoring_issue: []
+      });
+    } finally {
+      setWaitingTasksLoading(false);
+      setKanbanLoading(false);
+      setStatusPostsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadHospitals = async () => {
@@ -89,6 +255,7 @@ export default function HospitalWorkPage() {
 
   const handleHospitalSelect = async (hospital: HospitalWithCampaigns) => {
     setSelectedHospital(hospital);
+    setSelectedCampaignForWork(null); // 병원 선택 시 캠페인 선택 초기화
 
     // 선택된 병원의 상세 정보, 담당자 정보, 캠페인 정보를 병렬로 가져오기
     try {
@@ -228,80 +395,13 @@ export default function HospitalWorkPage() {
           setSelectedHospitalCampaigns([]);
           setCalendarEvents([]);
         }
-      // 작업 대기 포스트 조회
-      setWaitingTasksLoading(true);
-      try {
-        const waitingTasksData = await adminApi.getWaitingTasks(hospital.id, 20);
-        // API 응답을 UI에 맞게 변환
-        const formattedTasks = waitingTasksData.waiting_tasks.map(task => ({
-          id: task.post_id,
-          post_type: task.post_type,
-          title: task.title,
-          publish_date: task.publish_date,
-          created_at: task.created_at
-        }));
-        setWaitingTasks(formattedTasks);
-      } catch (error) {
-        console.error('작업 대기 데이터 조회 실패:', error);
-        setWaitingTasks([]);
-      } finally {
-        setWaitingTasksLoading(false);
-      }
+      // 작업 관리 데이터는 캠페인 선택 시 로드하도록 변경
 
-             // 칸반 포스트 조회
-             setKanbanLoading(true);
-             try {
-               const kanbanData = await adminApi.getKanbanPosts(hospital.id);
-               setKanbanPosts(kanbanData);
-             } catch (error) {
-               console.error('칸반 데이터 조회 실패:', error);
-               setKanbanPosts({
-                 material_completed: [],
-                 admin_pre_review: [],
-                 ai_completed: [],
-                 admin_review: [],
-                 client_review: [],
-                 publish_scheduled: [],
-                 material_delay: [],
-                 ai_failed: [],
-                 client_delay: [],
-                 aborted: []
-               });
-             } finally {
-               setKanbanLoading(false);
-             }
-
-             // 상태별 포스트 조회 (하단 컨테이너용)
-             setStatusPostsLoading(true);
-             try {
-               const statusData = await adminApi.getPostsByStatus(hospital.id);
-               setStatusPosts(statusData);
-             } catch (error) {
-               console.error('상태별 포스트 데이터 조회 실패:', error);
-               setStatusPosts({
-                 publish_scheduled: [],
-                 published: [],
-                 monitoring: [],
-                 monitoring_issue: []
-               });
-             } finally {
-               setStatusPostsLoading(false);
-             }
-
-             // 포스팅 작업용 포스트 조회
-             setPostingWorkPostsLoading(true);
-             try {
-               const postingWorkData = await adminApi.getPostsForPostingWork(hospital.id);
-               console.log('포스팅 작업용 포스트 데이터:', postingWorkData);
-               console.log('포스팅 작업용 포스트 데이터 타입:', typeof postingWorkData);
-               console.log('포스팅 작업용 포스트 데이터 길이:', postingWorkData?.length);
-               setPostingWorkPosts(postingWorkData);
-             } catch (error) {
-               console.error('포스팅 작업용 포스트 데이터 조회 실패:', error);
-               setPostingWorkPosts([]);
-             } finally {
-               setPostingWorkPostsLoading(false);
-             }
+            // 포스팅 작업 탭용 기본 캠페인 설정 (첫 번째 active 캠페인)
+            if (campaigns.status === 'fulfilled' && campaigns.value && campaigns.value.length > 0) {
+              const activeCampaign = campaigns.value.find((c: any) => c.status === '진행중') || campaigns.value[0];
+              setSelectedCampaignForWork(activeCampaign);
+            }
 
     } catch (error) {
       console.error('병원 정보 로드 실패:', error);
@@ -485,8 +585,8 @@ export default function HospitalWorkPage() {
                    </button>
           </div>
 
-          {/* 작업 관리 탭용 캠페인 선택기 */}
-          {activeTab === 'work-management' && selectedHospital && (
+          {/* 작업 관리/포스팅 작업 탭용 캠페인 선택기 */}
+          {(activeTab === 'work-management' || activeTab === 'posting-work') && selectedHospital && (
             <div className="relative">
               <div
                 className="campaign-selector border border-neutral-200 rounded-lg p-3 hover:bg-neutral-50 transition-colors duration-200 cursor-pointer"
@@ -611,6 +711,8 @@ export default function HospitalWorkPage() {
                    kanbanPosts={kanbanPosts}
                    isLoadingKanban={kanbanLoading}
                    statusPostsLoading={statusPostsLoading}
+                   selectedCampaign={selectedCampaignForWork}
+                   isLoadingAll={waitingTasksLoading || kanbanLoading || statusPostsLoading}
                  />
                ) : (
                  <EmptyState

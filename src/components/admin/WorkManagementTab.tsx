@@ -39,6 +39,8 @@ interface WorkManagementTabProps {
   kanbanPosts?: any;
   isLoadingKanban?: boolean;
   statusPostsLoading?: boolean;
+  selectedCampaign?: any;
+  isLoadingAll?: boolean;
 }
 
 export default function WorkManagementTab({
@@ -50,9 +52,38 @@ export default function WorkManagementTab({
   isLoadingWaitingTasks = false,
   kanbanPosts,
   isLoadingKanban = false,
-  statusPostsLoading = false
+  statusPostsLoading = false,
+  selectedCampaign,
+  isLoadingAll = false
 }: WorkManagementTabProps) {
   const [isWaitingTasksCollapsed, setIsWaitingTasksCollapsed] = useState(false);
+
+  // 캠페인이 선택되지 않은 경우
+  if (!selectedCampaign) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-neutral-400 mb-4">
+            <i className="fa-solid fa-folder-open text-4xl"></i>
+          </div>
+          <h3 className="text-lg font-medium text-neutral-900 mb-2">캠페인을 선택해주세요</h3>
+          <p className="text-sm text-neutral-500">작업을 진행할 캠페인을 선택해야 합니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 전체 로딩 중인 경우
+  if (isLoadingAll) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600 mx-auto mb-4"></div>
+          <p className="text-sm text-neutral-600">작업 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

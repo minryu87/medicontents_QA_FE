@@ -337,3 +337,108 @@ export interface UniversalImageFilter {
   is_active?: boolean;
   is_primary?: boolean;
 }
+
+// 통합 포스팅 작업 워크플로우 데이터 구조
+export interface CompletePostingWorkflow {
+  post_id: string;
+  basic_info: {
+    title: string | null;
+    status: string;
+    created_at: string | null;
+    updated_at: string | null;
+  };
+  hospital_info: {
+    id: number | null;
+    name: string | null;
+    address: string | null;
+  } | null;
+  material_review: {
+    materials: {
+      treatment_info: {
+        concept_message: string;
+        patient_condition: string;
+        treatment_process_message: string;
+        treatment_result_message: string;
+        additional_message: string;
+      };
+      tooth_numbers: string[];
+      images: {
+        before: string[];
+        process: string[];
+        after: string[];
+      };
+      quality_score: number | null;
+    } | null;
+    status: string;
+  };
+  guide_provision: {
+    keywords_guide: {
+      region_keywords: string[];
+      hospital_keywords: string[];
+      symptom_keywords: string[];
+      procedure_keywords: string[];
+      treatment_keywords: string[];
+      target_keywords: string[];
+    } | null;
+    writing_guide: string | null;
+    is_completed: boolean;
+  };
+  ai_generation: {
+    pipeline_status: string;
+    agents: Array<{
+      name: string;
+      status: string;
+      progress: number;
+      output: string;
+      error: string | null;
+      start_time: string | null;
+      end_time: string | null;
+    }>;
+    progress: number;
+    current_step: string;
+  };
+  result_review: {
+    content: {
+      content: string;
+      html_content: string | null;
+      metadata: any;
+      created_at: string | null;
+      updated_at: string | null;
+    } | null;
+    admin_reviews: Array<{
+      id: number;
+      reviewer_id: number;
+      review_status: string;
+      review_notes: string | null;
+      revision_instructions: string | null;
+      reviewed_at: string | null;
+    }>;
+    admin_revisions: Array<{
+      id: number;
+      admin_id: number;
+      revision_type: string;
+      revision_notes: string | null;
+      created_at: string | null;
+      updated_at: string | null;
+    }>;
+  };
+  client_review: {
+    status: string;
+    reviews: Array<{
+      id: number;
+      client_id: number;
+      review_status: string;
+      review_notes: string | null;
+      revision_instructions: string | null;
+      reviewed_at: string | null;
+    }>;
+  };
+  publish_ready: {
+    status: string;
+    scheduled_date: string | null;
+    published_date: string | null;
+    platforms: string[] | null;
+    notes: string | null;
+    created_at: string | null;
+  };
+}
