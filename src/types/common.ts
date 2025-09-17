@@ -363,10 +363,13 @@ export interface CompletePostingWorkflow {
       };
       tooth_numbers: string[];
       images: {
-        before: string[];
-        process: string[];
-        after: string[];
+        before: any[];
+        process: any[];
+        after: any[];
       };
+      before_images_texts: string | null;
+      process_images_texts: string | null;
+      after_images_texts: string | null;
       quality_score: number | null;
     } | null;
     status: string;
@@ -382,6 +385,12 @@ export interface CompletePostingWorkflow {
     } | null;
     writing_guide: string | null;
     is_completed: boolean;
+    spt_info: {
+      selected_symptom_keyword: string | null;
+      selected_procedure_keyword: string | null;
+      selected_treatment_keyword: string | null;
+      additional_notes: string | null;
+    } | null;
   };
   ai_generation: {
     pipeline_status: string;

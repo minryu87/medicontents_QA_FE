@@ -391,34 +391,180 @@ export default function PostingWorkTab({
 
                           {workflowData.material_review.materials ? (
                             <div className="space-y-4">
+                              {/* 자료 상태 */}
+                              <div className="flex items-center justify-between p-3 bg-green-50 rounded">
+                                <span className="text-sm font-medium text-green-700">자료 상태:</span>
+                                <span className={`px-2 py-1 text-xs rounded ${
+                                  workflowData.material_review.status === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : workflowData.material_review.status === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : workflowData.material_review.status === 'processing'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {workflowData.material_review.status === 'completed' ? '완료' :
+                                   workflowData.material_review.status === 'pending' ? '대기' :
+                                   workflowData.material_review.status === 'processing' ? '처리중' :
+                                   workflowData.material_review.status || '알 수 없음'}
+                                </span>
+                              </div>
+
+                              {/* spt 선택 정보 | 치아 번호 */}
                               <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">컨셉 메시지:</span>
-                                  <p className="text-sm text-neutral-600 mt-1">
-                                    {workflowData.material_review.materials.treatment_info.concept_message || '없음'}
-                                  </p>
+                                {/* SPT 정보 */}
+                                <div className="space-y-2">
+                                  {workflowData.guide_provision?.spt_info?.selected_symptom_keyword && (
+                                    <div className="p-2 bg-red-50 rounded text-xs">
+                                      <span className="font-medium text-red-700">증상:</span>
+                                      <span className="text-red-800 ml-1">{workflowData.guide_provision.spt_info.selected_symptom_keyword}</span>
+                                    </div>
+                                  )}
+                                  {workflowData.guide_provision?.spt_info?.selected_procedure_keyword && (
+                                    <div className="p-2 bg-blue-50 rounded text-xs">
+                                      <span className="font-medium text-blue-700">진단:</span>
+                                      <span className="text-blue-800 ml-1">{workflowData.guide_provision.spt_info.selected_procedure_keyword}</span>
+                                    </div>
+                                  )}
+                                  {workflowData.guide_provision?.spt_info?.selected_treatment_keyword && (
+                                    <div className="p-2 bg-green-50 rounded text-xs">
+                                      <span className="font-medium text-green-700">치료:</span>
+                                      <span className="text-green-800 ml-1">{workflowData.guide_provision.spt_info.selected_treatment_keyword}</span>
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">환자 상태:</span>
-                                  <p className="text-sm text-neutral-600 mt-1">
-                                    {workflowData.material_review.materials.treatment_info.patient_condition || '없음'}
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">치료 과정:</span>
-                                  <p className="text-sm text-neutral-600 mt-1">
-                                    {workflowData.material_review.materials.treatment_info.treatment_process_message || '없음'}
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">치료 결과:</span>
-                                  <p className="text-sm text-neutral-600 mt-1">
-                                    {workflowData.material_review.materials.treatment_info.treatment_result_message || '없음'}
-                                  </p>
+
+                                {/* 치아 번호 */}
+                                <div className="p-3 bg-blue-50 rounded">
+                                  <span className="text-sm font-medium text-blue-700 block mb-2">치아 번호:</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {workflowData.material_review.materials.tooth_numbers?.map((tooth: string, index: number) => (
+                                      <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                        {tooth}
+                                      </span>
+                                    )) || <span className="text-xs text-blue-600">없음</span>}
+                                  </div>
                                 </div>
                               </div>
 
-                              {workflowData.material_review.materials.treatment_info.additional_message && (
+                              {/* 컨셉 메시지 */}
+                              <div className="p-3 bg-neutral-50 rounded">
+                                <span className="text-sm font-medium text-neutral-700">컨셉 메시지:</span>
+                                <p className="text-sm text-neutral-600 mt-1">
+                                  {workflowData.material_review.materials?.treatment_info?.concept_message || '없음'}
+                                </p>
+                              </div>
+
+                              {/* 환자 상태 */}
+                              <div className="p-3 bg-neutral-50 rounded">
+                                <span className="text-sm font-medium text-neutral-700">환자 상태:</span>
+                                <p className="text-sm text-neutral-600 mt-1">
+                                  {workflowData.material_review.materials?.treatment_info?.patient_condition || '없음'}
+                                </p>
+                              </div>
+
+                              {/* 치료 전 이미지 */}
+                              {workflowData.material_review.materials.images?.before?.length > 0 && (
+                                <div className="space-y-2">
+                                  <h6 className="text-sm font-medium text-neutral-800">치료 전 이미지</h6>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {workflowData.material_review.materials.images.before.map((image: any, index: number) => (
+                                      <div key={index} className="p-2 bg-white border rounded">
+                                        <div className="text-xs text-neutral-600 mb-1">
+                                          <i className="fa-solid fa-image mr-1"></i>
+                                          {image.filename}
+                                        </div>
+                                        <div className="text-xs text-blue-600">
+                                          <a href={image.path} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            이미지 링크
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {workflowData.material_review.materials?.before_images_texts && (
+                                    <div className="p-3 bg-gray-50 rounded">
+                                      <span className="text-sm font-medium text-gray-700">설명:</span>
+                                      <p className="text-sm text-gray-600 mt-1">{workflowData.material_review.materials.before_images_texts}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* 치료 과정 메시지 */}
+                              <div className="p-3 bg-neutral-50 rounded">
+                                <span className="text-sm font-medium text-neutral-700">치료 과정 메시지:</span>
+                                <p className="text-sm text-neutral-600 mt-1">
+                                  {workflowData.material_review.materials?.treatment_info?.treatment_process_message || '없음'}
+                                </p>
+                              </div>
+
+                              {/* 치료 과정 이미지 */}
+                              {workflowData.material_review.materials.images?.process?.length > 0 && (
+                                <div className="space-y-2">
+                                  <h6 className="text-sm font-medium text-neutral-800">치료 과정 이미지</h6>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {workflowData.material_review.materials.images.process.map((image: any, index: number) => (
+                                      <div key={index} className="p-2 bg-white border rounded">
+                                        <div className="text-xs text-neutral-600 mb-1">
+                                          <i className="fa-solid fa-image mr-1"></i>
+                                          {image.filename}
+                                        </div>
+                                        <div className="text-xs text-blue-600">
+                                          <a href={image.path} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            이미지 링크
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {workflowData.material_review.materials?.process_images_texts && (
+                                    <div className="p-3 bg-gray-50 rounded">
+                                      <span className="text-sm font-medium text-gray-700">설명:</span>
+                                      <p className="text-sm text-gray-600 mt-1">{workflowData.material_review.materials.process_images_texts}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* 치료 결과 메시지 */}
+                              <div className="p-3 bg-neutral-50 rounded">
+                                <span className="text-sm font-medium text-neutral-700">치료 결과 메시지:</span>
+                                <p className="text-sm text-neutral-600 mt-1">
+                                  {workflowData.material_review.materials?.treatment_info?.treatment_result_message || '없음'}
+                                </p>
+                              </div>
+
+                              {/* 치료 후 이미지 */}
+                              {workflowData.material_review.materials.images?.after?.length > 0 && (
+                                <div className="space-y-2">
+                                  <h6 className="text-sm font-medium text-neutral-800">치료 후 이미지</h6>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {workflowData.material_review.materials.images.after.map((image: any, index: number) => (
+                                      <div key={index} className="p-2 bg-white border rounded">
+                                        <div className="text-xs text-neutral-600 mb-1">
+                                          <i className="fa-solid fa-image mr-1"></i>
+                                          {image.filename}
+                                        </div>
+                                        <div className="text-xs text-blue-600">
+                                          <a href={image.path} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            이미지 링크
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {workflowData.material_review.materials?.after_images_texts && (
+                                    <div className="p-3 bg-gray-50 rounded">
+                                      <span className="text-sm font-medium text-gray-700">설명:</span>
+                                      <p className="text-sm text-gray-600 mt-1">{workflowData.material_review.materials.after_images_texts}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* 추가 메시지 */}
+                              {workflowData.material_review.materials?.treatment_info?.additional_message && (
                                 <div className="p-3 bg-neutral-50 rounded">
                                   <span className="text-sm font-medium text-neutral-700">추가 메시지:</span>
                                   <p className="text-sm text-neutral-600 mt-1 whitespace-pre-wrap">
@@ -427,19 +573,7 @@ export default function PostingWorkTab({
                                 </div>
                               )}
 
-                              {workflowData.material_review.materials.tooth_numbers.length > 0 && (
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">치아 번호:</span>
-                                  <div className="mt-2 flex flex-wrap gap-1">
-                                    {workflowData.material_review.materials.tooth_numbers.map((tooth: string, index: number) => (
-                                      <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                        {tooth}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
+                              {/* 자료 품질 평가 */}
                               <div className="flex items-center justify-between p-3 bg-blue-50 rounded">
                                 <span className="text-sm font-medium text-blue-700">자료 품질 평가:</span>
                                 <span className="text-sm font-medium text-blue-700">
