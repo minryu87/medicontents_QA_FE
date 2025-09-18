@@ -33,6 +33,12 @@ interface GuideProvisionData {
       persona_type: string;
       priority: number;
     }>;
+    emoji_options: Array<{
+      value: number;
+      name: string;
+      emoji_usage_guide: string;
+      description?: string;
+    }>;
     keywords_guide: {
       region_keywords: string[];
       hospital_keywords: string[];
@@ -123,7 +129,17 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
           persona_description: guideInputResponse.persona_selection.persona_description
         });
         setPersonaOptions(guideInputResponse.persona_options || []);
-        setKeywordsForm(guideInputResponse.keywords_guide);
+
+        setKeywordsForm({
+          region_keywords: guideInputResponse.keywords_guide.region_keywords || [],
+          hospital_keywords: guideInputResponse.keywords_guide.hospital_keywords || [],
+          symptom_keywords: guideInputResponse.keywords_guide.symptom_keywords || [],
+          procedure_keywords: guideInputResponse.keywords_guide.procedure_keywords || [],
+          treatment_keywords: guideInputResponse.keywords_guide.treatment_keywords || [],
+          target_keywords: guideInputResponse.keywords_guide.target_keywords || [],
+          writing_guide: guideInputResponse.keywords_guide.writing_guide || '',
+          emoji_level_value: guideInputResponse.keywords_guide.emoji_level_value || 2
+        });
       }
       } catch (error) {
         console.error('가이드 제공 데이터 로드 실패:', error);
@@ -141,7 +157,21 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
   const saveKeywordsGuide = async () => {
     try {
       setSaving(true);
-      await adminApi.updateKeywordsGuide(postId, keywordsForm);
+
+      // 프론트엔드 필드 이름을 백엔드 필드 이름으로 변환
+      const transformedData = {
+        region_keywords_guide: keywordsForm.region_keywords,
+        hospital_keywords_guide: keywordsForm.hospital_keywords,
+        symptom_keywords_guide: keywordsForm.symptom_keywords,
+        procedure_keywords_guide: keywordsForm.procedure_keywords,
+        treatment_keywords_guide: keywordsForm.treatment_keywords,
+        target_keywords_guide: keywordsForm.target_keywords,
+        writing_guide: keywordsForm.writing_guide,
+        emoji_level_value: keywordsForm.emoji_level_value,
+        is_completed: false
+      };
+
+      await adminApi.updateKeywordsGuide(postId, transformedData);
       setEditingKeywords(false);
 
       // 우측 패널 데이터만 새로고침
@@ -503,7 +533,18 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
                   <>
                     <button
                       onClick={() => {
-                        setKeywordsForm(input.keywords_guide);
+                        // 원래 값으로 복원
+                        const originalKeywords = data?.guide_input?.keywords_guide;
+                        setKeywordsForm({
+                          region_keywords: originalKeywords?.region_keywords || [],
+                          hospital_keywords: originalKeywords?.hospital_keywords || [],
+                          symptom_keywords: originalKeywords?.symptom_keywords || [],
+                          procedure_keywords: originalKeywords?.procedure_keywords || [],
+                          treatment_keywords: originalKeywords?.treatment_keywords || [],
+                          target_keywords: originalKeywords?.target_keywords || [],
+                          writing_guide: originalKeywords?.writing_guide || '',
+                          emoji_level_value: originalKeywords?.emoji_level_value || 2
+                        });
                         setEditingKeywords(false);
                       }}
                       className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
@@ -611,7 +652,7 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
                   <>
                     <button
                       onClick={() => {
-                        setKeywordsForm(prev => ({ ...prev, emoji_level_value: input.keywords_guide?.emoji_level_value || 2 }));
+                        setKeywordsForm(prev => ({ ...prev, emoji_level_value: data?.guide_input?.keywords_guide?.emoji_level_value || 2 }));
                         setEditingEmoji(false);
                       }}
                       className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
@@ -632,35 +673,61 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
             <div className="p-4">
               {!editingEmoji ? (
                 <div>
-                  <div className="text-sm"><strong>선택된 레벨:</strong> {input.keywords_guide?.emoji_level_value || 2}단계</div>
+                  {input.keywords_guide?.emoji_level_value ? (
+                    <div className="space-y-2">
+                      <div className="text-sm">
+                        <strong>선택된 레벨:</strong> {(() => {
+                          const selectedLevel = data?.guide_input?.emoji_options?.find(
+                            option => option.value === input.keywords_guide.emoji_level_value
+                          );
+                          return selectedLevel ? `${selectedLevel.name} (레벨 ${selectedLevel.value})` : `${input.keywords_guide.emoji_level_value}단계`;
+                        })()}
+                      </div>
+                      {(() => {
+                        const selectedLevel = data?.guide_input?.emoji_options?.find(
+                          option => option.value === input.keywords_guide.emoji_level_value
+                        );
+                        return selectedLevel ? (
+                          <div className="text-sm text-neutral-600 mt-2 p-3 bg-neutral-50 rounded">
+                            <strong>사용 가이드:</strong> {selectedLevel.emoji_usage_guide}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-neutral-500">선택해주세요</div>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      이모지 사용 강도 선택
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      이모지 레벨 선택
                     </label>
-                    <div className="flex items-center space-x-4">
-                      {[1, 2, 3, 4, 5].map((level) => (
-                        <label key={level} className="flex items-center">
-                          <input
-                            type="radio"
-                            name="emoji_level"
-                            value={level}
-                            checked={keywordsForm.emoji_level_value === level}
-                            onChange={(e) => setKeywordsForm(prev => ({ ...prev, emoji_level_value: parseInt(e.target.value) }))}
-                            className="mr-2"
-                          />
-                          <span className="text-sm">{level}단계</span>
-                        </label>
+                    <select
+                      value={keywordsForm.emoji_level_value || ''}
+                      onChange={(e) => setKeywordsForm(prev => ({ ...prev, emoji_level_value: parseInt(e.target.value) }))}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">선택하세요</option>
+                      {data?.guide_input?.emoji_options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.name} (레벨 {option.value})
+                        </option>
                       ))}
-                    </div>
-                    <div className="mt-2 text-sm text-neutral-600">
-                      {keywordsForm.emoji_level_value === 1 && "이모지를 최소한으로 사용"}
-                      {keywordsForm.emoji_level_value === 2 && "기본적인 이모지만 사용"}
-                      {keywordsForm.emoji_level_value === 3 && "적절한 수준의 이모지 사용"}
-                      {keywordsForm.emoji_level_value === 4 && "활발한 이모지 사용"}
-                      {keywordsForm.emoji_level_value === 5 && "매우 적극적인 이모지 사용"}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      사용 가이드
+                    </label>
+                    <div className="text-sm text-neutral-600 p-3 bg-neutral-50 rounded">
+                      {(() => {
+                        const selectedOption = data?.guide_input?.emoji_options?.find(
+                          option => option.value === keywordsForm.emoji_level_value
+                        );
+                        return selectedOption ? selectedOption.emoji_usage_guide : '이모지 레벨을 선택해주세요';
+                      })()}
                     </div>
                   </div>
                 </div>

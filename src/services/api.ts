@@ -508,6 +508,12 @@ export class AdminApiService {
       persona_type: string;
       priority: number;
     }>;
+    emoji_options: Array<{
+      value: number;
+      name: string;
+      emoji_usage_guide: string;
+      description?: string;
+    }>;
     keywords_guide: {
       region_keywords: string[];
       hospital_keywords: string[];
@@ -521,7 +527,7 @@ export class AdminApiService {
     };
   }> {
     const response = await api.get(`/api/v1/admin/posts/${postId}/guide-input`);
-    return response.data;
+    return response.data; // 백엔드에서 이미 camelCase로 반환됨
   }
 
   // 가이드 제공 관련 API
