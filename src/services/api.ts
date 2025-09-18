@@ -498,6 +498,25 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 가이드 입력 데이터 조회 (우측 패널용)
+  async getGuideInput(postId: string): Promise<{
+    persona_selection: { persona_name: string; persona_description: string };
+    keywords_guide: {
+      region_keywords: string[];
+      hospital_keywords: string[];
+      symptom_keywords: string[];
+      procedure_keywords: string[];
+      treatment_keywords: string[];
+      target_keywords: string[];
+      writing_guide: string;
+      is_completed: boolean;
+      emoji_level_value: number;
+    };
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/guide-input`);
+    return response.data;
+  }
+
   // 가이드 제공 관련 API
   async updateKeywordsGuide(postId: string, keywordsGuide: any) {
     const response = await api.put(`/api/v1/admin/posts/${postId}/keywords-guide`, keywordsGuide);

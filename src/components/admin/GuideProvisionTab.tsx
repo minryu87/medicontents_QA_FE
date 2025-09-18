@@ -9,6 +9,7 @@ interface GuideProvisionTabProps {
 }
 
 interface GuideProvisionData {
+  // 좌측 패널: 읽기전용 정보
   guide_provision_info: {
     hospital_info: any;
     campaign_info: any;
@@ -18,18 +19,19 @@ interface GuideProvisionData {
     clinical_context: any;
     publish_info: any[] | any;
   } | null;
-  guide_provision_input: {
+  // 우측 패널: 편집가능 정보
+  guide_input: {
     persona_selection: {
       persona_name: string;
       persona_description: string;
     };
     keywords_guide: {
-      region_keywords_guide: string[];
-      hospital_keywords_guide: string[];
-      symptom_keywords_guide: string[];
-      procedure_keywords_guide: string[];
-      treatment_keywords_guide: string[];
-      target_keywords_guide: string[];
+      region_keywords: string[];
+      hospital_keywords: string[];
+      symptom_keywords: string[];
+      procedure_keywords: string[];
+      treatment_keywords: string[];
+      target_keywords: string[];
       writing_guide: string;
       is_completed: boolean;
       emoji_level_value: number;
@@ -38,17 +40,17 @@ interface GuideProvisionData {
 }
 
 interface KeywordsFormData {
-  region_keywords_guide: string[];
-  hospital_keywords_guide: string[];
-  symptom_keywords_guide: string[];
-  procedure_keywords_guide: string[];
-  treatment_keywords_guide: string[];
-  target_keywords_guide: string[];
+  region_keywords: string[];
+  hospital_keywords: string[];
+  symptom_keywords: string[];
+  procedure_keywords: string[];
+  treatment_keywords: string[];
+  target_keywords: string[];
   writing_guide: string;
   emoji_level_value: number;
 }
 
-type KeywordField = keyof Pick<KeywordsFormData, 'region_keywords_guide' | 'hospital_keywords_guide' | 'symptom_keywords_guide' | 'procedure_keywords_guide' | 'treatment_keywords_guide' | 'target_keywords_guide'>;
+type KeywordField = keyof Pick<KeywordsFormData, 'region_keywords' | 'hospital_keywords' | 'symptom_keywords' | 'procedure_keywords' | 'treatment_keywords' | 'target_keywords'>;
 
 export default function GuideProvisionTab({ postId, hospitalId }: GuideProvisionTabProps) {
   const [data, setData] = useState<GuideProvisionData | null>(null);
@@ -64,12 +66,12 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
   // 폼 데이터
   const [personaForm, setPersonaForm] = useState({ persona_name: '', persona_description: '' });
   const [keywordsForm, setKeywordsForm] = useState<KeywordsFormData>({
-    region_keywords_guide: [],
-    hospital_keywords_guide: [],
-    symptom_keywords_guide: [],
-    procedure_keywords_guide: [],
-    treatment_keywords_guide: [],
-    target_keywords_guide: [],
+    region_keywords: [],
+    hospital_keywords: [],
+    symptom_keywords: [],
+    procedure_keywords: [],
+    treatment_keywords: [],
+    target_keywords: [],
     writing_guide: '',
     emoji_level_value: 2
   });
@@ -79,20 +81,25 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
     const loadData = async () => {
       try {
         setLoading(true);
-        const response = await adminApi.getCompletePostingWorkflow(postId);
 
-        // CompletePostingWorkflow를 GuideProvisionData로 변환
+        // 좌측 패널 데이터 (읽기전용)
+        const workflowResponse = await adminApi.getCompletePostingWorkflow(postId);
+
+        // 우측 패널 데이터 (편집가능)
+        const guideInputResponse = await adminApi.getGuideInput(postId);
+
+        // 데이터를 조합
         const guideData: GuideProvisionData = {
-          guide_provision_info: (response.guide_provision_info || data?.guide_provision_info) as GuideProvisionData['guide_provision_info'],
-          guide_provision_input: (response.guide_provision_input || data?.guide_provision_input) as GuideProvisionData['guide_provision_input']
+          guide_provision_info: workflowResponse.guide_provision_info || null,
+          guide_input: guideInputResponse
         };
 
         setData(guideData);
 
         // 폼 데이터 초기화
-        if (guideData.guide_provision_input) {
-          setPersonaForm(guideData.guide_provision_input.persona_selection);
-          setKeywordsForm(guideData.guide_provision_input.keywords_guide);
+        if (guideInputResponse) {
+          setPersonaForm(guideInputResponse.persona_selection);
+          setKeywordsForm(guideInputResponse.keywords_guide);
         }
       } catch (error) {
         console.error('가이드 제공 데이터 로드 실패:', error);
@@ -112,13 +119,9 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
       await adminApi.updateKeywordsGuide(postId, keywordsForm);
       setEditingKeywords(false);
 
-      // 데이터 새로고침
-      const response = await adminApi.getCompletePostingWorkflow(postId);
-      const guideData: GuideProvisionData = {
-        guide_provision_info: (response.guide_provision_info || data?.guide_provision_info) as GuideProvisionData['guide_provision_info'],
-        guide_provision_input: (response.guide_provision_input || data?.guide_provision_input) as GuideProvisionData['guide_provision_input']
-      };
-      setData(guideData);
+      // 우측 패널 데이터만 새로고침
+      const guideInputResponse = await adminApi.getGuideInput(postId);
+      setData(prev => prev ? { ...prev, guide_input: guideInputResponse } : null);
     } catch (error) {
       console.error('키워드 가이드 저장 실패:', error);
       alert('저장 중 오류가 발생했습니다.');
@@ -134,13 +137,9 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
       await adminApi.updatePersona(postId, personaForm);
       setEditingPersona(false);
 
-      // 데이터 새로고침
-      const response = await adminApi.getCompletePostingWorkflow(postId);
-      const guideData: GuideProvisionData = {
-        guide_provision_info: (response.guide_provision_info || data?.guide_provision_info) as GuideProvisionData['guide_provision_info'],
-        guide_provision_input: (response.guide_provision_input || data?.guide_provision_input) as GuideProvisionData['guide_provision_input']
-      };
-      setData(guideData);
+      // 우측 패널 데이터만 새로고침
+      const guideInputResponse = await adminApi.getGuideInput(postId);
+      setData(prev => prev ? { ...prev, guide_input: guideInputResponse } : null);
     } catch (error) {
       console.error('페르소나 저장 실패:', error);
       alert('저장 중 오류가 발생했습니다.');
@@ -156,13 +155,9 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
       await adminApi.updateEmojiLevel(postId, keywordsForm.emoji_level_value);
       setEditingEmoji(false);
 
-      // 데이터 새로고침
-      const response = await adminApi.getCompletePostingWorkflow(postId);
-      const guideData: GuideProvisionData = {
-        guide_provision_info: (response.guide_provision_info || data?.guide_provision_info) as GuideProvisionData['guide_provision_info'],
-        guide_provision_input: (response.guide_provision_input || data?.guide_provision_input) as GuideProvisionData['guide_provision_input']
-      };
-      setData(guideData);
+      // 우측 패널 데이터만 새로고침
+      const guideInputResponse = await adminApi.getGuideInput(postId);
+      setData(prev => prev ? { ...prev, guide_input: guideInputResponse } : null);
     } catch (error) {
       console.error('이모지 레벨 저장 실패:', error);
       alert('저장 중 오류가 발생했습니다.');
@@ -225,15 +220,15 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
     clinical_context: null,
     publish_info: null
   };
-  const input = data.guide_provision_input || {
+  const input = data.guide_input || {
     persona_selection: { persona_name: '', persona_description: '' },
     keywords_guide: {
-      region_keywords_guide: [],
-      hospital_keywords_guide: [],
-      symptom_keywords_guide: [],
-      procedure_keywords_guide: [],
-      treatment_keywords_guide: [],
-      target_keywords_guide: [],
+      region_keywords: [],
+      hospital_keywords: [],
+      symptom_keywords: [],
+      procedure_keywords: [],
+      treatment_keywords: [],
+      target_keywords: [],
       writing_guide: '',
       is_completed: false,
       emoji_level_value: 2
@@ -476,24 +471,24 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
             <div className="p-4">
               {!editingKeywords ? (
                 <div className="space-y-3">
-                  <div><strong>지역 키워드:</strong> {input.keywords_guide?.region_keywords_guide?.join(', ') || '없음'}</div>
-                  <div><strong>병원 키워드:</strong> {input.keywords_guide?.hospital_keywords_guide?.join(', ') || '없음'}</div>
-                  <div><strong>증상 키워드:</strong> {input.keywords_guide?.symptom_keywords_guide?.join(', ') || '없음'}</div>
-                  <div><strong>진단 키워드:</strong> {input.keywords_guide?.procedure_keywords_guide?.join(', ') || '없음'}</div>
-                  <div><strong>치료 키워드:</strong> {input.keywords_guide?.treatment_keywords_guide?.join(', ') || '없음'}</div>
-                  <div><strong>타겟 키워드:</strong> {input.keywords_guide?.target_keywords_guide?.join(', ') || '없음'}</div>
+                  <div><strong>지역 키워드:</strong> {input.keywords_guide?.region_keywords?.join(', ') || '없음'}</div>
+                  <div><strong>병원 키워드:</strong> {input.keywords_guide?.hospital_keywords?.join(', ') || '없음'}</div>
+                  <div><strong>증상 키워드:</strong> {input.keywords_guide?.symptom_keywords?.join(', ') || '없음'}</div>
+                  <div><strong>진단 키워드:</strong> {input.keywords_guide?.procedure_keywords?.join(', ') || '없음'}</div>
+                  <div><strong>치료 키워드:</strong> {input.keywords_guide?.treatment_keywords?.join(', ') || '없음'}</div>
+                  <div><strong>타겟 키워드:</strong> {input.keywords_guide?.target_keywords?.join(', ') || '없음'}</div>
                   <div><strong>작성 가이드:</strong> {input.keywords_guide?.writing_guide || '없음'}</div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {/* 키워드 입력 필드들 */}
                   {([
-                    { key: 'region_keywords_guide' as KeywordField, label: '지역 키워드', placeholder: '동탄역, 동탄2, 오산동' },
-                    { key: 'hospital_keywords_guide' as KeywordField, label: '병원 키워드', placeholder: '보존과 전문의, 임플란트' },
-                    { key: 'symptom_keywords_guide' as KeywordField, label: '증상 키워드', placeholder: '잇몸 출혈, 치아 통증' },
-                    { key: 'procedure_keywords_guide' as KeywordField, label: '진단 키워드', placeholder: '임플란트 수술, 치아 교정' },
-                    { key: 'treatment_keywords_guide' as KeywordField, label: '치료 키워드', placeholder: '디지털 임플란트, 교정 치료' },
-                    { key: 'target_keywords_guide' as KeywordField, label: '타겟 키워드', placeholder: '동탄역 임플란트, 동탄 임플란트 잇몸 출혈' }
+                    { key: 'region_keywords' as KeywordField, label: '지역 키워드', placeholder: '동탄역, 동탄2, 오산동' },
+                    { key: 'hospital_keywords' as KeywordField, label: '병원 키워드', placeholder: '보존과 전문의, 임플란트' },
+                    { key: 'symptom_keywords' as KeywordField, label: '증상 키워드', placeholder: '잇몸 출혈, 치아 통증' },
+                    { key: 'procedure_keywords' as KeywordField, label: '진단 키워드', placeholder: '임플란트 수술, 치아 교정' },
+                    { key: 'treatment_keywords' as KeywordField, label: '치료 키워드', placeholder: '디지털 임플란트, 교정 치료' },
+                    { key: 'target_keywords' as KeywordField, label: '타겟 키워드', placeholder: '동탄역 임플란트, 동탄 임플란트 잇몸 출혈' }
                   ] as const).map(({ key, label, placeholder }) => (
                     <div key={key}>
                       <label className="block text-sm font-medium text-neutral-700 mb-1">
