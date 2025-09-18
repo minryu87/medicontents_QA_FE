@@ -500,7 +500,14 @@ export class AdminApiService {
 
   // 가이드 입력 데이터 조회 (우측 패널용)
   async getGuideInput(postId: string): Promise<{
-    persona_selection: { persona_name: string; persona_description: string };
+    persona_selection: { persona_style_id?: string; persona_name: string; persona_description: string };
+    persona_options: Array<{
+      id: string;
+      persona_name: string;
+      persona_description: string;
+      persona_type: string;
+      priority: number;
+    }>;
     keywords_guide: {
       region_keywords: string[];
       hospital_keywords: string[];
@@ -691,8 +698,20 @@ export class ClientApiService {
     return response.data.services || [];
   }
 
-  async getPersonaStyles(): Promise<any[]> {
-    const response = await api.get('/api/v1/persona-styles/');
+  async getPersonaStyles(params?: {
+    medical_service_id?: number;
+    is_active?: boolean;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<any[]> {
+    const queryParams = new URLSearchParams();
+    if (params?.medical_service_id) queryParams.append('medical_service_id', params.medical_service_id.toString());
+    if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
+
+    const url = `/api/v1/persona-styles/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const response = await api.get(url);
     return response.data.items || [];
   }
 

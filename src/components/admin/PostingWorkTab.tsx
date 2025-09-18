@@ -294,7 +294,7 @@ export default function PostingWorkTab({
     <div className="px-6 py-4">
       <div className="flex space-x-6">
         {/* 왼쪽 패널: 작업 대상 포스트 목록 */}
-        <div className="w-1/3 bg-white rounded-xl shadow-lg p-4">
+        <div className="w-1/5 bg-white rounded-xl shadow-lg p-4 flex flex-col" style={{ height: '1250px' }}>
           <h3 className="text-lg font-medium text-neutral-900 mb-4">작업 대상 포스트</h3>
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
@@ -309,7 +309,7 @@ export default function PostingWorkTab({
               <p className="text-sm text-neutral-500">캠페인을 선택해주세요</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3 max-h-[1200px] overflow-y-auto">
               {posts.map((post) => (
                 <div
                   key={post.id}
@@ -342,7 +342,7 @@ export default function PostingWorkTab({
         </div>
 
         {/* 오른쪽 패널: 작업 상세 */}
-        <div className="w-2/3 bg-white rounded-xl shadow-lg p-4">
+        <div className="w-4/5 bg-white rounded-xl shadow-lg p-4 overflow-y-auto" style={{ height: '1250px' }}>
           <h3 className="text-lg font-medium text-neutral-900 mb-4">
             {selectedPost ? `${selectedPost.title} 작업 상세` : '포스트를 선택해주세요'}
           </h3>
@@ -370,10 +370,6 @@ export default function PostingWorkTab({
 
               {/* 단계별 작업 콘텐츠 */}
               <div className="min-h-[400px] bg-neutral-50 rounded-lg p-6">
-                <h4 className="text-lg font-semibold text-neutral-900 mb-4">
-                  {steps.find(s => s.id === activeStep)?.label}
-                </h4>
-
                 {workflowLoading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600 mx-auto"></div>

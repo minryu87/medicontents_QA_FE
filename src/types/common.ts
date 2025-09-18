@@ -363,6 +363,7 @@ export interface CompletePostingWorkflow {
   };
   guide_provision_input?: {
     persona_selection: {
+      persona_style_id?: string;
       persona_name: string;
       persona_description: string;
     };
