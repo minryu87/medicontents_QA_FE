@@ -103,6 +103,31 @@ export class AdminApiService {
     return response.data;
   }
 
+  async getStatusMonitor(): Promise<{
+    campaign_operation: {
+      total_campaigns: number;
+      active_campaigns: number;
+      completed_campaigns: number;
+    };
+    posting_creation: {
+      created_today: number;
+      created_this_week: number;
+    };
+    posting_publish: {
+      published_today: number;
+      published_this_week: number;
+    };
+    performance_monitoring: {
+      published_posts: number;
+      in_review_posts: number;
+      processing_posts: number;
+      total_posts: number;
+    };
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard/status-monitor');
+    return response.data;
+  }
+
   async getPostWorkflow(postId: string): Promise<{
     post: {
       id: number;

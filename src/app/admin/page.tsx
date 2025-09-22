@@ -19,6 +19,34 @@ const getStageDisplayName = (stage: string) => {
   return stageMap[stage] || stage;
 };
 
+// 현황 모니터 색상 결정 함수 (일정 기반)
+const getStatusMonitorColor = (item: any, category: string) => {
+  // 성과 모니터링은 항상 회색
+  if (category === 'performance_monitoring') {
+    return 'neutral';
+  }
+
+  // 모든 카테고리에서 일정 색상 우선 사용
+  if (item && item.schedule_color) {
+    return item.schedule_color;
+  }
+
+  // fallback: 값 기반 색상 (캠페인 운영 제외)
+  if (category !== 'campaign_operation') {
+    const value = category === 'posting_creation' ? item.created_this_week :
+                 category === 'posting_publish' ? item.published_this_week : 0;
+
+    if (value === 0) return 'neutral';
+    if (value >= 1 && value <= 9) return 'yellow';
+    return 'green';
+  }
+
+  // 캠페인 운영 fallback
+  const activeCampaigns = item?.active_campaigns || 0;
+  if (activeCampaigns === 0) return 'neutral';
+  return 'green';
+};
+
 // 메인 컴포넌트
 export default function AdminDashboard() {
   const router = useRouter();
@@ -33,6 +61,7 @@ export default function AdminDashboard() {
   const [processingStatus, setProcessingStatus] = useState<any>(null);
   const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
   const [postsByStatus, setPostsByStatus] = useState<any>({});
+  const [statusMonitor, setStatusMonitor] = useState<any>(null);
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [recentAgentLogs, setRecentAgentLogs] = useState<any[]>([]);
 
@@ -59,10 +88,11 @@ export default function AdminDashboard() {
         setAgentPerformance(dashboardData.agent_performance);
         setQualityMetrics(dashboardData.quality_metrics);
         setProcessingStatus(dashboardData.processing_status);
-        setSystemAlerts(dashboardData.alerts);
-        setHospitals(dashboardData.hospitals);
-        setRecentAgentLogs(dashboardData.agent_logs);
-        setPostsByStatus(dashboardData.posts_by_status || {});
+               setSystemAlerts(dashboardData.alerts);
+               setHospitals(dashboardData.hospitals);
+               setRecentAgentLogs(dashboardData.agent_logs);
+               setPostsByStatus(dashboardData.posts_by_status || {});
+               setStatusMonitor(dashboardData.status_monitor);
         // return; // 통합 API가 성공해도 긴급 데이터는 별도로 로드
       } catch (integratedError) {
         console.warn('통합 API 실패, 개별 API로 폴백:', integratedError);
@@ -80,6 +110,7 @@ export default function AdminDashboard() {
         qualityRes,
         processingRes,
         alertsRes,
+        statusMonitorRes,
         hospitalsRes,
         agentLogsRes
       ] = await Promise.allSettled([
@@ -90,6 +121,7 @@ export default function AdminDashboard() {
         adminApi.getQualityMetrics(),
         adminApi.getProcessingStatus(),
         adminApi.getSystemAlerts(),
+        adminApi.getStatusMonitor(),
         adminApi.getHospitals(),
         adminApi.getRecentAgentLogs()
       ]);
@@ -121,6 +153,10 @@ export default function AdminDashboard() {
 
       if (alertsRes.status === 'fulfilled') {
         setSystemAlerts(alertsRes.value);
+      }
+
+      if (statusMonitorRes.status === 'fulfilled') {
+        setStatusMonitor(statusMonitorRes.value.data);
       }
 
       if (hospitalsRes.status === 'fulfilled') {
@@ -380,35 +416,75 @@ export default function AdminDashboard() {
               <h2 className="text-sm text-neutral-900 mb-3">현황 모니터</h2>
               <div className="grid grid-cols-2 gap-2">
                 <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
+                    getStatusMonitorColor(statusMonitor?.campaign_operation, 'campaign_operation') === 'neutral' ? 'bg-neutral-400' :
+                    getStatusMonitorColor(statusMonitor?.campaign_operation, 'campaign_operation') === 'yellow' ? 'bg-yellow-500' :
+                    getStatusMonitorColor(statusMonitor?.campaign_operation, 'campaign_operation') === 'red' ? 'bg-red-500' :
+                    'bg-green-600'
+                  }`}>
                     <i className="fa-solid fa-bullhorn text-white text-xs"></i>
                   </div>
                   <h3 className="text-xs text-neutral-800">캠페인 운영</h3>
-                  <p className="text-xs text-neutral-600">null</p>
+                  <p className="text-xs text-neutral-600">
+                    {statusMonitor?.campaign_operation?.active_campaigns || 0}개 활성
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    총 {statusMonitor?.campaign_operation?.total_campaigns || 0}개
+                  </p>
                 </div>
 
                 <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
+                    getStatusMonitorColor(statusMonitor?.posting_creation, 'posting_creation') === 'neutral' ? 'bg-neutral-400' :
+                    getStatusMonitorColor(statusMonitor?.posting_creation, 'posting_creation') === 'yellow' ? 'bg-yellow-500' :
+                    getStatusMonitorColor(statusMonitor?.posting_creation, 'posting_creation') === 'red' ? 'bg-red-500' :
+                    'bg-green-600'
+                  }`}>
                     <i className="fa-solid fa-edit text-white text-xs"></i>
                   </div>
                   <h3 className="text-xs text-neutral-800">포스팅 생성</h3>
-                  <p className="text-xs text-neutral-600">null</p>
+                  <p className="text-xs text-neutral-600">
+                    오늘 {statusMonitor?.posting_creation?.created_today || 0}개
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    이번주 {statusMonitor?.posting_creation?.created_this_week || 0}개
+                  </p>
                 </div>
 
                 <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
+                    getStatusMonitorColor(statusMonitor?.posting_publish, 'posting_publish') === 'neutral' ? 'bg-neutral-400' :
+                    getStatusMonitorColor(statusMonitor?.posting_publish, 'posting_publish') === 'yellow' ? 'bg-yellow-500' :
+                    getStatusMonitorColor(statusMonitor?.posting_publish, 'posting_publish') === 'red' ? 'bg-red-500' :
+                    'bg-green-600'
+                  }`}>
                     <i className="fa-solid fa-paper-plane text-white text-xs"></i>
                   </div>
                   <h3 className="text-xs text-neutral-800">포스팅 게시</h3>
-                  <p className="text-xs text-neutral-600">null</p>
+                  <p className="text-xs text-neutral-600">
+                    오늘 {statusMonitor?.posting_publish?.published_today || 0}개
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    이번주 {statusMonitor?.posting_publish?.published_this_week || 0}개
+                  </p>
                 </div>
 
                 <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
+                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
+                    getStatusMonitorColor(statusMonitor?.performance_monitoring, 'performance_monitoring') === 'neutral' ? 'bg-neutral-400' :
+                    getStatusMonitorColor(statusMonitor?.performance_monitoring, 'performance_monitoring') === 'yellow' ? 'bg-yellow-500' :
+                    getStatusMonitorColor(statusMonitor?.performance_monitoring, 'performance_monitoring') === 'red' ? 'bg-red-500' :
+                    'bg-green-600'
+                  }`}>
                     <i className="fa-solid fa-chart-line text-white text-xs"></i>
                   </div>
                   <h3 className="text-xs text-neutral-800">성과 모니터링</h3>
-                  <p className="text-xs text-neutral-600">null</p>
+                  <p className="text-xs text-neutral-600">
+                    게시 {statusMonitor?.performance_monitoring?.published_posts || 0}개
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    검토중 {statusMonitor?.performance_monitoring?.in_review_posts || 0}개
+                  </p>
                 </div>
               </div>
             </div>
