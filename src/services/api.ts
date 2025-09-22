@@ -123,6 +123,24 @@ export class AdminApiService {
     return response.data;
   }
 
+  async getCalendarSchedule(year: number, month: number): Promise<{
+    date: string;
+    scheduled_count: number;
+    published_count: number;
+    failed_count: number;
+    posts: Array<{
+      post_id: string;
+      title: string;
+      hospital_name: string;
+      status: string;
+      scheduled_date: string;
+      publish_date?: string;
+    }>;
+  }[]> {
+    const response = await api.get(`/api/v1/admin/dashboard/calendar/${year}/${month}`);
+    return response.data;
+  }
+
   async getQualityMetrics(): Promise<{
     avg_seo_score: number;
     avg_legal_score: number;

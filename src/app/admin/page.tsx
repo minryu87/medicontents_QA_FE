@@ -70,6 +70,11 @@ export default function AdminDashboard() {
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [recentAgentLogs, setRecentAgentLogs] = useState<any[]>([]);
 
+  // 캘린더 관련 상태
+  const [calendarData, setCalendarData] = useState<any[]>([]);
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [selectedDateInfo, setSelectedDateInfo] = useState<any>(null);
+
   // 긴급 처리 필요 데이터
   const [systemErrors, setSystemErrors] = useState<any[]>([]);
   const [failedAgentJobs, setFailedAgentJobs] = useState<any[]>([]);
@@ -78,6 +83,23 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // 캘린더 날짜 변경 시 데이터 재로드
+  useEffect(() => {
+    const loadCalendarData = async () => {
+      try {
+        const year = currentCalendarDate.getFullYear();
+        const month = currentCalendarDate.getMonth() + 1;
+        const calendarDataResponse = await adminApi.getCalendarSchedule(year, month);
+        setCalendarData(calendarDataResponse?.data || []);
+      } catch (error) {
+        console.warn('캘린더 데이터 로드 실패:', error);
+        setCalendarData([]);
+      }
+    };
+
+    loadCalendarData();
+  }, [currentCalendarDate]);
 
   const loadDashboardData = async () => {
     try {
@@ -187,6 +209,12 @@ export default function AdminDashboard() {
 
       if (results.agentLogsRes?.status === 'fulfilled') {
         setRecentAgentLogs(results.agentLogsRes.value);
+      }
+
+      if (results.calendarRes?.status === 'fulfilled') {
+        setCalendarData(results.calendarRes.value?.data || []);
+      } else {
+        console.warn('❌ 캘린더 API 실패:', results.calendarRes?.reason);
       }
 
       // 포스트 데이터 로드 (상태별 분류)
@@ -376,41 +404,6 @@ export default function AdminDashboard() {
       {/* Main Content Area */}
       <div className="overflow-y-auto">
 
-        {/* Header Section */}
-        <div className="bg-white border-b border-neutral-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl text-neutral-900">운영 현황</h1>
-              <p className="text-neutral-600 text-sm mt-1">
-                {new Date().toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  weekday: 'long'
-                })}
-                {dashboardStats && (
-                  <span className="ml-4 text-xs">
-                    총 {dashboardStats.totalPosts || 0}개 포스트 · {dashboardStats.activePosts || 0}개 진행중
-                  </span>
-                )}
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button className="px-3 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 text-sm">
-                <i className="fa-solid fa-plus mr-1"></i>
-                새 캠페인
-              </button>
-              <button className="p-2 text-neutral-500 hover:text-neutral-700">
-                <i className="fa-solid fa-bell"></i>
-                {systemAlerts && systemAlerts.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                    {systemAlerts.length}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Alert Cards Section */}
         <div className="px-6 py-4">
@@ -1107,101 +1100,182 @@ export default function AdminDashboard() {
 
             {/* 캘린더 */}
             <div className="bg-white rounded-xl shadow-lg p-4">
-              <h2 className="text-lg text-neutral-900 mb-3">
-                {new Date().toLocaleDateString('ko-KR', { month: 'long', year: 'numeric' })}
-              </h2>
+              {/* 캘린더 헤더 - 네비게이션 */}
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => {
+                    const newDate = new Date(currentCalendarDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setCurrentCalendarDate(newDate);
+                  }}
+                  className="text-neutral-600 hover:text-neutral-800 p-1"
+                >
+                  <i className="fa-solid fa-chevron-left text-sm"></i>
+                </button>
+                <h2 className="text-lg text-neutral-900 font-medium">
+                  {currentCalendarDate.toLocaleDateString('ko-KR', { month: 'long', year: 'numeric' })}
+                </h2>
+                <button
+                  onClick={() => {
+                    const newDate = new Date(currentCalendarDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setCurrentCalendarDate(newDate);
+                  }}
+                  className="text-neutral-600 hover:text-neutral-800 p-1"
+                >
+                  <i className="fa-solid fa-chevron-right text-sm"></i>
+                </button>
+              </div>
+
+              {/* 요일 헤더 */}
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
-                  <div key={index} className="text-center text-xs text-neutral-500 py-1">
+                  <div key={index} className="text-center text-xs text-neutral-500 py-2 font-medium">
                     {day}
                   </div>
                 ))}
               </div>
+
+              {/* 날짜 그리드 */}
               <div className="grid grid-cols-7 gap-1">
-                {/* 이번 달의 첫 날까지 빈 칸 채우기 */}
                 {(() => {
-                  const today = new Date();
-                  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                  const startDayOfWeek = firstDay.getDay(); // 0: 일요일, 1: 월요일, ...
+                  const year = currentCalendarDate.getFullYear();
+                  const month = currentCalendarDate.getMonth();
+                  const firstDay = new Date(year, month, 1);
+                  const lastDay = new Date(year, month + 1, 0);
+                  const startDayOfWeek = firstDay.getDay();
+                  const totalDays = lastDay.getDate();
 
-                  return Array.from({ length: startDayOfWeek }, (_, i) => (
-                    <div key={`empty-${i}`} className="text-center py-1 text-xs text-neutral-400"></div>
+                  const today = new Date();
+                  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+                  // 빈 칸 채우기
+                  const emptyCells = Array.from({ length: startDayOfWeek }, (_, i) => (
+                    <div key={`empty-${i}`} className="py-2"></div>
                   ));
-                })()}
 
-                {/* 날짜들 */}
-                {(() => {
-                  const today = new Date();
-                  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-                  const currentDay = today.getDate();
-
-                  return Array.from({ length: lastDay }, (_, i) => {
+                  // 날짜 셀들
+                  const dateCells = Array.from({ length: totalDays }, (_, i) => {
                     const day = i + 1;
-                    const isToday = day === currentDay;
+                    const isToday = isCurrentMonth && day === today.getDate();
 
-                    // 게시 예정 포스트가 있는 날짜 계산
-                    const publishedPosts = postsByStatus?.published || [];
-                    const scheduledPosts = postsByStatus?.final_approved || [];
-                    const hasPosts = [...publishedPosts, ...scheduledPosts].some((post: any) => {
-                      const postDate = post.publish_date ? new Date(post.publish_date) : null;
-                      return postDate && postDate.getDate() === day && postDate.getMonth() === today.getMonth();
-                    });
+                    // 해당 날짜의 일정 데이터 찾기
+                    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const daySchedule = calendarData.find((item: any) => item.date === dateString);
+
+                    const hasScheduled = (daySchedule?.scheduled_count || 0) > 0;
+                    const hasPublished = (daySchedule?.published_count || 0) > 0;
+                    const hasFailed = (daySchedule?.failed_count || 0) > 0;
 
                     return (
                       <div
                         key={day}
-                        className={`text-center py-1 text-xs relative ${
-                          isToday ? 'bg-neutral-600 text-white rounded' :
-                          hasPosts ? 'font-medium text-neutral-800' : 'text-neutral-700'
+                        onClick={() => daySchedule && setSelectedDateInfo(daySchedule)}
+                        className={`py-2 text-center text-sm cursor-pointer hover:bg-neutral-50 rounded transition-colors ${
+                          isToday ? 'bg-sky-100 text-sky-700 font-medium' :
+                          hasFailed ? 'text-red-600' :
+                          hasPublished ? 'text-green-600' :
+                          hasScheduled ? 'text-sky-600' : 'text-neutral-700'
                         }`}
                       >
-                        {day}
-                        {hasPosts && !isToday && (
-                          <div className="w-1 h-1 bg-neutral-600 rounded-full mx-auto mt-1"></div>
-                        )}
+                        <div className="relative">
+                          {day}
+                          {/* 일정 표시 점 */}
+                          {(hasScheduled || hasPublished || hasFailed) && (
+                            <div className="flex justify-center mt-1 space-x-0.5">
+                              {hasScheduled && <div className="w-1 h-1 bg-sky-400 rounded-full"></div>}
+                              {hasPublished && <div className="w-1 h-1 bg-green-400 rounded-full"></div>}
+                              {hasFailed && <div className="w-1 h-1 bg-red-400 rounded-full"></div>}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   });
+
+                  return [...emptyCells, ...dateCells];
                 })()}
               </div>
-              <div className="mt-3 space-y-1">
-                <div className="flex items-center text-xs">
-                  <div className="w-2 h-2 bg-neutral-600 rounded-full mr-2"></div>
-                  <span className="text-neutral-600">게시 예정/완료</span>
-                </div>
-                <div className="flex items-center text-xs">
-                  <div className="w-2 h-2 bg-neutral-600 rounded-full mr-2"></div>
-                  <span className="text-neutral-600">오늘</span>
+
+              {/* 범례 */}
+              <div className="mt-4 pt-3 border-t border-neutral-200">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-sky-400 rounded-full mr-2"></div>
+                    <span className="text-neutral-600">게시 예정</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                    <span className="text-neutral-600">게시 완료</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-red-400 rounded-full mr-2"></div>
+                    <span className="text-neutral-600">실패</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-sky-600 rounded-full mr-2"></div>
+                    <span className="text-neutral-600">오늘</span>
+                  </div>
                 </div>
               </div>
+
+              {/* 선택된 날짜 상세 정보 모달 */}
+              {selectedDateInfo && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setSelectedDateInfo(null)}>
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-96 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium text-neutral-900">
+                        {new Date(selectedDateInfo.date).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </h3>
+                      <button
+                        onClick={() => setSelectedDateInfo(null)}
+                        className="text-neutral-400 hover:text-neutral-600"
+                      >
+                        <i className="fa-solid fa-times"></i>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">게시 예정:</span>
+                        <span className="font-medium">{selectedDateInfo.scheduled_count}건</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">게시 완료:</span>
+                        <span className="font-medium text-green-600">{selectedDateInfo.published_count}건</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">실패:</span>
+                        <span className="font-medium text-red-600">{selectedDateInfo.failed_count}건</span>
+                      </div>
+
+                      {selectedDateInfo.posts && selectedDateInfo.posts.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-neutral-200">
+                          <h4 className="text-sm font-medium text-neutral-900 mb-2">상세 일정</h4>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {selectedDateInfo.posts.map((post: any, index: number) => (
+                              <div key={index} className="text-xs p-2 bg-neutral-50 rounded">
+                                <div className="font-medium text-neutral-800 truncate">{post.title}</div>
+                                <div className="text-neutral-600 mt-1">
+                                  {post.hospital_name} • {post.status === 'published' ? '게시완료' : '게시예정'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* 빠른 작업 섹션 */}
-        <div className="px-6 pb-6">
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-lg text-neutral-900 mb-3">빠른 작업</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { icon: 'fa-plus', title: '새 캠페인' },
-                { icon: 'fa-hospital', title: '병원 추가' },
-                { icon: 'fa-file-alt', title: '포스트 생성' },
-                { icon: 'fa-download', title: '보고서 다운로드' }
-              ].map((action, index) => (
-                <button
-                  key={index}
-                  className="flex flex-col items-center p-3 border-2 border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center mb-2">
-                    <i className={`fa-solid ${action.icon} text-neutral-600 text-sm`}></i>
-                  </div>
-                  <span className="text-xs text-neutral-700">{action.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
 
         {/* 플로팅 채팅 버튼 */}
         <div className="fixed bottom-6 right-6">
