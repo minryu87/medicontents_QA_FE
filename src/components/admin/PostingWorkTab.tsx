@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { adminApi } from '@/services/api';
 import type { CompletePostingWorkflow } from '@/types/common';
 import GuideProvisionTab from '@/components/admin/GuideProvisionTab';
+import AIGenerationTab from '@/components/admin/AIGenerationTab';
 
 interface Post {
   id: string;
@@ -612,125 +613,8 @@ export default function PostingWorkTab({
                       />
                     )}
 
-                    {activeStep === 'ai-agent' && (
-                      <div className="space-y-4">
-                        <div className="bg-white p-4 rounded-lg border border-neutral-200">
-                          <h5 className="font-medium text-neutral-900 mb-4">AI 에이전트 실행 현황</h5>
-
-                          <div className="space-y-4">
-                            {/* 전체 진행률 */}
-                            <div className="p-3 bg-blue-50 rounded">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-blue-700">전체 진행률</span>
-                                <span className="text-sm font-medium text-blue-700">
-                                  {workflowData.ai_generation.progress || 0}%
-                                </span>
-                              </div>
-                              <div className="w-full bg-blue-200 rounded-full h-2">
-                                <div
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                  style={{width: `${workflowData.ai_generation.progress || 0}%`}}
-                                ></div>
-                              </div>
-                              <div className="text-xs text-blue-600 mt-1">
-                                {workflowData.ai_generation.current_step || '준비 중'}
-                              </div>
-                            </div>
-
-                            {/* 각 에이전트 상태 */}
-                            <div className="space-y-3">
-                              <h6 className="text-sm font-medium text-neutral-700">에이전트별 진행 상황</h6>
-
-                              {workflowData.ai_generation.agents.map((agent, index: number) => (
-                                <div key={index} className="border border-neutral-200 rounded p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-neutral-800">
-                                      {agent.name || `에이전트 ${index + 1}`}
-                                    </span>
-                                    <span className={`text-xs px-2 py-1 rounded ${
-                                      agent.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                      agent.status === 'running' ? 'bg-blue-100 text-blue-800' :
-                                      agent.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                      'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {agent.status === 'completed' ? '완료' :
-                                       agent.status === 'running' ? '실행중' :
-                                       agent.status === 'failed' ? '실패' : '대기중'}
-                                    </span>
-                                  </div>
-
-                                  {agent.start_time && (
-                                    <div className="text-xs text-neutral-600 mb-1">
-                                      시작: {new Date(agent.start_time).toLocaleString()}
-                                    </div>
-                                  )}
-                                  {agent.end_time && (
-                                    <div className="text-xs text-neutral-600 mb-1">
-                                      완료: {new Date(agent.end_time).toLocaleString()}
-                                    </div>
-                                  )}
-
-                                  <div className="w-full bg-neutral-200 rounded-full h-1.5 mt-2">
-                                    <div
-                                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                                        agent.status === 'completed' ? 'bg-green-500' :
-                                        agent.status === 'running' ? 'bg-blue-500' :
-                                        agent.status === 'failed' ? 'bg-red-500' : 'bg-gray-400'
-                                      }`}
-                                      style={{width: `${agent.progress}%`}}
-                                    ></div>
-                                  </div>
-
-                                  {agent.output && (
-                                    <div className="mt-2 p-2 bg-neutral-50 rounded text-xs">
-                                      <div className="text-neutral-700 mb-1">결과:</div>
-                                      <div className="text-neutral-600 whitespace-pre-wrap max-h-20 overflow-y-auto">
-                                        {agent.output.length > 100 ? `${agent.output.substring(0, 100)}...` : agent.output}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {agent.error && (
-                                    <div className="mt-2 p-2 bg-red-50 rounded text-xs">
-                                      <div className="text-red-700 mb-1">오류:</div>
-                                      <div className="text-red-600">{agent.error}</div>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* 실행 제어 버튼들 */}
-                            <div className="flex space-x-2">
-                              {workflowData.ai_generation.agents.some(a => a.status === 'completed') && (
-                                <button
-                                  onClick={() => setActiveStep('result-review')}
-                                  className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                                >
-                                  결과 검토
-                                </button>
-                              )}
-
-                              {!workflowData.ai_generation.agents.some(a => a.status === 'running') && (
-                                <button
-                                  onClick={executeAIPipeline}
-                                  disabled={isWorking}
-                                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isWorking ? '실행중...' : '파이프라인 실행'}
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => loadWorkflowData(selectedPost.post_id)}
-                                className="px-4 py-2 bg-neutral-600 text-white text-sm rounded hover:bg-neutral-700"
-                              >
-                                새로고침
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    {activeStep === 'ai-agent' && selectedPost && (
+                      <AIGenerationTab postId={selectedPost.post_id} />
                     )}
 
                     {activeStep === 'result-review' && (

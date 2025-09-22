@@ -557,6 +557,82 @@ export class AdminApiService {
     const response = await api.put(`/api/v1/admin/posts/${postId}/content`, contentData);
     return response.data;
   }
+
+  // AI 생성 관련 API
+  async getGenerationPreview(postId: string): Promise<{
+    post_id: string;
+    input_data_summary: {
+      has_hospital_info: boolean;
+      has_treatment_info: boolean;
+      has_medical_service_info: boolean;
+      has_post_materials: boolean;
+      has_keywords_guide: boolean;
+      has_clinical_context: boolean;
+      hospital_images_count: number;
+      post_images_count: number;
+      cache_hit: boolean;
+    };
+    agent_sequence: Array<{
+      step: number;
+      agent_type: string;
+      name: string;
+      description: string;
+      estimated_duration: number;
+    }>;
+    prompts_preview: Record<string, any>;
+    checklists_preview: Array<{
+      name: string;
+      criteria: string[];
+    }>;
+    estimated_duration: number;
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/generation-preview`);
+    return response.data;
+  }
+
+  async controlGeneration(postId: string, request: {
+    action: string;
+    parameters?: Record<string, any>;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    pipeline_id?: string;
+    status: string;
+  }> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/generation-control`, request);
+    return response.data;
+  }
+
+  async getGenerationResults(postId: string): Promise<{
+    post_id: string;
+    overall_status: string;
+    total_duration: number;
+    successful_agents: number;
+    total_agents: number;
+    agent_results: Array<{
+      agent_type: string;
+      status: string;
+      duration?: number;
+      result_count: number;
+      has_content: boolean;
+    }>;
+    final_content?: {
+      title?: string;
+      content?: string;
+      html_content?: string;
+      markdown_content?: string;
+    };
+    evaluation_scores?: {
+      seo_score?: number;
+      legal_score?: number;
+      medical_score?: number;
+      overall_score?: number;
+    };
+    created_at: string;
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/generation-results`);
+    return response.data;
+  }
 }
 
 export class ClientApiService {
