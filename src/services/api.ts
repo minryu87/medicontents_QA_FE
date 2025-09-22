@@ -39,8 +39,64 @@ export class AdminApiService {
     description: string;
     timestamp: string;
     related_id?: number;
+    hospital_name?: string;
+    agent_type?: string;
+    old_status?: string;
+    new_status?: string;
+    changed_by?: string;
+    scheduled_date?: string;
   }>> {
-    const response = await api.get('/api/v1/admin/dashboard/activities');
+    const response = await api.get('/api/v1/admin/dashboard/activities', { timeout: 60000 });
+    return response.data;
+  }
+
+  // 긴급 처리 관련 API 메소드들
+  async getSystemErrors(): Promise<{
+    success: boolean;
+    data: Array<{
+      id: string;
+      message: string;
+      timestamp: string;
+      severity: string;
+    }>;
+    total: number;
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard/system-errors');
+    return response.data;
+  }
+
+  async getFailedAgentJobs(): Promise<{
+    success: boolean;
+    data: Array<{
+      id: string;
+      agent_type: string;
+      post_id: string;
+      error_message: string;
+      timestamp: string;
+      retry_count: number;
+    }>;
+    total: number;
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs');
+    return response.data;
+  }
+
+  async getDelayedScheduleJobs(): Promise<{
+    success: boolean;
+    data: Array<{
+      id: string;
+      post_id: string;
+      hospital_id: number;
+      hospital_name: string;
+      urgent_stage: string;
+      delay_days: number;
+      scheduled_date: string;
+      deadline: string;
+      post_title: string;
+    }>;
+    total: number;
+  }> {
+    const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs');
     return response.data;
   }
 
@@ -124,7 +180,7 @@ export class AdminApiService {
       total_posts: number;
     };
   }> {
-    const response = await api.get('/api/v1/admin/dashboard/status-monitor');
+    const response = await api.get('/api/v1/admin/dashboard/status-monitor', { timeout: 60000 });
     return response.data;
   }
 
@@ -348,8 +404,9 @@ export class AdminApiService {
     hospitals: any[];
     agent_logs: any[];
     posts_by_status: any;
+    status_monitor: any;
   }> {
-    const response = await api.get('/api/v1/admin/dashboard');
+    const response = await api.get('/api/v1/admin/dashboard', { timeout: 60000 }); // 60초 타임아웃
     return response.data;
   }
 

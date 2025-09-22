@@ -21,13 +21,18 @@ const getStageDisplayName = (stage: string) => {
 
 // 현황 모니터 색상 결정 함수 (일정 기반)
 const getStatusMonitorColor = (item: any, category: string) => {
+  // item이 없거나 undefined인 경우 neutral 반환
+  if (!item) {
+    return 'neutral';
+  }
+
   // 성과 모니터링은 항상 회색
   if (category === 'performance_monitoring') {
     return 'neutral';
   }
 
   // 모든 카테고리에서 일정 색상 우선 사용
-  if (item && item.schedule_color) {
+  if (item.schedule_color) {
     return item.schedule_color;
   }
 
@@ -42,7 +47,7 @@ const getStatusMonitorColor = (item: any, category: string) => {
   }
 
   // 캠페인 운영 fallback
-  const activeCampaigns = item?.active_campaigns || 0;
+  const activeCampaigns = item.active_campaigns || 0;
   if (activeCampaigns === 0) return 'neutral';
   return 'green';
 };
@@ -88,83 +93,100 @@ export default function AdminDashboard() {
         setAgentPerformance(dashboardData.agent_performance);
         setQualityMetrics(dashboardData.quality_metrics);
         setProcessingStatus(dashboardData.processing_status);
-               setSystemAlerts(dashboardData.alerts);
-               setHospitals(dashboardData.hospitals);
-               setRecentAgentLogs(dashboardData.agent_logs);
-               setPostsByStatus(dashboardData.posts_by_status || {});
-               setStatusMonitor(dashboardData.status_monitor);
+        setSystemAlerts(dashboardData.alerts);
+        setHospitals(dashboardData.hospitals);
+        setRecentAgentLogs(dashboardData.agent_logs);
+        setPostsByStatus(dashboardData.posts_by_status || {});
+        setStatusMonitor(dashboardData.status_monitor);
+
         // return; // 통합 API가 성공해도 긴급 데이터는 별도로 로드
       } catch (integratedError) {
         console.warn('통합 API 실패, 개별 API로 폴백:', integratedError);
+        console.error('통합 API 에러 상세:', (integratedError as any)?.response?.data || (integratedError as any)?.message);
       }
 
       // 긴급 처리 필요 데이터 로드 (항상 실행)
       await loadEmergencyData();
 
-      // 폴백: 기존 개별 API 방식
-      const [
-        statsRes,
-        activitiesRes,
-        systemRes,
-        agentPerfRes,
-        qualityRes,
-        processingRes,
-        alertsRes,
-        statusMonitorRes,
-        hospitalsRes,
-        agentLogsRes
-      ] = await Promise.allSettled([
-        adminApi.getDashboardStats(),
-        adminApi.getRecentActivities(),
-        adminApi.getSystemStatus(),
-        adminApi.getAgentPerformance(),
-        adminApi.getQualityMetrics(),
-        adminApi.getProcessingStatus(),
-        adminApi.getSystemAlerts(),
-        adminApi.getStatusMonitor(),
-        adminApi.getHospitals(),
-        adminApi.getRecentAgentLogs()
-      ]);
+      // 폴백: 기존 개별 API 방식 (완전 개별 호출로 변경)
+      const results: any = {};
+
+      // 각 API를 개별적으로 호출 (타임아웃 방지)
+      try {
+        results.statsRes = { status: 'fulfilled', value: await adminApi.getDashboardStats() };
+      } catch (e) {
+        console.warn('stats API 실패:', e);
+        results.statsRes = { status: 'rejected', reason: e };
+      }
+
+      try {
+        results.activitiesRes = { status: 'fulfilled', value: await adminApi.getRecentActivities() };
+      } catch (e) {
+        console.warn('activities API 실패:', e);
+        results.activitiesRes = { status: 'rejected', reason: e };
+      }
+
+      try {
+        results.systemRes = { status: 'fulfilled', value: await adminApi.getSystemStatus() };
+      } catch (e) {
+        console.warn('system status API 실패:', e);
+        results.systemRes = { status: 'rejected', reason: e };
+      }
+
+      try {
+        results.statusMonitorRes = { status: 'fulfilled', value: await adminApi.getStatusMonitor() };
+      } catch (e) {
+        console.warn('status monitor API 실패:', e);
+        results.statusMonitorRes = { status: 'rejected', reason: e };
+      }
 
       // 각 API 결과를 상태에 저장
-      if (statsRes.status === 'fulfilled') {
-        setDashboardStats(statsRes.value);
+      if (results.statsRes?.status === 'fulfilled') {
+        setDashboardStats(results.statsRes.value);
       }
 
-      if (activitiesRes.status === 'fulfilled') {
-        setRecentActivities(activitiesRes.value);
+      if (results.activitiesRes?.status === 'fulfilled') {
+        // API 응답에서 실제 데이터만 추출하여 저장
+        const activitiesData = results.activitiesRes.value?.data || [];
+        setRecentActivities(activitiesData);
+      } else {
+        console.warn('❌ 개별 activities API 실패:', results.activitiesRes?.reason);
       }
 
-      if (systemRes.status === 'fulfilled') {
-        setSystemStatus(systemRes.value);
+      if (results.systemRes?.status === 'fulfilled') {
+        setSystemStatus(results.systemRes.value);
       }
 
-      if (agentPerfRes.status === 'fulfilled') {
-        setAgentPerformance(agentPerfRes.value);
+      if (results.agentPerfRes?.status === 'fulfilled') {
+        setAgentPerformance(results.agentPerfRes.value);
       }
 
-      if (qualityRes.status === 'fulfilled') {
-        setQualityMetrics(qualityRes.value);
+      if (results.qualityRes?.status === 'fulfilled') {
+        setQualityMetrics(results.qualityRes.value);
       }
 
-      if (processingRes.status === 'fulfilled') {
-        setProcessingStatus(processingRes.value);
+      if (results.processingRes?.status === 'fulfilled') {
+        setProcessingStatus(results.processingRes.value);
       }
 
-      if (alertsRes.status === 'fulfilled') {
-        setSystemAlerts(alertsRes.value);
+      if (results.alertsRes?.status === 'fulfilled') {
+        setSystemAlerts(results.alertsRes.value);
       }
 
-      if (statusMonitorRes.status === 'fulfilled') {
-        setStatusMonitor(statusMonitorRes.value.data);
+      if (results.statusMonitorRes?.status === 'fulfilled') {
+        // API 응답에서 실제 데이터만 추출하여 저장
+        const statusMonitorData = results.statusMonitorRes.value?.data || null;
+        setStatusMonitor(statusMonitorData);
+      } else {
+        console.warn('❌ 개별 statusMonitor API 실패:', results.statusMonitorRes?.reason);
       }
 
-      if (hospitalsRes.status === 'fulfilled') {
-        setHospitals(hospitalsRes.value.hospitals || []);
+      if (results.hospitalsRes?.status === 'fulfilled') {
+        setHospitals(results.hospitalsRes.value.hospitals || []);
       }
 
-      if (agentLogsRes.status === 'fulfilled') {
-        setRecentAgentLogs(agentLogsRes.value);
+      if (results.agentLogsRes?.status === 'fulfilled') {
+        setRecentAgentLogs(results.agentLogsRes.value);
       }
 
       // 포스트 데이터 로드 (상태별 분류)
@@ -180,17 +202,10 @@ export default function AdminDashboard() {
 
   const loadEmergencyData = async () => {
     try {
-      console.log('긴급 처리 필요 데이터 로드 시작');
-      console.log('adminApi 객체 확인:', adminApi);
-      console.log('getSystemErrors 메소드 존재:', typeof adminApi.getSystemErrors);
-      console.log('getFailedAgentJobs 메소드 존재:', typeof adminApi.getFailedAgentJobs);
-      console.log('getDelayedScheduleJobs 메소드 존재:', typeof adminApi.getDelayedScheduleJobs);
 
       // 시스템 에러 조회
       try {
-        console.log('시스템 에러 API 호출 시도');
         const systemErrorsRes = await adminApi.getSystemErrors();
-        console.log('시스템 에러 응답 수신:', systemErrorsRes);
         if (systemErrorsRes.success) {
           setSystemErrors(systemErrorsRes.data || []);
         }
@@ -201,9 +216,7 @@ export default function AdminDashboard() {
 
       // 실패한 에이전트 작업 조회
       try {
-        console.log('실패한 에이전트 작업 API 호출 시도');
         const failedJobsRes = await adminApi.getFailedAgentJobs();
-        console.log('실패한 에이전트 작업 응답 수신:', failedJobsRes);
         if (failedJobsRes.success) {
           setFailedAgentJobs(failedJobsRes.data || []);
         }
@@ -214,16 +227,13 @@ export default function AdminDashboard() {
 
       // 딜레이된 스케줄 작업 조회
       try {
-        console.log('딜레이된 스케줄 작업 API 호출 시도');
         const delayedJobsRes = await adminApi.getDelayedScheduleJobs();
-        console.log('딜레이된 스케줄 작업 응답 수신:', delayedJobsRes);
         setDelayedScheduleJobs(delayedJobsRes.data || []);
       } catch (error) {
         console.warn('딜레이된 스케줄 작업 조회 실패:', error);
         setDelayedScheduleJobs([]);
       }
 
-      console.log('긴급 처리 필요 데이터 로드 완료');
     } catch (error) {
       console.error('긴급 처리 필요 데이터 로드 실패:', error);
       setSystemErrors([]);
@@ -497,22 +507,70 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 {recentActivities && recentActivities.length > 0 ? (
-                  recentActivities.slice(0, 3).map((activity: any, index: number) => (
-                    <div key={index} className="flex items-start space-x-2">
-                      <div className="w-4 h-4 bg-neutral-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i className={`fa-solid fa-${activity.type === 'post_completed' ? 'check' : activity.type === 'post_created' ? 'plus' : 'info'} text-neutral-600 text-xs`}></i>
+                  recentActivities.slice(0, 3).map((activity: any, index: number) => {
+                    // 활동 타입에 따른 아이콘 결정
+                    const getActivityIcon = (type: string) => {
+                      switch (type) {
+                        case 'post_created':
+                          return 'plus';
+                        case 'agent_completed':
+                          return 'check';
+                        case 'agent_failed':
+                          return 'times';
+                        case 'status_changed':
+                          return 'exchange-alt';
+                        case 'schedule_updated':
+                          return 'calendar-alt';
+                        default:
+                          return 'info';
+                      }
+                    };
+
+                    // 활동 타입에 따른 배경색 결정
+                    const getActivityBgColor = (type: string) => {
+                      switch (type) {
+                        case 'post_created':
+                          return 'bg-green-100';
+                        case 'agent_completed':
+                          return 'bg-blue-100';
+                        case 'agent_failed':
+                          return 'bg-red-100';
+                        case 'status_changed':
+                          return 'bg-yellow-100';
+                        case 'schedule_updated':
+                          return 'bg-purple-100';
+                        default:
+                          return 'bg-neutral-100';
+                      }
+                    };
+
+                    const icon = getActivityIcon(activity.type);
+                    const bgColor = getActivityBgColor(activity.type);
+
+                    return (
+                      <div key={activity.id || index} className="flex items-start space-x-2">
+                        <div className={`w-4 h-4 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+                          <i className={`fa-solid fa-${icon} text-neutral-600 text-xs`}></i>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-neutral-800">{activity.description}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-neutral-500">
+                              {activity.timestamp ? new Date(activity.timestamp).toLocaleString('ko-KR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) : '시간 정보 없음'}
+                            </p>
+                            {activity.hospital_name && (
+                              <span className="text-xs bg-neutral-100 text-neutral-600 px-1 py-0.5 rounded">
+                                {activity.hospital_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-neutral-800">{activity.description}</p>
-                        <p className="text-xs text-neutral-500 mt-1">
-                          {new Date(activity.timestamp).toLocaleString('ko-KR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-xs text-neutral-500">최근 활동이 없습니다</p>
