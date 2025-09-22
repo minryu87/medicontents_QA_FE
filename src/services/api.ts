@@ -888,6 +888,71 @@ export class ClientApiService {
   async markNotificationAsRead(notificationId: number): Promise<void> {
     await api.put(`/api/v1/client/notifications/${notificationId}/read`);
   }
+
+  // 일정 관리 API
+  async planCampaignSchedule(campaignId: number, settings?: any): Promise<any> {
+    const response = await api.post(`/api/v1/admin/schedules/campaigns/${campaignId}/plan`, {
+      use_template: true,
+      custom_settings: settings
+    });
+    return response.data;
+  }
+
+  async getCampaignScheduleOverview(campaignId: number): Promise<any> {
+    const response = await api.get(`/api/v1/admin/schedules/campaigns/${campaignId}/overview`);
+    return response.data;
+  }
+
+  async getPostSchedule(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/admin/schedules/posts/${postId}`);
+    return response.data;
+  }
+
+  async updatePostSchedule(postId: string, scheduleData: any): Promise<any> {
+    const response = await api.put(`/api/v1/admin/schedules/posts/${postId}`, scheduleData);
+    return response.data;
+  }
+
+  async updatePostPriority(postId: string, priorityData: {
+    priority: number;
+    reason: string;
+  }): Promise<any> {
+    const response = await api.put(`/api/v1/admin/schedules/posts/${postId}/priority`, priorityData);
+    return response.data;
+  }
+
+  async getPendingNotifications(status: string = 'pending', limit: number = 20): Promise<any> {
+    const response = await api.get('/api/v1/admin/schedules/notifications', {
+      params: { status, limit }
+    });
+    return response.data;
+  }
+
+  async acknowledgeNotification(notificationId: number): Promise<void> {
+    await api.post(`/api/v1/admin/schedules/notifications/${notificationId}/acknowledge`);
+  }
+
+  async getScheduleHistory(postId: string, page: number = 1, limit: number = 10): Promise<any> {
+    const response = await api.get(`/api/v1/admin/schedules/posts/${postId}/history`, {
+      params: { page, limit }
+    });
+    return response.data;
+  }
+
+  async runScheduleMonitoring(): Promise<any> {
+    const response = await api.post('/api/v1/admin/schedules/monitor');
+    return response.data;
+  }
+
+  async runScheduleMaintenance(): Promise<any> {
+    const response = await api.post('/api/v1/admin/schedules/maintenance');
+    return response.data;
+  }
+
+  async getCampaignPriorityDistribution(campaignId: number): Promise<any> {
+    const response = await api.get(`/api/v1/admin/schedules/campaigns/${campaignId}/priority/distribution`);
+    return response.data;
+  }
 }
 
 // 싱글톤 인스턴스

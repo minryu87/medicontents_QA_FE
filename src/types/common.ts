@@ -478,3 +478,193 @@ export interface CompletePostingWorkflow {
     created_at: string | null;
   };
 }
+
+// 일정 관리 관련 타입들
+export interface PostSchedule {
+  id: number;
+  post_id: string;
+  hospital_id: number;
+  campaign_id: number | null;
+  scheduled_date: string | null;
+  published_date: string | null;
+  platforms: string[] | null;
+  notes: string | null;
+  status: 'pending' | 'scheduled' | 'published' | 'cancelled' | 'delayed';
+  priority: number;
+  delay_status: 'on_track' | 'at_risk' | 'delayed';
+  material_deadline: string | null;
+  guide_deadline: string | null;
+  ai_deadline: string | null;
+  admin_review_deadline: string | null;
+  client_review_deadline: string | null;
+  final_revision_deadline: string | null;
+  material_completed_at: string | null;
+  guide_completed_at: string | null;
+  ai_completed_at: string | null;
+  admin_review_completed_at: string | null;
+  client_review_completed_at: string | null;
+  final_revision_completed_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ScheduleNotification {
+  id: number;
+  post_id: string;
+  notification_type: 'deadline_approaching' | 'overdue' | 'priority_changed' | 'stage_completed';
+  stage: 'material' | 'guide' | 'ai' | 'admin_review' | 'client_review' | 'final_revision' | 'publish' | null;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  status: 'pending' | 'sent' | 'acknowledged' | 'failed';
+  created_at: string;
+}
+
+export interface ScheduleChangeLog {
+  id: number;
+  post_id: string;
+  change_type: 'deadline_adjusted' | 'priority_changed' | 'status_updated';
+  old_value: string | null;
+  new_value: string | null;
+  reason: string | null;
+  changed_by: number | null;
+  created_at: string;
+}
+
+export interface CampaignScheduleTemplate {
+  id: number;
+  campaign_id: number;
+  material_collection_days: number;
+  admin_guide_days: number;
+  ai_generation_days: number;
+  admin_review_days: number;
+  client_review_days: number;
+  final_revision_days: number;
+  buffer_days: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignScheduleOverview {
+  campaign: {
+    id: number;
+    name: string;
+    start_date: string;
+    end_date: string;
+    target_post_count: number;
+    completed_post_count: number;
+  };
+  progress: {
+    total_posts: number;
+    completed_posts: number;
+    delayed_posts: number;
+    completion_rate: number;
+  };
+  stage_progress: {
+    [stage: string]: {
+      completed: number;
+      total: number;
+      percentage: number;
+    };
+  };
+  bottlenecks: Array<{
+    stage: string;
+    severity: 'low' | 'medium' | 'high';
+    description: string;
+    recommendation: string;
+  }>;
+}
+
+export interface PostScheduleDetail {
+  post_id: string;
+  schedule: {
+    scheduled_date: string | null;
+    published_date: string | null;
+    priority: number;
+    delay_status: 'on_track' | 'at_risk' | 'delayed';
+  };
+  deadlines: {
+    [stage: string]: string | null;
+  };
+  completed_at: {
+    [stage: string]: string | null;
+  };
+  stage_status: {
+    [stage: string]: 'pending' | 'completed' | 'due_soon' | 'overdue';
+  };
+  next_stage: {
+    stage: string;
+    deadline: string;
+    days_remaining: number;
+  } | null;
+  recommended_actions: Array<{
+    type: 'reminder' | 'priority_increase' | 'deadline_extension';
+    stage: string;
+    action: string;
+    reason: string;
+  }>;
+}
+
+export interface ScheduleNotificationList {
+  notifications: Array<{
+    id: number;
+    post_id: string;
+    post_title: string;
+    notification_type: string;
+    stage: string | null;
+    scheduled_at: string | null;
+    priority: number;
+    campaign_id: number | null;
+  }>;
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface ScheduleChangeHistory {
+  changes: ScheduleChangeLog[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface PriorityDistribution {
+  distribution: { [priority: number]: number };
+  percentages: { [priority: number]: number };
+  total_posts: number;
+  generated_at: string;
+}
+
+export interface ScheduleMonitoringResult {
+  delayed_posts: Array<{
+    post_id: string;
+    stage: string;
+    delay_days: number;
+    severity: 'low' | 'medium' | 'high';
+  }>;
+  approaching_deadlines: Array<{
+    post_id: string;
+    stage: string;
+    hours_remaining: number;
+    urgency: 'low' | 'medium' | 'high';
+  }>;
+  notifications_created: number;
+  priorities_updated: number;
+  monitored_at: string;
+}
+
+export interface ScheduleMaintenanceResult {
+  monitor_result: {
+    delayed_posts: number;
+    approaching_deadlines: number;
+    notifications_created: number;
+  };
+  priority_result: {
+    total_processed: number;
+    updated_count: number;
+  };
+  cleanup_result: {
+    deleted_notifications: number;
+    cutoff_date: string;
+  };
+  executed_at: string;
+}
