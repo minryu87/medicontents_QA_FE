@@ -953,8 +953,74 @@ export class ClientApiService {
     const response = await api.get(`/api/v1/admin/schedules/campaigns/${campaignId}/priority/distribution`);
     return response.data;
   }
+
+  // 긴급 처리 필요 데이터 API들 - 클래식 메소드 방식
+  async getSystemErrors(): Promise<any> {
+    console.log('getSystemErrors 메소드 호출됨');
+    const response = await api.get('/api/v1/admin/dashboard/system-errors');
+    console.log('getSystemErrors 응답:', response.data);
+    return response.data;
+  }
+
+  async getFailedAgentJobs(): Promise<any> {
+    console.log('getFailedAgentJobs 메소드 호출됨');
+    const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs');
+    console.log('getFailedAgentJobs 응답:', response.data);
+    return response.data;
+  }
+
+  async getDelayedScheduleJobs(): Promise<any> {
+    console.log('getDelayedScheduleJobs 메소드 호출됨');
+    const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs');
+    console.log('getDelayedScheduleJobs 응답:', response.data);
+    return response.data;
+  }
 }
+
+// 긴급 처리 필요 API 함수들
+const getSystemErrorsFn = async (): Promise<any> => {
+  console.log('getSystemErrors 메소드 호출됨');
+  const response = await api.get('/api/v1/admin/dashboard/system-errors');
+  console.log('getSystemErrors 응답:', response.data);
+  return response.data;
+};
+
+const getFailedAgentJobsFn = async (): Promise<any> => {
+  console.log('getFailedAgentJobs 메소드 호출됨');
+  const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs');
+  console.log('getFailedAgentJobs 응답:', response.data);
+  return response.data;
+};
+
+const getDelayedScheduleJobsFn = async (): Promise<any> => {
+  console.log('getDelayedScheduleJobs 메소드 호출됨');
+  const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs');
+  console.log('getDelayedScheduleJobs 응답:', response.data);
+  return response.data;
+};
 
 // 싱글톤 인스턴스
 export const adminApi = new AdminApiService();
 export const clientApi = new ClientApiService();
+
+// 긴급 처리 필요 메소드들을 인스턴스에 직접 할당
+Object.defineProperty(adminApi, 'getSystemErrors', {
+  value: getSystemErrorsFn,
+  writable: false,
+  enumerable: true,
+  configurable: true
+});
+
+Object.defineProperty(adminApi, 'getFailedAgentJobs', {
+  value: getFailedAgentJobsFn,
+  writable: false,
+  enumerable: true,
+  configurable: true
+});
+
+Object.defineProperty(adminApi, 'getDelayedScheduleJobs', {
+  value: getDelayedScheduleJobsFn,
+  writable: false,
+  enumerable: true,
+  configurable: true
+});

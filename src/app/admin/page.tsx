@@ -1,12 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { adminApi } from '@/services/api';
 
 // 실제 API에서 사용하는 타입들은 api.ts에서 import하여 사용
 
+// 단계 표시명 변환 함수
+const getStageDisplayName = (stage: string) => {
+  const stageMap: { [key: string]: string } = {
+    'material': '자료 수집',
+    'guide': '가이드 작성',
+    'ai': 'AI 생성',
+    'admin_review': '관리자 검토',
+    'client_review': '클라이언트 검토',
+    'final_revision': '최종 수정'
+  };
+  return stageMap[stage] || stage;
+};
+
 // 메인 컴포넌트
 export default function AdminDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
 
   // 실제 API에서 가져올 데이터들
@@ -20,6 +35,11 @@ export default function AdminDashboard() {
   const [postsByStatus, setPostsByStatus] = useState<any>({});
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [recentAgentLogs, setRecentAgentLogs] = useState<any[]>([]);
+
+  // 긴급 처리 필요 데이터
+  const [systemErrors, setSystemErrors] = useState<any[]>([]);
+  const [failedAgentJobs, setFailedAgentJobs] = useState<any[]>([]);
+  const [delayedScheduleJobs, setDelayedScheduleJobs] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -43,10 +63,13 @@ export default function AdminDashboard() {
         setHospitals(dashboardData.hospitals);
         setRecentAgentLogs(dashboardData.agent_logs);
         setPostsByStatus(dashboardData.posts_by_status || {});
-        return; // 성공하면 종료
+        // return; // 통합 API가 성공해도 긴급 데이터는 별도로 로드
       } catch (integratedError) {
         console.warn('통합 API 실패, 개별 API로 폴백:', integratedError);
       }
+
+      // 긴급 처리 필요 데이터 로드 (항상 실행)
+      await loadEmergencyData();
 
       // 폴백: 기존 개별 API 방식
       const [
@@ -116,6 +139,60 @@ export default function AdminDashboard() {
       setFallbackData();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEmergencyData = async () => {
+    try {
+      console.log('긴급 처리 필요 데이터 로드 시작');
+      console.log('adminApi 객체 확인:', adminApi);
+      console.log('getSystemErrors 메소드 존재:', typeof adminApi.getSystemErrors);
+      console.log('getFailedAgentJobs 메소드 존재:', typeof adminApi.getFailedAgentJobs);
+      console.log('getDelayedScheduleJobs 메소드 존재:', typeof adminApi.getDelayedScheduleJobs);
+
+      // 시스템 에러 조회
+      try {
+        console.log('시스템 에러 API 호출 시도');
+        const systemErrorsRes = await adminApi.getSystemErrors();
+        console.log('시스템 에러 응답 수신:', systemErrorsRes);
+        if (systemErrorsRes.success) {
+          setSystemErrors(systemErrorsRes.data || []);
+        }
+      } catch (error) {
+        console.warn('시스템 에러 조회 실패:', error);
+        setSystemErrors([]);
+      }
+
+      // 실패한 에이전트 작업 조회
+      try {
+        console.log('실패한 에이전트 작업 API 호출 시도');
+        const failedJobsRes = await adminApi.getFailedAgentJobs();
+        console.log('실패한 에이전트 작업 응답 수신:', failedJobsRes);
+        if (failedJobsRes.success) {
+          setFailedAgentJobs(failedJobsRes.data || []);
+        }
+      } catch (error) {
+        console.warn('실패한 에이전트 작업 조회 실패:', error);
+        setFailedAgentJobs([]);
+      }
+
+      // 딜레이된 스케줄 작업 조회
+      try {
+        console.log('딜레이된 스케줄 작업 API 호출 시도');
+        const delayedJobsRes = await adminApi.getDelayedScheduleJobs();
+        console.log('딜레이된 스케줄 작업 응답 수신:', delayedJobsRes);
+        setDelayedScheduleJobs(delayedJobsRes.data || []);
+      } catch (error) {
+        console.warn('딜레이된 스케줄 작업 조회 실패:', error);
+        setDelayedScheduleJobs([]);
+      }
+
+      console.log('긴급 처리 필요 데이터 로드 완료');
+    } catch (error) {
+      console.error('긴급 처리 필요 데이터 로드 실패:', error);
+      setSystemErrors([]);
+      setFailedAgentJobs([]);
+      setDelayedScheduleJobs([]);
     }
   };
 
@@ -228,43 +305,16 @@ export default function AdminDashboard() {
                 <span className="text-xs text-neutral-500">실시간</span>
               </div>
               <div className="space-y-2">
-                {processingStatus?.failed_today > 0 && (
+                {/* a: 시스템 에러 (최우선 - 빨간색) */}
+                {systemErrors && systemErrors.length > 0 && (
                   <div className="flex items-start space-x-2">
                     <div className="w-4 h-4 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <i className="fa-solid fa-exclamation-triangle text-red-600 text-xs"></i>
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-neutral-800">실패한 작업</p>
-                      <p className="text-xs text-neutral-500 mt-1">{processingStatus.failed_today}건</p>
-                    </div>
-                    <button className="px-2 py-1 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700">
-                      확인
-                    </button>
-                  </div>
-                )}
-                {processingStatus?.bottlenecks?.length > 0 && (
-                  <div className="flex items-start space-x-2">
-                    <div className="w-4 h-4 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <i className="fa-solid fa-clock text-yellow-600 text-xs"></i>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-neutral-800">병목 현상</p>
-                      <p className="text-xs text-neutral-500 mt-1">{processingStatus.bottlenecks[0]}</p>
-                    </div>
-                    <button className="px-2 py-1 bg-neutral-600 text-white text-xs rounded-lg hover:bg-neutral-700">
-                      해결
-                    </button>
-                  </div>
-                )}
-                {systemAlerts?.filter(alert => alert.level === 'critical').length > 0 && (
-                  <div className="flex items-start space-x-2">
-                    <div className="w-4 h-4 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <i className="fa-solid fa-exclamation-triangle text-red-600 text-xs"></i>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-neutral-800">심각한 알림</p>
+                      <p className="text-xs text-neutral-800">시스템 에러</p>
                       <p className="text-xs text-neutral-500 mt-1">
-                        {systemAlerts.filter(alert => alert.level === 'critical').length}건
+                        {systemErrors.length}건 - {systemErrors[0]?.message?.substring(0, 30)}...
                       </p>
                     </div>
                     <button className="px-2 py-1 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700">
@@ -272,7 +322,52 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 )}
-                {(!processingStatus?.failed_today && !processingStatus?.bottlenecks?.length && !systemAlerts?.some(alert => alert.level === 'critical')) && (
+
+                {/* b: 에이전트 실패한 작업 (중간 - 노란색) */}
+                {failedAgentJobs && failedAgentJobs.length > 0 && (
+                  <div className="flex items-start space-x-2">
+                    <div className="w-4 h-4 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i className="fa-solid fa-robot text-yellow-600 text-xs"></i>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-neutral-800">에이전트 실패 작업</p>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {failedAgentJobs.length}건 - {failedAgentJobs[0]?.agent_type} 실패
+                      </p>
+                    </div>
+                    <button className="px-2 py-1 bg-yellow-600 text-white text-xs rounded-lg hover:bg-yellow-700">
+                      재시도
+                    </button>
+                  </div>
+                )}
+
+                {/* c: 일정상 딜레이된 작업 (포스트별 개별 표시 - 파란색) */}
+                {delayedScheduleJobs && delayedScheduleJobs.length > 0 && delayedScheduleJobs.map((job: any, index: number) => (
+                  <div key={job.id || index} className="flex items-start space-x-2">
+                    <div className="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i className="fa-solid fa-clock text-blue-600 text-xs"></i>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-neutral-800">일정 딜레이 작업</p>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {job.hospital_name} - {job.post_id} - {getStageDisplayName(job.urgent_stage)} - {job.delay_days}일 지연
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        // 병원별 작업 관리 페이지로 이동 (포스팅 작업 탭의 해당 포스트 선택)
+                        const hospitalId = job.hospital_id || 'unknown';
+                        router.push(`/admin/hospital-work?hospital=${hospitalId}&tab=posting&post=${job.post_id}`);
+                      }}
+                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 flex items-center"
+                    >
+                      <span className="mr-1">&gt;&gt;</span>
+                    </button>
+                  </div>
+                ))}
+
+                {/* 긴급 이슈가 없는 경우 */}
+                {(!systemErrors?.length && !failedAgentJobs?.length && !delayedScheduleJobs?.length) && (
                   <div className="text-center py-4">
                     <p className="text-xs text-neutral-500">현재 긴급한 이슈가 없습니다</p>
                   </div>

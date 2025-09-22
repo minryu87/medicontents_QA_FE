@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { adminApi } from '@/services/api';
 import EmptyState from '@/components/admin/EmptyState';
 import HospitalInfoTab from '@/components/admin/HospitalInfoTab';
@@ -58,6 +59,34 @@ export default function HospitalWorkPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showCampaignTooltip]);
+
+  // URL 쿼리 파라미터 처리 (긴급 처리 필요에서 이동 시)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hospitalParam = searchParams.get('hospital');
+    const tabParam = searchParams.get('tab');
+    const postParam = searchParams.get('post');
+
+    if (hospitalParam && hospitals.length > 0) {
+      // 병원 선택
+      const hospital = hospitals.find(h => h.id.toString() === hospitalParam);
+      if (hospital) {
+        setSelectedHospital(hospital);
+      }
+    }
+
+    if (tabParam) {
+      // 탭 선택
+      if (['hospital-info', 'work-management', 'posting-work', 'monitoring'].includes(tabParam)) {
+        setActiveTab(tabParam as any);
+      }
+    }
+
+    if (postParam) {
+      // 특정 포스트 선택 (posting-work 탭에서)
+      setSelectedPostForWork({ post_id: postParam });
+    }
+  }, [hospitals]);
 
   // 캠페인 선택에 따라 데이터 로드
   useEffect(() => {
