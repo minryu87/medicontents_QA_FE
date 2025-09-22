@@ -154,23 +154,23 @@ export default function AdminDashboard() {
       }
 
       if (results.systemRes?.status === 'fulfilled') {
-        setSystemStatus(results.systemRes.value);
+        setSystemStatus(results.systemRes.value?.data || results.systemRes.value);
       }
 
       if (results.agentPerfRes?.status === 'fulfilled') {
-        setAgentPerformance(results.agentPerfRes.value);
+        setAgentPerformance(results.agentPerfRes.value?.data || results.agentPerfRes.value);
       }
 
       if (results.qualityRes?.status === 'fulfilled') {
-        setQualityMetrics(results.qualityRes.value);
+        setQualityMetrics(results.qualityRes.value?.data || results.qualityRes.value);
       }
 
       if (results.processingRes?.status === 'fulfilled') {
-        setProcessingStatus(results.processingRes.value);
+        setProcessingStatus(results.processingRes.value?.data || results.processingRes.value);
       }
 
       if (results.alertsRes?.status === 'fulfilled') {
-        setSystemAlerts(results.alertsRes.value);
+        setSystemAlerts(results.alertsRes.value?.data || results.alertsRes.value);
       }
 
       if (results.statusMonitorRes?.status === 'fulfilled') {
@@ -244,27 +244,98 @@ export default function AdminDashboard() {
 
   const loadPostsByStatus = async () => {
     try {
-      // 각 상태별 포스트 조회
-      const statusFilters = [
-        { status: 'initial', limit: 5 },           // 캠페인 준비
-        { status: 'material_waiting', limit: 5 },  // 포스팅 사전 작업
-        { status: 'agent_completed', limit: 5 },   // 포스팅 생성 검토
-        { status: 'admin_review', limit: 5 },      // 포스팅 승인 검토
-        { status: 'final_approved', limit: 5 },    // 포스팅 게시
-        { status: 'published', limit: 5 }          // 포스팅 모니터링
-      ];
+      // 업무 중심 칸반을 위한 데이터 조회
+      // 실제로는 schedule 정보를 활용한 7일 이내 필터링이 필요하지만,
+      // 현재는 status 기반으로 업무 카테고리에 맞게 매핑
 
       const postsData: any = {};
 
-      for (const filter of statusFilters) {
-        try {
-          const response = await adminApi.getPosts({ ...filter });
-          postsData[filter.status] = response.posts || [];
-        } catch (error) {
-          console.warn(`${filter.status} 포스트 조회 실패:`, error);
-          postsData[filter.status] = [];
-        }
+      // 1. 검토 필요 (AI 생성 완료된 작업들 - generation_completed 상태)
+      try {
+        const reviewResponse = await adminApi.getPosts({
+          status: 'generation_completed',
+          limit: 5
+        });
+        postsData.agent_completed = reviewResponse.posts || [];
+      } catch (error) {
+        console.warn('검토 필요 포스트 조회 실패:', error);
+        postsData.agent_completed = [];
       }
+
+      // 2. 승인 필요 (관리자 승인 대기 - admin_review 상태)
+      try {
+        const approvalResponse = await adminApi.getPosts({
+          status: 'admin_review',
+          limit: 5,
+          // 추후: schedule_deadline이 7일 이내인 것들만 필터링
+        });
+        postsData.admin_review = approvalResponse.posts || [];
+      } catch (error) {
+        console.warn('승인 필요 포스트 조회 실패:', error);
+        postsData.admin_review = [];
+      }
+
+      // 3. 게시 준비 (승인 완료된 작업들 - final_approved 상태)
+      try {
+        const publishResponse = await adminApi.getPosts({
+          status: 'final_approved',
+          limit: 5,
+          // 추후: schedule_deadline이 7일 이내인 것들만 필터링
+        });
+        postsData.final_approved = publishResponse.posts || [];
+      } catch (error) {
+        console.warn('게시 준비 포스트 조회 실패:', error);
+        postsData.final_approved = [];
+      }
+
+      // 4. 이슈 모니터링 (게시된 작업들 중 모니터링 필요한 것들 - published 상태)
+      try {
+        const monitoringResponse = await adminApi.getPosts({
+          status: 'published',
+          limit: 5,
+          // 추후: 최근 7일 내 게시 + 이슈 플래그 있는 것들 필터링
+        });
+        postsData.published = monitoringResponse.posts || [];
+      } catch (error) {
+        console.warn('이슈 모니터링 포스트 조회 실패:', error);
+        postsData.published = [];
+      }
+
+      // 5. 긴급 처리 (게시까지 7일 이내인 작업들)
+      // 실제로는 schedule 정보로 필터링해야 하지만, 현재 API로는 제한적
+      // 임시로 initial, material_completed, generation_completed 상태의 작업들 표시
+      try {
+        const urgentResponse1 = await adminApi.getPosts({
+          status: 'initial',
+          limit: 3
+        });
+        const urgentResponse2 = await adminApi.getPosts({
+          status: 'material_completed',
+          limit: 3
+        });
+
+        const urgentTasks = [
+          ...(urgentResponse1.posts || []),
+          ...(urgentResponse2.posts || [])
+        ].slice(0, 5); // 최대 5개로 제한
+
+        // 긴급 사유 추가
+        postsData.urgent = urgentTasks.map(post => ({
+          ...post,
+          urgent_reason: post.status === 'initial' ? '초기 작업 진행 중' : '자료 수집 완료'
+        }));
+      } catch (error) {
+        console.warn('긴급 처리 포스트 조회 실패:', error);
+        postsData.urgent = [];
+      }
+
+      console.log('업무 중심 칸반 데이터 로드 완료:', {
+        검토필요: postsData.agent_completed?.length || 0, // generation_completed 상태
+        승인필요: postsData.admin_review?.length || 0,   // admin_review 상태
+        게시준비: postsData.final_approved?.length || 0, // final_approved 상태
+        이슈모니터링: postsData.published?.length || 0,  // published 상태
+        긴급처리: postsData.urgent?.length || 0         // initial + material_completed 상태
+      });
 
       setPostsByStatus(postsData);
     } catch (error) {
@@ -347,7 +418,7 @@ export default function AdminDashboard() {
             {/* 긴급 처리 필요 */}
             <div className="bg-white rounded-xl shadow-lg p-3">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm text-neutral-900">🚨 긴급 처리 필요</h2>
+                <h2 className="text-sm text-neutral-900">긴급 처리 필요</h2>
                 <span className="text-xs text-neutral-500">실시간</span>
               </div>
               <div className="space-y-2">
@@ -581,57 +652,67 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 오늘의 작업 섹션 */}
+        {/* 7일 이내 처리 예정 작업 섹션 */}
         <div className="px-6">
           <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
-            <h2 className="text-lg text-neutral-900 mb-3">오늘 처리할 작업</h2>
+            <h2 className="text-lg text-neutral-900 mb-3">7일 이내 처리 예정 작업</h2>
             <div className="flex space-x-4 overflow-x-auto pb-2">
-              {/* 캠페인 준비 칸반 */}
-              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
-                <h3 className="text-sm text-neutral-800 mb-2 text-center">캠페인 준비</h3>
+              {/* 긴급 처리 칸반 */}
+              <div className="bg-white rounded-lg p-3 min-w-48 flex-shrink-0 border-l-4 border-red-500 shadow-sm">
+                <h3 className="text-sm text-neutral-900 mb-2 text-center font-semibold">긴급 처리</h3>
                 <div className="space-y-2">
-                  {postsByStatus?.initial?.length > 0 ? (
-                    postsByStatus.initial.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
-                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
-                        <p className="text-xs text-neutral-600 mt-1">{post.hospital_name || '병원 미정'}</p>
-                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(바로가기)</button>
+                  {postsByStatus?.urgent?.length > 0 ? (
+                    postsByStatus.urgent.slice(0, 3).map((post: any, index: number) => (
+                      <div key={post.id || index} className="bg-white p-2 rounded-lg border border-red-200 relative">
+                        <button
+                          className="absolute top-1 right-1 text-red-600 hover:text-red-800 text-sm font-bold"
+                          onClick={() => {
+                            // 긴급 처리 액션
+                            console.log('긴급 처리:', post.post_id);
+                          }}
+                        >
+                          &gt;&gt;
+                        </button>
+                        <p className="text-xs text-neutral-800 pr-8">{post.title || `포스트 ${post.post_id}`}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs bg-red-100 text-red-700 px-1 py-0.5 rounded">
+                            {post.hospital_name || '병원 미정'}
+                          </span>
+                          <span className="text-xs text-red-600 font-semibold">
+                            {post.urgent_reason || '기한 초과'}
+                          </span>
+                        </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
+                    <p className="text-xs text-neutral-500 text-center py-2">긴급 작업 없음</p>
                   )}
                 </div>
               </div>
 
-              {/* 포스팅 사전 작업 칸반 */}
-              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
-                <h3 className="text-sm text-neutral-800 mb-2 text-center">포스팅 사전 작업</h3>
-                <div className="space-y-2">
-                  {postsByStatus?.material_waiting?.length > 0 ? (
-                    postsByStatus.material_waiting.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
-                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
-                        <p className="text-xs text-neutral-600 mt-1">{post.hospital_name || '병원 미정'}</p>
-                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(바로가기)</button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
-                  )}
-                </div>
-              </div>
-
-              {/* 포스팅 생성 검토 칸반 */}
-              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
-                <h3 className="text-sm text-neutral-800 mb-2 text-center">포스팅 생성 검토</h3>
+              {/* 검토 필요 칸반 */}
+              <div className="bg-white rounded-lg p-3 min-w-48 flex-shrink-0 border-l-4 border-sky-600 shadow-sm">
+                <h3 className="text-sm text-neutral-900 mb-2 text-center font-semibold">검토 필요</h3>
                 <div className="space-y-2">
                   {postsByStatus?.agent_completed?.length > 0 ? (
                     postsByStatus.agent_completed.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
-                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
-                        <p className="text-xs text-neutral-600 mt-1">{post.hospital_name || '병원 미정'}</p>
-                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(바로가기)</button>
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-sky-200 relative">
+                        <button
+                          className="absolute top-1 right-1 text-sky-600 hover:text-sky-800 text-sm font-bold"
+                          onClick={() => {
+                            // 검토 작업으로 이동
+                            console.log('검토 작업:', post.post_id);
+                          }}
+                        >
+                          &gt;&gt;
+                        </button>
+                        <p className="text-xs text-neutral-800 pr-8">{post.title || `포스트 ${post.post_id}`}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs bg-sky-100 text-sky-700 px-1 py-0.5 rounded">
+                            {post.hospital_name || '병원 미정'}
+                          </span>
+                          <span className="text-xs text-neutral-500">D-3</span>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -640,16 +721,29 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 포스팅 승인 검토 칸반 */}
-              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
-                <h3 className="text-sm text-neutral-800 mb-2 text-center">포스팅 승인 검토</h3>
+              {/* 승인 필요 칸반 */}
+              <div className="bg-white rounded-lg p-3 min-w-48 flex-shrink-0 border-l-4 border-sky-500 shadow-sm">
+                <h3 className="text-sm text-neutral-900 mb-2 text-center font-semibold">승인 필요</h3>
                 <div className="space-y-2">
                   {postsByStatus?.admin_review?.length > 0 ? (
                     postsByStatus.admin_review.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
-                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
-                        <p className="text-xs text-neutral-600 mt-1">{post.hospital_name || '병원 미정'}</p>
-                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(바로가기)</button>
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-sky-200 relative">
+                        <button
+                          className="absolute top-1 right-1 text-sky-600 hover:text-sky-800 text-sm font-bold"
+                          onClick={() => {
+                            // 승인 작업으로 이동
+                            console.log('승인 작업:', post.post_id);
+                          }}
+                        >
+                          &gt;&gt;
+                        </button>
+                        <p className="text-xs text-neutral-800 pr-8">{post.title || `포스트 ${post.post_id}`}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs bg-sky-100 text-sky-700 px-1 py-0.5 rounded">
+                            {post.hospital_name || '병원 미정'}
+                          </span>
+                          <span className="text-xs text-neutral-500">D-5</span>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -658,16 +752,29 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 포스팅 게시 칸반 */}
-              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
-                <h3 className="text-sm text-neutral-800 mb-2 text-center">포스팅 게시</h3>
+              {/* 게시 준비 칸반 */}
+              <div className="bg-white rounded-lg p-3 min-w-48 flex-shrink-0 border-l-4 border-sky-400 shadow-sm">
+                <h3 className="text-sm text-neutral-900 mb-2 text-center font-semibold">게시 준비</h3>
                 <div className="space-y-2">
                   {postsByStatus?.final_approved?.length > 0 ? (
                     postsByStatus.final_approved.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
-                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
-                        <p className="text-xs text-neutral-600 mt-1">{post.hospital_name || '병원 미정'}</p>
-                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(바로가기)</button>
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-sky-200 relative">
+                        <button
+                          className="absolute top-1 right-1 text-sky-600 hover:text-sky-800 text-sm font-bold"
+                          onClick={() => {
+                            // 게시 준비 작업으로 이동
+                            console.log('게시 준비 작업:', post.post_id);
+                          }}
+                        >
+                          &gt;&gt;
+                        </button>
+                        <p className="text-xs text-neutral-800 pr-8">{post.title || `포스트 ${post.post_id}`}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs bg-sky-100 text-sky-700 px-1 py-0.5 rounded">
+                            {post.hospital_name || '병원 미정'}
+                          </span>
+                          <span className="text-xs text-neutral-500">D-7</span>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -676,16 +783,29 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 포스팅 모니터링 칸반 */}
-              <div className="bg-neutral-50 rounded-lg p-3 min-w-48 flex-shrink-0">
-                <h3 className="text-sm text-neutral-800 mb-2 text-center">포스팅 모니터링</h3>
+              {/* 이슈 모니터링 칸반 */}
+              <div className="bg-white rounded-lg p-3 min-w-48 flex-shrink-0 border-l-4 border-sky-300 shadow-sm">
+                <h3 className="text-sm text-neutral-900 mb-2 text-center font-semibold">이슈 모니터링</h3>
                 <div className="space-y-2">
-                  {postsByStatus?.published?.length > 0 ? (
+                  {postsByStatus?.published?.slice(0, 3).length > 0 ? (
                     postsByStatus.published.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="bg-white p-2 rounded-lg border border-neutral-200">
-                        <p className="text-xs text-neutral-800">{post.title || `포스트 ${post.post_id}`}</p>
-                        <p className="text-xs text-neutral-600 mt-1">{post.hospital_name || '병원 미정'}</p>
-                        <button className="text-xs text-neutral-600 hover:text-neutral-800 mt-1">(바로가기)</button>
+                      <div key={post.id} className="bg-white p-2 rounded-lg border border-sky-200 relative">
+                        <button
+                          className="absolute top-1 right-1 text-sky-600 hover:text-sky-800 text-sm font-bold"
+                          onClick={() => {
+                            // 이슈 모니터링으로 이동
+                            console.log('이슈 모니터링:', post.post_id);
+                          }}
+                        >
+                          &gt;&gt;
+                        </button>
+                        <p className="text-xs text-neutral-800 pr-8">{post.title || `포스트 ${post.post_id}`}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs bg-sky-100 text-sky-700 px-1 py-0.5 rounded">
+                            {post.hospital_name || '병원 미정'}
+                          </span>
+                          <span className="text-xs text-neutral-500">게시됨</span>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -713,8 +833,16 @@ export default function AdminDashboard() {
                   return (
                     <div
                       key={hospital.id}
-                      className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 aspect-square flex flex-col justify-between"
+                      className="bg-white border border-sky-200 rounded-lg p-4 aspect-square flex flex-col justify-between relative"
                     >
+                      {/* >> 버튼 - 우측 상단 */}
+                      <button
+                        onClick={() => router.push(`/admin/hospital-work?hospital=${hospital.id}`)}
+                        className="absolute top-2 right-2 text-sky-500 hover:text-sky-700 text-sm font-bold p-1"
+                      >
+                        &gt;&gt;
+                      </button>
+
                       {/* 병원명 */}
                       <div className="text-center">
                         <h3 className="text-neutral-900 font-medium text-sm mb-1">{hospital.name}</h3>
@@ -741,9 +869,9 @@ export default function AdminDashboard() {
                       <div className="space-y-1">
                         {currentCampaign && currentCampaign.target_post_count > 0 ? (
                           <>
-                            <div className="w-full bg-neutral-200 rounded-full h-1.5">
+                            <div className="w-full bg-sky-100 rounded-full h-1.5">
                               <div
-                                className="bg-neutral-600 h-1.5 rounded-full transition-all duration-300"
+                                className="bg-sky-500 h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${currentCampaign.progress_percentage}%` }}
                               ></div>
                             </div>
@@ -775,17 +903,17 @@ export default function AdminDashboard() {
             {/* 전체 진행률 */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-neutral-600">전체 진행률</span>
-                <span className="text-xs text-neutral-600">
+                <span className="text-sm text-neutral-700 font-medium">전체 성공률</span>
+                <span className="text-sm text-neutral-700 font-medium">
                   {agentPerformance && agentPerformance.length > 0 ?
                     `${Math.round(agentPerformance.reduce((acc: number, perf: any) => acc + perf.success_rate, 0) / agentPerformance.length)}%` :
                     'N/A'
                   }
                 </span>
               </div>
-              <div className="w-full bg-neutral-200 rounded-full h-1">
+              <div className="w-full bg-sky-100 rounded-full h-2">
                 <div
-                  className="bg-neutral-600 h-1 rounded-full"
+                  className="bg-sky-500 h-2 rounded-full transition-all duration-300"
                   style={{
                     width: agentPerformance && agentPerformance.length > 0 ?
                       `${Math.min(100, agentPerformance.reduce((acc: number, perf: any) => acc + perf.success_rate, 0) / agentPerformance.length)}%` :
@@ -796,7 +924,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* 파이프라인 단계들 */}
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
               {agentPerformance && agentPerformance.length > 0 ? (
                 agentPerformance.slice(0, 6).map((agent: any, index: number) => {
                   const getAgentStatus = () => {
@@ -819,42 +947,37 @@ export default function AdminDashboard() {
                   const displayName = agentNameMap[agent.agent_type] || agent.agent_type;
 
                   return (
-                    <div key={index} className="p-2 bg-neutral-50 border border-neutral-200 rounded-lg">
-                      <div className="flex items-center justify-center mb-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                          status === 'processing' ? 'bg-blue-600' :
-                          status === 'error' ? 'bg-red-600' :
-                          status === 'waiting' ? 'bg-gray-400' : 'bg-green-600'
-                        }`}>
-                          <i className={`fa-solid fa-${agent.agent_type === 'evaluation' ? 'check-circle' : 'robot'} text-white text-xs ${
-                            status === 'processing' ? 'fa-spin' : ''
-                          }`}></i>
-                        </div>
-                      </div>
+                    <div key={index} className="bg-white border border-sky-200 rounded-lg p-3">
                       <div className="text-center">
-                        <span className="text-neutral-800 text-xs block">{displayName}</span>
-                        <div className="text-xs text-neutral-500">24h: {agent.total_executions}건</div>
-                        <div className="text-xs text-neutral-500">성공률: {agent.success_rate}%</div>
-                        {agent.failed_executions > 0 && (
-                          <div className="text-xs text-red-600 mt-1">
-                            실패: {agent.failed_executions}건
-                          </div>
-                        )}
-                        <span className={`text-xs px-1 py-0.5 rounded mt-1 inline-block ${
-                          status === 'normal' ? 'text-white bg-green-600' :
-                          status === 'processing' ? 'text-white bg-blue-600' :
-                          status === 'error' ? 'text-white bg-red-600' : 'text-white bg-gray-400'
+                        <div className="text-sm text-neutral-800 font-medium mb-1">{displayName}</div>
+                        <div className="text-xs text-neutral-600 mb-1">{agent.total_executions}건 실행</div>
+                        <div className={`text-sm font-medium mb-2 ${
+                          status === 'normal' ? 'text-sky-600' :
+                          status === 'processing' ? 'text-blue-600' :
+                          status === 'error' ? 'text-red-600' : 'text-neutral-500'
+                        }`}>
+                          {agent.success_rate}%
+                        </div>
+                        <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                          status === 'normal' ? 'bg-sky-100 text-sky-700' :
+                          status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                          status === 'error' ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-700'
                         }`}>
                           {status === 'normal' ? '정상' :
                            status === 'processing' ? '실행중' :
-                           status === 'error' ? '에러' : '대기'}
-                        </span>
+                           status === 'error' ? '주의' : '대기'}
+                        </div>
+                        {agent.failed_executions > 0 && (
+                          <div className="text-xs text-red-600 mt-2">
+                            실패: {agent.failed_executions}건
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="col-span-6 text-center py-4">
+                <div className="col-span-6 text-center py-6">
                   <p className="text-neutral-500 text-sm">AI 에이전트 정보 로딩 중...</p>
                 </div>
               )}
@@ -883,69 +1006,101 @@ export default function AdminDashboard() {
             {/* 시스템 성능 모니터 */}
             <div className="bg-white rounded-xl shadow-lg p-4">
               <h2 className="text-lg text-neutral-900 mb-3">시스템 성능 모니터</h2>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
-                    systemStatus?.database === 'healthy' ? 'bg-green-600' :
-                    systemStatus?.database === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
-                  }`}>
-                    <i className="fa-solid fa-database text-white text-xs"></i>
+
+              {/* 시스템 컴포넌트 상태 */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-white border border-sky-200 rounded-lg p-3">
+                  <div className="text-center">
+                    <div className="text-sm text-neutral-800 font-medium mb-1">데이터베이스</div>
+                    <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                      systemStatus?.database === 'healthy' ? 'bg-sky-100 text-sky-700' :
+                      systemStatus?.database === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {systemStatus?.database === 'healthy' ? '정상' :
+                       systemStatus?.database === 'warning' ? '주의' : '오류'}
+                    </div>
                   </div>
-                  <h3 className="text-xs text-neutral-800">데이터베이스</h3>
-                  <p className="text-xs text-neutral-600 capitalize">
-                    {systemStatus?.database || 'unknown'}
-                  </p>
                 </div>
 
-                <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
-                    systemStatus?.redis === 'healthy' ? 'bg-green-600' :
-                    systemStatus?.redis === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
-                  }`}>
-                    <i className="fa-solid fa-memory text-white text-xs"></i>
+                <div className="bg-white border border-sky-200 rounded-lg p-3">
+                  <div className="text-center">
+                    <div className="text-sm text-neutral-800 font-medium mb-1">Redis 캐시</div>
+                    <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                      systemStatus?.redis === 'healthy' ? 'bg-sky-100 text-sky-700' :
+                      systemStatus?.redis === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {systemStatus?.redis === 'healthy' ? '정상' :
+                       systemStatus?.redis === 'warning' ? '주의' : '오류'}
+                    </div>
                   </div>
-                  <h3 className="text-xs text-neutral-800">Redis 캐시</h3>
-                  <p className="text-xs text-neutral-600 capitalize">
-                    {systemStatus?.redis || 'unknown'}
-                  </p>
                 </div>
 
-                <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className="w-4 h-4 bg-green-600 rounded-full mx-auto mb-1 flex items-center justify-center">
-                    <i className="fa-solid fa-server text-white text-xs"></i>
+                <div className="bg-white border border-sky-200 rounded-lg p-3">
+                  <div className="text-center">
+                    <div className="text-sm text-neutral-800 font-medium mb-1">API 상태</div>
+                    <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                      systemStatus?.api === 'healthy' ? 'bg-sky-100 text-sky-700' :
+                      systemStatus?.api === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {systemStatus?.api === 'healthy' ? '정상' :
+                       systemStatus?.api === 'warning' ? '주의' : '오류'}
+                    </div>
                   </div>
-                  <h3 className="text-xs text-neutral-800">웹 서버</h3>
-                  <p className="text-xs text-neutral-600">정상</p>
                 </div>
 
-                <div className="text-center p-2 bg-neutral-50 rounded-lg">
-                  <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
-                    systemStatus?.api === 'healthy' ? 'bg-green-600' :
-                    systemStatus?.api === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
-                  }`}>
-                    <i className="fa-solid fa-plug text-white text-xs"></i>
+                <div className="bg-white border border-sky-200 rounded-lg p-3">
+                  <div className="text-center">
+                    <div className="text-sm text-neutral-800 font-medium mb-1">시스템 부하</div>
+                    <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                      systemStatus?.system_load === 'low' ? 'bg-sky-100 text-sky-700' :
+                      systemStatus?.system_load === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                      systemStatus?.system_load === 'high' ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-700'
+                    }`}>
+                      {systemStatus?.system_load === 'low' ? '낮음' :
+                       systemStatus?.system_load === 'medium' ? '보통' :
+                       systemStatus?.system_load === 'high' ? '높음' : '알 수 없음'}
+                    </div>
                   </div>
-                  <h3 className="text-xs text-neutral-800">API 상태</h3>
-                  <p className="text-xs text-neutral-600 capitalize">
-                    {systemStatus?.api || 'unknown'}
-                  </p>
                 </div>
               </div>
 
-              {/* 추가 시스템 정보 */}
-              <div className="mt-4 pt-3 border-t border-neutral-200">
-                <div className="text-xs text-neutral-600 space-y-1">
-                  <div className="flex justify-between">
-                    <span>마지막 백업:</span>
-                    <span>{systemStatus?.lastBackup ?
+              {/* 시스템 메트릭 */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-sky-100">
+                  <span className="text-sm text-neutral-700">메모리 사용량</span>
+                  <span className={`text-sm font-medium ${
+                    systemStatus?.memory_usage === 'low' ? 'text-sky-600' :
+                    systemStatus?.memory_usage === 'medium' ? 'text-yellow-600' :
+                    systemStatus?.memory_usage === 'high' ? 'text-red-600' : 'text-neutral-500'
+                  }`}>
+                    {systemStatus?.memory_usage === 'low' ? '낮음' :
+                     systemStatus?.memory_usage === 'medium' ? '보통' :
+                     systemStatus?.memory_usage === 'high' ? '높음' : '알 수 없음'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-2 border-b border-sky-100">
+                  <span className="text-sm text-neutral-700">응답 시간</span>
+                  <span className="text-sm text-sky-600 font-medium">
+                    {systemStatus?.response_time || '알 수 없음'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-2 border-b border-sky-100">
+                  <span className="text-sm text-neutral-700">업타임</span>
+                  <span className="text-sm text-sky-600 font-medium">
+                    {systemStatus?.uptime || '알 수 없음'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-neutral-700">마지막 백업</span>
+                  <span className="text-sm text-neutral-600">
+                    {systemStatus?.lastBackup ?
                       new Date(systemStatus.lastBackup).toLocaleString('ko-KR') :
                       '정보 없음'
-                    }</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>활성 연결:</span>
-                    <span>{dashboardStats?.activePosts || 0}건</span>
-                  </div>
+                    }
+                  </span>
                 </div>
               </div>
             </div>
