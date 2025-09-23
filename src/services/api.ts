@@ -297,6 +297,11 @@ export class AdminApiService {
     }
   }
 
+  async getAgentResult(postId: string, agentType: string): Promise<any> {
+    const response = await api.get(`/api/v1/blog-posts/${postId}/agent-result/${agentType}`);
+    return response.data;
+  }
+
   async getAgentResults(postId: string): Promise<AgentResult[]> {
     const response = await api.get(`/api/v1/admin/posts/${postId}/agent-results`);
     return response.data;
@@ -420,6 +425,54 @@ export class AdminApiService {
     const response = await api.put(`/api/v1/admin/posts/${postId}/materials/status`, {
       status
     });
+    return response.data;
+  }
+
+  // 파이프라인 상태 조회 API
+  async getPipelineStatus(postId: string): Promise<{
+    post_id: string;
+    current_status: string;
+    is_running: boolean;
+    is_completed: boolean;
+    last_execution: any;
+    executions: Array<{
+      pipeline_id: string;
+      status: string;
+      started_at: string;
+      completed_at: string;
+      quality_score: number;
+      improvement_rate: number;
+      total_iterations: number;
+      successful_agents: number;
+      total_agents: number;
+    }>;
+    total_executions: number;
+  }> {
+    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-status`);
+    return response.data;
+  }
+
+  // 파이프라인 터미널 로그 조회 API
+  async getPipelineTerminalLogs(postId: string, pipelineId: string): Promise<{
+    post_id: string;
+    pipeline_id: string;
+    logs: Array<{
+      id: number;
+      timestamp: string;
+      level: string;
+      logger: string;
+      message: string;
+      elapsed_seconds: number;
+      module: string;
+      function: string;
+      line: number;
+      agent_type: string;
+      execution_id: string;
+      log_metadata: any;
+    }>;
+    total_count: number;
+  }> {
+    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-logs/${pipelineId}`);
     return response.data;
   }
 
@@ -815,6 +868,7 @@ export class AdminApiService {
 
   async getGenerationResults(postId: string): Promise<{
     post_id: string;
+    pipeline_id: string; // 파이프라인 ID 추가
     overall_status: string;
     total_duration: number;
     successful_agents: number;

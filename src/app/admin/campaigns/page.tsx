@@ -64,8 +64,8 @@ export default function AdminCampaigns() {
   };
 
   const getProgressPercentage = (campaign: Campaign) => {
-    return campaign.target_post_count > 0 
-      ? (campaign.completed_post_count / campaign.target_post_count) * 100 
+    return campaign.target_post_count > 0
+      ? ((campaign.completed_post_count || 0) / campaign.target_post_count) * 100
       : 0;
   };
 

@@ -136,14 +136,83 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
   const [terminalLogs, setTerminalLogs] = useState<any[]>([]);
   const [logsWebsocket, setLogsWebsocket] = useState<WebSocket | null>(null);
 
-  // 포스트 상태에 따라 초기 상태 설정
+  // 에이전트 결과 팝업
+  const [showAgentResultPopup, setShowAgentResultPopup] = useState(false);
+  const [selectedAgentResult, setSelectedAgentResult] = useState<any>(null);
+
+  // 포스트 상태에 따라 초기 상태 설정 (파이프라인 상태 조회로 개선)
   useEffect(() => {
-    if (postStatus === 'generation_completed') {
-      setCurrentState('completed');
-    } else {
-      setCurrentState('idle');
-    }
-  }, [postStatus]);
+    const initializeState = async () => {
+      if (!postId) return;
+
+      try {
+        // 파이프라인 상태 조회
+        const pipelineStatus = await adminApi.getPipelineStatus(postId);
+
+        if (pipelineStatus.is_running) {
+          // 실행 중인 경우 - WebSocket 연결하여 실시간 모니터링
+          setCurrentState('running');
+          // 실행 중인 파이프라인을 모니터링하기 위해 WebSocket 연결 (모니터링 모드)
+          setTimeout(() => {
+            setupWebSocket(true); // 모니터링 모드로 연결
+            setupTerminalLogsWebSocket(); // 터미널 로그도 모니터링
+          }, 100);
+        } else if (pipelineStatus.is_completed || postStatus === 'generation_completed') {
+          // 완료된 경우
+          setCurrentState('completed');
+
+          // 완료된 결과 로드 후 해당 파이프라인의 터미널 로그 조회
+          try {
+            const resultData = await adminApi.getGenerationResults(postId);
+            if (resultData.pipeline_id) {
+              const logsResponse = await adminApi.getPipelineTerminalLogs(postId, resultData.pipeline_id);
+              if (logsResponse.logs && logsResponse.logs.length > 0) {
+                // 과거 로그들을 현재 로그 형식으로 변환
+                const formattedLogs = logsResponse.logs.map(log => ({
+                  id: log.id,
+                  timestamp: log.timestamp,
+                  level: log.level,
+                  logger: log.logger,
+                  message: log.message,
+                  elapsed_seconds: log.elapsed_seconds,
+                  module: log.module,
+                  function: log.function,
+                  line: log.line,
+                  agent_type: log.agent_type,
+                  execution_id: log.execution_id,
+                  log_metadata: log.log_metadata
+                }));
+                setTerminalLogs(formattedLogs);
+              }
+            }
+          } catch (error) {
+            console.error('완료된 파이프라인 결과 및 로그 조회 실패:', error);
+            // 결과 조회 실패해도 결과 화면은 표시 (기존 로직으로 폴백)
+            // 단, material_completed 상태에서는 generation-results를 호출하지 않음
+            if (postStatus !== 'material_completed') {
+              loadGenerationResult();
+            }
+          }
+        } else {
+          // 미실행 상태
+          setCurrentState('idle');
+        }
+      } catch (error) {
+        console.error('파이프라인 상태 조회 실패:', error);
+        // 폴백: 기존 postStatus 기반 로직
+        if (postStatus === 'generation_completed') {
+          setCurrentState('completed');
+        } else if (postStatus === 'material_completed' || postStatus === 'initial') {
+          // 자료 완료 상태 또는 초기 상태에서는 AI 생성 준비 화면 표시
+          setCurrentState('idle');
+        } else {
+          setCurrentState('idle');
+        }
+      }
+    };
+
+    initializeState();
+  }, [postId, postStatus]);
 
   // 완료 상태일 때 결과 데이터 로드
   useEffect(() => {
@@ -210,7 +279,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       setupTerminalLogsWebSocket();
 
       // 파이프라인 모니터링 WebSocket 연결 (연결 즉시 메시지 전송)
-      setupWebSocket();
+      setupWebSocket(false); // 실행 모드
 
       // WebSocket 연결 실패 시를 위한 타임아웃 폴백
       setTimeout(() => {
@@ -291,7 +360,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     }
   };
 
-  const setupWebSocket = () => {
+  const setupWebSocket = (isMonitoringMode = false) => {
     try {
       // 기존 연결이 있으면 닫기
       if (websocket) {
@@ -303,18 +372,22 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('✅ 파이프라인 모니터링 WebSocket 연결됨');
+        console.log('✅ 파이프라인 모니터링 WebSocket 연결됨', isMonitoringMode ? '(모니터링 모드)' : '(실행 모드)');
         console.log('WebSocket readyState:', ws.readyState);
         setWebsocket(ws);
         websocketRef.current = ws; // ref에도 저장
 
-        // 연결 즉시 파이프라인 시작 메시지 전송
-        console.log('🚀 WebSocket 연결 즉시 파이프라인 시작 메시지 전송:', postId);
-        ws.send(JSON.stringify({
-          type: 'start_pipeline',
-          input_data: {},
-          config: { websocket_enabled: true }
-        }));
+        // 모니터링 모드가 아니면 파이프라인 시작 메시지 전송
+        if (!isMonitoringMode) {
+          console.log('🚀 WebSocket 연결 즉시 파이프라인 시작 메시지 전송:', postId);
+          ws.send(JSON.stringify({
+            type: 'start_pipeline',
+            input_data: {},
+            config: { websocket_enabled: true }
+          }));
+        } else {
+          console.log('👀 실행 중인 파이프라인 모니터링 모드로 연결됨:', postId);
+        }
       };
 
       ws.onmessage = (event) => {
@@ -322,7 +395,11 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
           const data = JSON.parse(event.data);
           console.log('WebSocket 메시지 수신:', data);
 
-          if (data.type === 'pipeline_status') {
+          if (data.type === 'connection_established') {
+            // WebSocket 연결이 시작되었을 때 터미널 로그 초기화
+            console.log('✅ 파이프라인 모니터링 WebSocket 연결됨 (실행 모드)');
+            setTerminalLogs([]); // 터미널 로그 초기화
+          } else if (data.type === 'pipeline_status') {
             setPipelineStatus(data.data);
             updateProgressFromPipelineStatus(data.data);
           } else if (data.type === 'pipeline_started') {
@@ -541,6 +618,64 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     }
   };
 
+  const handleViewAgentResult = async (agentType: string) => {
+    try {
+      // 해당 에이전트의 결과 데이터를 가져옴
+      let resultData = null;
+
+      switch (agentType) {
+        case 'data_aggregation':
+        case 'input':
+        case 'plan':
+        case 'title':
+        case 'content':
+        case 'evaluation':
+        case 'edit':
+          try {
+            const agentResult = await adminApi.getAgentResult(postId, agentType);
+            resultData = {
+              agentType: agentResult.agent_type,
+              agentName: agentResult.agent_name,
+              description: agentResult.description,
+              result: agentResult.result,
+              status: agentResult.status,
+              executionTime: agentResult.execution_time,
+              errorMessage: agentResult.error_message
+            };
+          } catch (error) {
+            console.error(`${agentType} 에이전트 결과 조회 실패:`, error);
+            resultData = {
+              agentType,
+              agentName: agentType,
+              description: '에이전트 결과를 불러올 수 없습니다.',
+              result: '데이터 로드 중 오류가 발생했습니다.'
+            };
+          }
+          break;
+        default:
+          resultData = {
+            agentType,
+            agentName: agentType,
+            description: '알 수 없는 에이전트 타입입니다.',
+            result: '데이터를 불러올 수 없습니다.'
+          };
+      }
+
+      setSelectedAgentResult(resultData);
+      setShowAgentResultPopup(true);
+    } catch (error) {
+      console.error('에이전트 결과 조회 실패:', error);
+      // 기본 데이터로 팝업 표시
+      setSelectedAgentResult({
+        agentType,
+        agentName: agentType,
+        description: '에이전트 결과를 불러올 수 없습니다.',
+        result: '데이터 로드 중 오류가 발생했습니다.'
+      });
+      setShowAgentResultPopup(true);
+    }
+  };
+
   const closePopups = () => {
     setShowInputDataPopup(false);
     setInputDataDetails(null);
@@ -551,6 +686,8 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     setShowPromptPopup(false);
     setSelectedPrompt(null);
     setPromptDetails(null);
+    setShowAgentResultPopup(false);
+    setSelectedAgentResult(null);
   };
 
 
@@ -608,6 +745,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
         <GenerationProgressView
           progress={progress}
           onStop={handleStopGeneration}
+          onViewAgentResult={handleViewAgentResult}
         />
       )}
 
@@ -681,6 +819,13 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
           promptKey={selectedPrompt.key}
           promptData={selectedPrompt.data}
           details={promptDetails}
+          onClose={closePopups}
+        />
+      )}
+
+      {showAgentResultPopup && selectedAgentResult && (
+        <AgentResultPopup
+          agentResult={selectedAgentResult}
           onClose={closePopups}
         />
       )}
@@ -1485,15 +1630,18 @@ function PreGenerationView({
 // 실행 중 뷰 컴포넌트
 function GenerationProgressView({
   progress,
-  onStop
+  onStop,
+  onViewAgentResult
 }: {
   progress: GenerationProgress | null;
   onStop: () => void;
+  onViewAgentResult: (agentType: string) => void;
 }) {
   // 에이전트 타입을 한글로 변환
   const getAgentDisplayName = (agentType: string) => {
     const nameMap: Record<string, string> = {
-      'input': '데이터 집계',
+      'data_aggregation': '데이터 집계',
+      'input': '입력 처리',
       'plan': '콘텐츠 계획',
       'title': '제목 생성',
       'content': '본문 생성',
@@ -1573,9 +1721,29 @@ function GenerationProgressView({
                     <span className="text-sm font-medium" style={{color: '#2A485E'}}>{displayName}</span>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <span className="text-sm" style={{color: statusDisplay.color}}>
-                      {statusDisplay.text}
-                    </span>
+                    {stepData.status === 'completed' ? (
+                      <button
+                        onClick={() => onViewAgentResult(agentType)}
+                        className="px-3 py-1 text-xs rounded-lg border transition-colors"
+                        style={{
+                          borderColor: 'rgba(74, 124, 158, 0.3)',
+                          color: '#4A7C9E',
+                          backgroundColor: 'rgba(74, 124, 158, 0.05)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(74, 124, 158, 0.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(74, 124, 158, 0.05)';
+                        }}
+                      >
+                        결과 보기
+                      </button>
+                    ) : (
+                      <span className="text-sm" style={{color: statusDisplay.color}}>
+                        {statusDisplay.text}
+                      </span>
+                    )}
                     {stepData.duration && (
                       <span className="text-xs text-gray-500">
                         {stepData.duration.toFixed(1)}초
@@ -1590,6 +1758,10 @@ function GenerationProgressView({
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm" style={{color: 'rgba(42, 72, 94, 0.7)'}}>데이터 집계</span>
+                <span className="text-sm" style={{color: '#4A9E8C'}}>완료</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm" style={{color: 'rgba(42, 72, 94, 0.7)'}}>입력 처리</span>
                 <span className="text-sm" style={{color: '#4A9E8C'}}>완료</span>
               </div>
               <div className="flex items-center justify-between">
@@ -1747,6 +1919,245 @@ function GenerationResultView({
         >
           승인
         </button>
+      </div>
+    </div>
+  );
+}
+
+// 에이전트 결과 팝업 컴포넌트
+function AgentResultPopup({ agentResult, onClose }: { agentResult: any; onClose: () => void }) {
+  // ESC 키와 배경 클릭으로 닫기
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleBackdropClick}>
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b" style={{borderBottomColor: 'rgba(74, 124, 158, 0.3)'}}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold" style={{color: '#2A485E'}}>
+              {agentResult.agentName} 결과
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+            >
+              ×
+            </button>
+          </div>
+          <p className="text-sm mt-2" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
+            {agentResult.description}
+          </p>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>실행 결과</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm whitespace-pre-wrap" style={{color: '#2A485E'}}>
+                  {typeof agentResult.result === 'string'
+                    ? agentResult.result
+                    : JSON.stringify(agentResult.result, null, 2)
+                  }
+                </div>
+              </div>
+            </div>
+
+            {agentResult.agentType === 'data_aggregation' && agentResult.result && (
+              <div>
+                <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>수집 통계</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="text-sm font-medium" style={{color: '#2A485E'}}>캐시 히트율</div>
+                    <div className="text-lg font-bold" style={{color: '#4A7C9E'}}>
+                      {agentResult.result.cache_hit ? '적용됨' : '미적용'}
+                    </div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="text-sm font-medium" style={{color: '#2A485E'}}>처리 시간</div>
+                    <div className="text-lg font-bold" style={{color: '#4A9E8C'}}>
+                      {agentResult.result.data_collection_time ? `${agentResult.result.data_collection_time.toFixed(1)}초` : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {agentResult.agentType === 'plan' && agentResult.result && (
+              <div>
+                <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>콘텐츠 계획</h3>
+                <div className="space-y-3">
+                  {agentResult.result.sections && Array.isArray(agentResult.result.sections) && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>섹션 구성</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>
+                        {agentResult.result.sections.map((section: any, idx: number) => (
+                          <li key={idx}>{section.title || section}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {agentResult.result.outline && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>전체 개요</h4>
+                      <p className="text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>{agentResult.result.outline}</p>
+                    </div>
+                  )}
+                  {agentResult.result.target_audience && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>대상 독자</h4>
+                      <p className="text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>{agentResult.result.target_audience}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {agentResult.agentType === 'title' && agentResult.result && (
+              <div>
+                <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>제목 생성 결과</h3>
+                <div className="space-y-3">
+                  {agentResult.result.selected_title && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>선택된 제목</h4>
+                      <p className="text-sm font-medium" style={{color: '#2A485E'}}>{agentResult.result.selected_title}</p>
+                    </div>
+                  )}
+                  {agentResult.result.seo_score && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="text-sm font-medium" style={{color: '#2A485E'}}>SEO 점수</div>
+                        <div className="text-lg font-bold" style={{color: '#4A7C9E'}}>{agentResult.result.seo_score}/100</div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="text-sm font-medium" style={{color: '#2A485E'}}>가독성 점수</div>
+                        <div className="text-lg font-bold" style={{color: '#4A9E8C'}}>{agentResult.result.readability_score}/100</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {agentResult.agentType === 'content' && agentResult.result && (
+              <div>
+                <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>본문 생성 결과</h3>
+                <div className="space-y-3">
+                  {agentResult.result.content && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>생성된 콘텐츠</h4>
+                      <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                        <p className="text-sm whitespace-pre-wrap" style={{color: '#2A485E'}}>
+                          {agentResult.result.content.substring(0, 1000)}
+                          {agentResult.result.content.length > 1000 && '...'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>단어 수</div>
+                      <div className="text-lg font-bold" style={{color: '#4A7C9E'}}>{agentResult.result.word_count || 0}</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>가독성 점수</div>
+                      <div className="text-lg font-bold" style={{color: '#4A9E8C'}}>{agentResult.result.readability_score || 0}/100</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {agentResult.agentType === 'evaluation' && agentResult.result && (
+              <div>
+                <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>품질 평가 결과</h3>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>전체 점수</div>
+                      <div className="text-lg font-bold" style={{color: '#4A7C9E'}}>{agentResult.result.overall_score || 0}/100</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>SEO 점수</div>
+                      <div className="text-lg font-bold" style={{color: '#4A9E8C'}}>{agentResult.result.seo_score || 0}/100</div>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>법률 점수</div>
+                      <div className="text-lg font-bold" style={{color: '#D97706'}}>{agentResult.result.legal_score || 0}/100</div>
+                    </div>
+                  </div>
+                  {agentResult.result.items && Array.isArray(agentResult.result.items) && agentResult.result.items.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>세부 평가 항목</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {agentResult.result.items.map((item: any, idx: number) => (
+                          <div key={idx} className="border rounded-lg p-3" style={{borderColor: 'rgba(74, 124, 158, 0.2)'}}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm" style={{color: '#2A485E'}}>{item.name || item.criteria}</span>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                item.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {item.passed ? '통과' : '실패'}
+                              </span>
+                            </div>
+                            {item.score !== undefined && (
+                              <div className="mt-2 text-xs" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
+                                점수: {item.score}/100
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {agentResult.agentType === 'edit' && agentResult.result && (
+              <div>
+                <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>콘텐츠 편집 결과</h3>
+                <div className="space-y-3">
+                  {agentResult.result.final_content && (
+                    <div>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>최종 편집본</h4>
+                      <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                        <p className="text-sm whitespace-pre-wrap" style={{color: '#2A485E'}}>
+                          {agentResult.result.final_content.substring(0, 1000)}
+                          {agentResult.result.final_content.length > 1000 && '...'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>품질 개선도</div>
+                      <div className="text-lg font-bold" style={{color: '#4A7C9E'}}>{agentResult.result.quality_improvement || 0}%</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="text-sm font-medium" style={{color: '#2A485E'}}>편집 횟수</div>
+                      <div className="text-lg font-bold" style={{color: '#4A9E8C'}}>{agentResult.result.edit_history?.length || 0}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

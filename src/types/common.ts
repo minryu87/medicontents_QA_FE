@@ -132,6 +132,10 @@ export interface PipelineResult {
   agent_results_summary?: any;
   final_evaluation_summary?: any;
   ai_generation?: any; // AI 생성 결과
+  successful_agents?: number; // 성공한 에이전트 수
+  total_agents?: number; // 총 에이전트 수
+  current_step?: string; // 현재 진행 중인 단계
+  progress?: number; // 진행률
   created_at: string;
   updated_at: string;
 }
@@ -609,16 +613,7 @@ export interface PostScheduleDetail {
 }
 
 export interface ScheduleNotificationList {
-  notifications: Array<{
-    id: number;
-    post_id: string;
-    post_title: string;
-    notification_type: string;
-    stage: string | null;
-    scheduled_at: string | null;
-    priority: number;
-    campaign_id: number | null;
-  }>;
+  notifications: ScheduleNotification[];
   total: number;
   page: number;
   size: number;

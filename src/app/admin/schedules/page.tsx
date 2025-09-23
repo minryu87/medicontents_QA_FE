@@ -192,17 +192,16 @@ export default function AdminSchedulesPage() {
                 <CompactPipelineMonitor
                   postId="QA_001"
                   pipelineResult={{
-                    ai_generation: {
-                      progress: 75,
-                      current_step: 'content',
-                      agents: [
-                        { name: 'InputAgent', status: 'completed', progress: 100 },
-                        { name: 'PlanAgent', status: 'completed', progress: 100 },
-                        { name: 'ContentAgent', status: 'running', progress: 75 },
-                        { name: 'EvaluationAgent', status: 'pending', progress: 0 },
-                        { name: 'EditAgent', status: 'pending', progress: 0 },
-                      ]
-                    }
+                    id: 1,
+                    post_id: 'QA_001',
+                    pipeline_status: 'running',
+                    total_iterations: 1,
+                    successful_agents: 3,
+                    total_agents: 5,
+                    current_step: 'content',
+                    progress: 75,
+                    created_at: '2024-09-20T10:00:00Z',
+                    updated_at: '2024-09-20T10:00:00Z'
                   }}
                 />
               </div>
@@ -274,7 +273,12 @@ export default function AdminSchedulesPage() {
         {/* 알림센터 탭 */}
         {activeTab === 'notifications' && (
           <ScheduleNotificationCenter
-            notifications={notifications}
+            notifications={{
+              notifications: notifications,
+              total: notifications.length,
+              page: 1,
+              size: notifications.length
+            }}
             onNotificationClick={handleNotificationClick}
           />
         )}
@@ -320,23 +324,21 @@ export default function AdminSchedulesPage() {
           <PipelineRealtimeMonitor
             postId={selectedPostId || 'QA_001'}
             pipelineResult={{
-              ai_generation: {
-                progress: 60,
-                current_step: 'content',
-                agents: [
-                  { name: 'InputAgent', status: 'completed', progress: 100, output: '입력 처리 완료', start_time: '2024-09-20T10:00:00Z', end_time: '2024-09-20T10:05:00Z' },
-                  { name: 'PlanAgent', status: 'completed', progress: 100, output: '계획 수립 완료', start_time: '2024-09-20T10:05:00Z', end_time: '2024-09-20T10:10:00Z' },
-                  { name: 'TitleAgent', status: 'completed', progress: 100, output: '제목 생성 완료', start_time: '2024-09-20T10:10:00Z', end_time: '2024-09-20T10:15:00Z' },
-                  { name: 'ContentAgent', status: 'running', progress: 60, output: '콘텐츠 생성 중...', start_time: '2024-09-20T10:15:00Z' },
-                  { name: 'EvaluationAgent', status: 'pending', progress: 0, start_time: null },
-                  { name: 'EditAgent', status: 'pending', progress: 0, start_time: null },
-                ]
-              }
+              id: 2,
+              post_id: selectedPostId || 'QA_001',
+              pipeline_status: 'running',
+              total_iterations: 1,
+              successful_agents: 3,
+              total_agents: 6,
+              current_step: 'content',
+              progress: 60,
+              created_at: '2024-09-20T10:00:00Z',
+              updated_at: '2024-09-20T10:00:00Z'
             }}
             agentLogs={[]} // 실제 데이터로 대체 가능
-            onExecute={() => console.log('파이프라인 실행')}
-            onStop={() => console.log('파이프라인 중지')}
-            onRefresh={() => console.log('새로고침')}
+            onExecute={async () => console.log('파이프라인 실행')}
+            onStop={async () => console.log('파이프라인 중지')}
+            onRefresh={async () => console.log('새로고침')}
           />
         )}
       </div>
