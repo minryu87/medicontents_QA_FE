@@ -723,11 +723,80 @@ export class AdminApiService {
     prompts_preview: Record<string, any>;
     checklists_preview: Array<{
       name: string;
-      criteria: string[];
+      version: string;
+      category: string;
+      description?: string;
+      items_count?: number;
+      items: Array<{
+        id: string;
+        name: string;
+        description?: string;
+        weight: number;
+      }>;
+      performance_score?: number;
+      success_rate?: number;
     }>;
+    model_settings: {
+      primary_model: string;
+      fallback_model: string;
+      temperature: number;
+      max_output_tokens: number;
+      top_p: number;
+      agent_configs?: Array<{
+        agent_type: string;
+        model: string;
+        temperature: number;
+        max_tokens: number;
+      }>;
+    };
     estimated_duration: number;
   }> {
     const response = await api.get(`/api/v1/admin/posts/${postId}/generation-preview`);
+    return response.data;
+  }
+
+  async getPostInputData(postId: string): Promise<{
+    hospital_info: any;
+    treatment_info: any;
+    medical_service_info: any;
+    post_materials: any;
+    keywords_guide: any;
+    clinical_context: string;
+    universal_images: {
+      hospital_images_count: number;
+      post_images_count: number;
+    };
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/input-data`);
+    return response.data;
+  }
+
+  async getChecklistDetails(postId: string, checklistName: string): Promise<{
+    name: string;
+    version: string;
+    category: string;
+    description: string;
+    checklist_items: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      weight: number;
+    }>;
+    performance_score?: number;
+    success_rate?: number;
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/checklist/${encodeURIComponent(checklistName)}`);
+    return response.data;
+  }
+
+  async getPromptDetails(postId: string, category: string): Promise<{
+    category: string;
+    description: string;
+    prompt_text: string;
+    version: string;
+    is_active: boolean;
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/prompt/${category}`);
     return response.data;
   }
 
@@ -740,7 +809,7 @@ export class AdminApiService {
     pipeline_id?: string;
     status: string;
   }> {
-    const response = await api.post(`/api/v1/admin/posts/${postId}/generation-control`, request);
+    const response = await api.post(`/api/v1/admin/posts/${postId}/control`, request);
     return response.data;
   }
 

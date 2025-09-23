@@ -264,10 +264,7 @@ export function PriorityController({
 
     setChanging(true);
     try {
-      await adminApi.updatePostPriority(postId, {
-        priority: newPriority,
-        reason: `수동 우선순위 조정: ${priorityLabels[currentPriority as keyof typeof priorityLabels]} → ${priorityLabels[newPriority as keyof typeof priorityLabels]}`
-      });
+      await adminApi.updatePostPriority(postId, newPriority);
       onPriorityChanged(newPriority);
     } catch (error) {
       console.error('우선순위 변경 실패:', error);
@@ -353,11 +350,11 @@ export function ScheduleHistoryViewer({ postId }: ScheduleHistoryViewerProps) {
       // setHistory(data.data);
 
       // 임시 더미 데이터
-      const dummyHistory = {
+      const dummyHistory: ScheduleChangeHistory = {
         changes: [
           {
             id: 1,
-            change_type: 'deadline_extended',
+            change_type: 'deadline_adjusted',
             old_value: '2025-01-17T18:00:00Z',
             new_value: '2025-01-18T18:00:00Z',
             reason: '작업자 일정으로 인한 연장',
@@ -522,13 +519,13 @@ export function PostScheduleManager({
       // setSchedule(data.data);
 
       // 임시 더미 데이터
-      const dummyData = {
+      const dummyData: PostScheduleDetail = {
         post_id: postId,
         schedule: {
           scheduled_date: '2025-01-20T09:00:00Z',
           published_date: null,
           priority: 2,
-          delay_status: 'on_track'
+          delay_status: 'on_track' as 'delayed' | 'on_track' | 'at_risk'
         },
         deadlines: {
           material: '2025-01-15T18:00:00Z',

@@ -70,7 +70,7 @@ export function ScheduleCalendar({
           type: 'publish',
           status: schedule.published_date ? 'completed' :
                   isBefore(new Date(schedule.scheduled_date), new Date()) ? 'overdue' : 'pending',
-          priority: schedule.priority,
+          priority: schedule.priority || 1,
           isDraggable: !schedule.published_date, // 게시 완료된 일정은 드래그 불가
         });
       }
@@ -113,7 +113,7 @@ export function ScheduleCalendar({
             date: new Date(deadline),
             type: key as any,
             status,
-            priority: schedule.priority,
+            priority: schedule.priority || 1,
             isDraggable: !completedAt, // 완료된 마감일은 드래그 불가
           });
         }
@@ -186,7 +186,7 @@ export function ScheduleCalendar({
 
         const fieldName = deadlineFields[draggedEvent.type];
         if (fieldName) {
-          updates[fieldName as keyof PostSchedule] = date.toISOString();
+          updates[fieldName as keyof PostSchedule] = date.toISOString() as any;
         }
       }
 

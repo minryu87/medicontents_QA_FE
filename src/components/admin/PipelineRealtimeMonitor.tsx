@@ -88,7 +88,7 @@ export function PipelineRealtimeMonitor({
   // 초기 에이전트 상태 설정
   useEffect(() => {
     if (pipelineResult?.ai_generation?.agents) {
-      const statuses: AgentStatus[] = pipelineResult.ai_generation.agents.map(agent => ({
+                    const statuses: AgentStatus[] = pipelineResult.ai_generation.agents.map((agent: any) => ({
         name: agent.name,
         status: agent.status as any,
         progress: agent.progress,
@@ -446,7 +446,7 @@ export function CompactPipelineMonitor({
     if (!pipelineUpdate || pipelineUpdate.post_id !== postId) return;
 
     const { status: updateStatus } = pipelineUpdate;
-    setStatus(updateStatus);
+    setStatus(updateStatus as 'idle' | 'running' | 'completed' | 'failed');
 
     if (updateStatus === 'running') {
       setProgress(prev => Math.min(prev + 15, 90));

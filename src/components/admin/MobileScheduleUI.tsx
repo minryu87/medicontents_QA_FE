@@ -109,8 +109,8 @@ export function MobileScheduleCard({ schedule, onClick, onEdit, onView }: Mobile
             <h3 className="text-sm font-medium text-gray-900 truncate">
               Post ID: {schedule.post_id}
             </h3>
-            <Badge variant={schedule.priority > 2 ? 'error' : schedule.priority > 1 ? 'warning' : 'secondary'} size="sm">
-              {schedule.priority}
+            <Badge variant={(schedule.priority || 1) > 2 ? 'error' : (schedule.priority || 1) > 1 ? 'warning' : 'secondary'} size="sm">
+              {schedule.priority || 1}
             </Badge>
           </div>
 
@@ -123,7 +123,7 @@ export function MobileScheduleCard({ schedule, onClick, onEdit, onView }: Mobile
             {schedule.scheduled_date && (
               <div className="flex items-center space-x-2">
                 <Calendar className="w-3 h-3" />
-                <span className={getStatusColor(schedule.scheduled_date, schedule.published_date)}>
+                <span className={getStatusColor(schedule.scheduled_date, schedule.published_date || null)}>
                   게시: {format(new Date(schedule.scheduled_date), 'MM/dd HH:mm', { locale: ko })}
                 </span>
               </div>
@@ -132,7 +132,7 @@ export function MobileScheduleCard({ schedule, onClick, onEdit, onView }: Mobile
             {schedule.material_deadline && (
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="w-3 h-3" />
-                <span className={getStatusColor(schedule.material_deadline, schedule.material_completed_at)}>
+                <span className={getStatusColor(schedule.material_deadline, schedule.material_completed_at || null)}>
                   자료 마감: {format(new Date(schedule.material_deadline), 'MM/dd', { locale: ko })}
                 </span>
               </div>

@@ -304,7 +304,8 @@ export function ScheduleMetricsDashboard({ campaignId, className = '' }: Schedul
           { post_id: 'QA_002', stage: 'admin_review', hours_remaining: 6, urgency: 'high' }
         ],
         notifications_created: 3,
-        priorities_updated: 2
+        priorities_updated: 2,
+        monitored_at: new Date().toISOString()
       });
 
     } catch (err) {

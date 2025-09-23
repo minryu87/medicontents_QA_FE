@@ -194,7 +194,7 @@ export function ScheduleNotificationCenter({
     if (!notifications) return;
 
     const allIds = notifications.notifications
-      .filter(n => n.status === 'pending')
+      .filter((n: any) => n.status === 'pending')
       .map(n => n.id);
 
     setSelectedNotifications(new Set(allIds));
@@ -257,7 +257,7 @@ export function ScheduleNotificationCenter({
     }
 
     // 정렬
-    filtered.sort((a, b) => {
+    filtered.sort((a: any, b: any) => {
       const aValue = new Date(a[sortBy]).getTime();
       const bValue = new Date(b[sortBy]).getTime();
 
@@ -489,15 +489,15 @@ export function ScheduleNotificationCenter({
         ) : (
           <>
             {/* 전체 선택 */}
-            {notifications.notifications.some(n => n.status === 'pending') && (
+            {notifications.notifications.some((n: any) => n.status === 'pending') && (
               <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
                 <button
-                  onClick={selectedNotifications.size === notifications.notifications.filter(n => n.status === 'pending').length
+                  onClick={selectedNotifications.size === notifications.notifications.filter((n: any) => n.status === 'pending').length
                     ? clearSelection
                     : selectAllNotifications}
                   className="flex items-center space-x-2"
                 >
-                  {selectedNotifications.size === notifications.notifications.filter(n => n.status === 'pending').length ? (
+                  {selectedNotifications.size === notifications.notifications.filter((n: any) => n.status === 'pending').length ? (
                     <CheckSquare className="w-4 h-4 text-blue-600" />
                   ) : (
                     <Square className="w-4 h-4 text-gray-400" />
@@ -507,7 +507,7 @@ export function ScheduleNotificationCenter({
               </div>
             )}
 
-            {filteredAndSortedNotifications.map((notification) => (
+            {filteredAndSortedNotifications.map((notification: any) => (
               <div
                 key={notification.id}
                 className={`
@@ -566,17 +566,17 @@ export function ScheduleNotificationCenter({
                         <span className="text-xs text-gray-500">
                           {notification.scheduled_at ?
                             formatDistanceToNow(new Date(notification.scheduled_at), { addSuffix: true, locale: ko }) :
-                            formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: ko })
+                            formatDistanceToNow(new Date((notification as any).created_at), { addSuffix: true, locale: ko })
                           }
                         </span>
                         <Badge variant={
-                          notification.status === 'pending' ? 'warning' :
-                          notification.status === 'sent' ? 'info' :
-                          notification.status === 'acknowledged' ? 'success' : 'secondary'
+                          (notification as any).status === 'pending' ? 'warning' :
+                          (notification as any).status === 'sent' ? 'info' :
+                          (notification as any).status === 'acknowledged' ? 'success' : 'secondary'
                         } size="sm">
-                          {notification.status === 'pending' ? '미확인' :
-                           notification.status === 'sent' ? '전송됨' :
-                           notification.status === 'acknowledged' ? '확인됨' : notification.status}
+                          {(notification as any).status === 'pending' ? '미확인' :
+                           (notification as any).status === 'sent' ? '전송됨' :
+                           (notification as any).status === 'acknowledged' ? '확인됨' : (notification as any).status}
                         </Badge>
                       </div>
                     </div>
