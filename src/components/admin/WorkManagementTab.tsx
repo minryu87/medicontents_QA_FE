@@ -41,6 +41,7 @@ interface WorkManagementTabProps {
   statusPostsLoading?: boolean;
   selectedCampaign?: any;
   isLoadingAll?: boolean;
+  onCardClick?: (postId: string) => void;
 }
 
 export default function WorkManagementTab({
@@ -54,7 +55,8 @@ export default function WorkManagementTab({
   isLoadingKanban = false,
   statusPostsLoading = false,
   selectedCampaign,
-  isLoadingAll = false
+  isLoadingAll = false,
+  onCardClick
 }: WorkManagementTabProps) {
   const [isWaitingTasksCollapsed, setIsWaitingTasksCollapsed] = useState(false);
 
@@ -128,9 +130,17 @@ export default function WorkManagementTab({
                   </span>
                 </div>
                 <h4 className="text-sm text-neutral-800 mb-2 line-clamp-2">{task.title}</h4>
-                <div className="text-xs text-neutral-600 space-y-1">
-                  <p>게시예정: {task.publish_date ? new Date(task.publish_date).toLocaleDateString('ko-KR') : '미정'}</p>
-                  <p>생성일: {task.created_at ? new Date(task.created_at).toLocaleDateString('ko-KR') : '미정'}</p>
+                <div className="flex justify-between items-start">
+                  <div className="text-xs text-neutral-600 space-y-1">
+                    <p>게시예정: {task.publish_date ? new Date(task.publish_date).toLocaleDateString('ko-KR') : '미정'}</p>
+                    <p>생성일: {task.created_at ? new Date(task.created_at).toLocaleDateString('ko-KR') : '미정'}</p>
+                  </div>
+                  <button
+                    onClick={() => onCardClick?.(task.id)}
+                    className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors mt-1"
+                  >
+                    &gt;&gt;
+                  </button>
                 </div>
               </div>
                 ))
@@ -181,8 +191,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -227,8 +245,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -273,8 +299,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -319,8 +353,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -365,8 +407,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -411,8 +461,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -463,8 +521,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -512,8 +578,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -561,8 +635,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );
@@ -607,8 +689,16 @@ export default function WorkManagementTab({
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
                           <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
-                          <div className="text-xs text-neutral-600">
-                            {calculateDDay(post.publish_date)}
+                          <div className="flex justify-between items-center">
+                            <div className="text-xs text-neutral-600">
+                              {calculateDDay(post.publish_date)}
+                            </div>
+                            <button
+                              onClick={() => onCardClick?.(post.post_id)}
+                              className="text-neutral-600 hover:text-neutral-800 text-sm font-bold px-2 py-1 rounded hover:bg-neutral-100 transition-colors"
+                            >
+                              &gt;&gt;
+                            </button>
                           </div>
                         </div>
                       );

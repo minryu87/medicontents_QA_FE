@@ -877,6 +877,12 @@ export default function HospitalWorkPage() {
                    statusPostsLoading={statusPostsLoading}
                    selectedCampaign={selectedCampaignForWork}
                    isLoadingAll={waitingTasksLoading || kanbanLoading || statusPostsLoading}
+                   onCardClick={(postId) => {
+                     setActiveTab('posting-work');
+                     // postingWorkPosts에서 해당 포스트 찾기
+                     const selectedPost = postingWorkPosts.find(post => post.post_id === postId) || null;
+                     setSelectedPostForWork(selectedPost);
+                   }}
                  />
                ) : (
                  <EmptyState

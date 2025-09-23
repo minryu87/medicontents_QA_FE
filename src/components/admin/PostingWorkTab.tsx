@@ -267,6 +267,7 @@ export default function PostingWorkTab({
       case 'initial': return '초기';
       case 'material_completed': return '자료 완료';
       case 'guide_completed': return '가이드 완료';
+      case 'generation_completed': return 'AI 생성 완료';
       case 'agent_processing': return 'AI 처리중';
       case 'agent_completed': return 'AI 완료';
       case 'admin_review': return '어드민 검토';
@@ -614,7 +615,10 @@ export default function PostingWorkTab({
                     )}
 
                     {activeStep === 'ai-agent' && selectedPost && (
-                      <AIGenerationTab postId={selectedPost.post_id} />
+                      <AIGenerationTab
+                        postId={selectedPost.post_id}
+                        postStatus={selectedPost.status}
+                      />
                     )}
 
                     {activeStep === 'result-review' && (

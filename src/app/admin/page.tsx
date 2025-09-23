@@ -1161,7 +1161,7 @@ export default function AdminDashboard() {
 
                     // 해당 날짜의 일정 데이터 찾기
                     const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const daySchedule = calendarData.find((item: any) => item.date === dateString);
+                    const daySchedule = Array.isArray(calendarData) ? calendarData.find((item: any) => item.date === dateString) : null;
 
                     const hasScheduled = (daySchedule?.scheduled_count || 0) > 0;
                     const hasPublished = (daySchedule?.published_count || 0) > 0;
