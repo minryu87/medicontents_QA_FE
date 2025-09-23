@@ -390,25 +390,24 @@ export class AdminApiService {
 
   // 포스팅 작업용 포스트 상세 정보 API
   async getPostsForPostingWork(hospitalId: number): Promise<any[]> {
-    const response = await api.get(`/api/v1/blog-posts?hospital_id=${hospitalId}&limit=50`);
-    console.log('API Response:', response);
-    console.log('API Response Data:', response.data);
-    console.log('API Response Data Items:', response.data?.items);
+    try {
+      const response = await api.get(`/api/v1/blog-posts?hospital_id=${hospitalId}&limit=50`);
+      console.log('API Response:', response);
+      console.log('API Response Data:', response.data);
+      console.log('API Response Data Items:', response.data?.items);
 
-    // response.data가 직접 배열인 경우 처리
-    if (Array.isArray(response.data)) {
-      console.log('Response data is array:', response.data);
-      return response.data;
+      // BlogPostListResponse 형식: { items: [], total, page, size, pages }
+      if (response.data?.items && Array.isArray(response.data.items)) {
+        console.log('Response data items is array:', response.data.items);
+        return response.data.items;
+      }
+
+      console.log('No valid data found, returning empty array');
+      return [];
+    } catch (error) {
+      console.error('포스트 로드 실패:', error);
+      throw error;
     }
-
-    // response.data.items가 있는 경우
-    if (response.data?.items && Array.isArray(response.data.items)) {
-      console.log('Response data has items array:', response.data.items);
-      return response.data.items;
-    }
-
-    console.log('No valid data found, returning empty array');
-    return [];
   }
 
   // 포스트 상태 업데이트 API
