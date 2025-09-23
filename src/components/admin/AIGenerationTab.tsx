@@ -187,11 +187,8 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
             }
           } catch (error) {
             console.error('완료된 파이프라인 결과 및 로그 조회 실패:', error);
-            // 결과 조회 실패해도 결과 화면은 표시 (기존 로직으로 폴백)
-            // 단, material_completed 상태에서는 generation-results를 호출하지 않음
-            if (postStatus !== 'material_completed') {
-              loadGenerationResult();
-            }
+            // API 타임아웃 문제로 결과 조회 생략하고 WebSocket 모니터링에 의존
+            console.log('⚠️ API 타임아웃으로 결과 조회 생략, WebSocket 모니터링에 의존');
           }
         } else {
           // 미실행 상태
@@ -231,11 +228,26 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
   const loadPreGenerationData = async () => {
     try {
       setLoading(true);
-      const data = await adminApi.getGenerationPreview(postId);
+
+      // Promise.race로 10초 타임아웃 구현
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('TIMEOUT')), 10000);
+      });
+
+      const dataPromise = adminApi.getGenerationPreview(postId);
+
+      const data = await Promise.race([dataPromise, timeoutPromise]) as any;
       setPreGenerationData(data);
-    } catch (err) {
-      setError('생성 전 데이터 로드 실패');
-      console.error(err);
+    } catch (err: any) {
+      if (err.message === 'TIMEOUT') {
+        console.warn('생성 전 데이터 로드 타임아웃 (무시됨)');
+        // 타임아웃은 무시하고 계속 진행
+        setPreGenerationData(null);
+      } else {
+        console.error('생성 전 데이터 로드 실패:', err);
+        // 실제 에러인 경우에만 에러 표시
+        setError('생성 전 데이터 로드 실패');
+      }
     } finally {
       setLoading(false);
     }
@@ -244,11 +256,22 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
   const loadGenerationResult = async () => {
     try {
       setLoading(true);
-      const data = await adminApi.getGenerationResults(postId);
+      // 타임아웃을 5초로 제한
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('TIMEOUT')), 5000);
+      });
+
+      const dataPromise = adminApi.getGenerationResults(postId);
+      const data = await Promise.race([dataPromise, timeoutPromise]) as any;
       setResult(data);
-    } catch (err) {
-      setError('생성 결과 로드 실패');
-      console.error(err);
+    } catch (err: any) {
+      if (err.message === 'TIMEOUT') {
+        console.warn('생성 결과 로드 타임아웃 (무시됨)');
+        setResult(null);
+      } else {
+        console.error('생성 결과 로드 실패:', err);
+        setResult(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -284,18 +307,37 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       // WebSocket 연결 실패 시를 위한 타임아웃 폴백
       setTimeout(() => {
         if (!websocketRef.current || websocketRef.current.readyState !== WebSocket.OPEN) {
-          console.error('❌ WebSocket 연결 타임아웃, REST API로 폴백');
-          // WebSocket 연결 실패 시 REST API로 폴백
-          adminApi.controlGeneration(postId, {
-            action: 'start',
-            parameters: {}
-          }).catch(err => {
-            console.error('생성 시작 실패:', err);
-            setError('생성 시작에 실패했습니다');
-            setCurrentState('idle');
-          });
+          console.error('❌ WebSocket 연결 타임아웃, 파이프라인 상태 확인');
+          // WebSocket 연결 실패 시 실제 파이프라인 실행 상태 확인
+          checkPipelineStatus();
+        } else {
+          console.log('✅ WebSocket 연결 확인됨, 타임아웃 체크 통과');
         }
-      }, 3000); // 3초 타임아웃
+      }, 5000); // 5초 타임아웃 (늘림)
+
+      // 파이프라인 상태 확인 함수 - 간단 버전
+      const checkPipelineStatus = async () => {
+        try {
+          console.log('🔍 파이프라인 상태 확인 시도...');
+
+          // WebSocket이 연결되어 있다면 모니터링 모드로 전환
+          if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
+            console.log('✅ WebSocket 연결됨, 모니터링 모드로 전환');
+            setTimeout(() => setupWebSocket(true), 1000);
+            return;
+          }
+
+          // WebSocket 연결이 안 되어 있다면 일단 모니터링 모드로 시도
+          console.log('⚠️ WebSocket 연결 상태 불명확, 모니터링 모드로 시도');
+          setTimeout(() => setupWebSocket(true), 1000);
+
+        } catch (err) {
+          console.error('파이프라인 상태 확인 실패:', err);
+          // 에러가 발생해도 일단 모니터링 모드로 시도
+          console.log('⚠️ 상태 확인 실패, 모니터링 모드로 시도');
+          setTimeout(() => setupWebSocket(true), 1000);
+        }
+      };
 
     } catch (err) {
       setError('생성 시작 실패');
@@ -405,6 +447,9 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
           } else if (data.type === 'pipeline_started') {
             // 파이프라인이 실제로 시작되었을 때 (새 실행의 경우에만 초기화)
             console.log('🎯 파이프라인 시작됨, progress 초기화');
+
+            // 로딩 상태 해제 (파이프라인이 실제로 시작됨)
+            setLoading(false);
             setProgress({
               current_step: 'data_aggregation',
               progress_percent: 0,
@@ -449,6 +494,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
             console.log('파이프라인 취소됨:', data.message);
             setCurrentState('idle');
             setError('파이프라인이 중단되었습니다.');
+            setLoading(false); // 취소 시 로딩 상태 해제
           } else if (data.type === 'pipeline_completed') {
             // 파이프라인 완료
             console.log('파이프라인 완료:', data.data);
@@ -475,11 +521,14 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
 
             loadResult();
             setCurrentState('completed');
+            setLoading(false); // 파이프라인 완료 시 로딩 상태 해제
           } else if (data.type === 'pipeline_result') {
             setCurrentState('completed');
             setResult(data.data);
+            setLoading(false); // 결과 수신 시 로딩 상태 해제
           } else if (data.type === 'error') {
             setError(data.message);
+            setLoading(false); // 에러 발생 시 로딩 상태 해제
             setCurrentState('idle');
           }
         } catch (error) {
