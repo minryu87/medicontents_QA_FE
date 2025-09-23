@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { adminApi } from '@/services/api';
 
 interface PreGenerationView {
@@ -62,6 +62,7 @@ interface GenerationProgress {
     status: string;
     duration?: number;
     step_name?: string;
+    error?: string;
   }>;
   currentAgent?: string;
   agentStatus?: 'pending' | 'running' | 'completed' | 'failed';
@@ -130,7 +131,10 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
 
   // WebSocket 및 실시간 진행 상태
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
+  const websocketRef = useRef<WebSocket | null>(null);
   const [pipelineStatus, setPipelineStatus] = useState<any>(null);
+  const [terminalLogs, setTerminalLogs] = useState<any[]>([]);
+  const [logsWebsocket, setLogsWebsocket] = useState<WebSocket | null>(null);
 
   // 포스트 상태에 따라 초기 상태 설정
   useEffect(() => {
@@ -181,26 +185,38 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     }
   };
 
+  const handleStopGeneration = () => {
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+      console.log('파이프라인 중단 요청 전송');
+      websocket.send(JSON.stringify({
+        type: 'stop_pipeline'
+      }));
+      setCurrentState('idle');
+    } else {
+      console.error('WebSocket 연결이 없어 중단 요청을 전송할 수 없습니다');
+      setError('중단 요청을 전송할 수 없습니다');
+    }
+  };
+
   const startGeneration = async () => {
     try {
       setLoading(true);
       setError(null);
       setCurrentState('running');
+      setProgress(null); // 초기 progress 초기화
+      setTerminalLogs([]); // 터미널 로그 초기화
 
-      // WebSocket 연결 설정 (실시간 모니터링)
+      // 터미널 로그 WebSocket 연결 먼저
+      setupTerminalLogsWebSocket();
+
+      // 파이프라인 모니터링 WebSocket 연결 (연결 즉시 메시지 전송)
       setupWebSocket();
 
-      // 잠시 기다렸다가 WebSocket을 통해 파이프라인 시작
+      // WebSocket 연결 실패 시를 위한 타임아웃 폴백
       setTimeout(() => {
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-          websocket.send(JSON.stringify({
-            type: 'start_pipeline',
-            input_data: {},
-            config: { websocket_enabled: true }
-          }));
-        } else {
+        if (!websocketRef.current || websocketRef.current.readyState !== WebSocket.OPEN) {
+          console.error('❌ WebSocket 연결 타임아웃, REST API로 폴백');
           // WebSocket 연결 실패 시 REST API로 폴백
-          console.log('WebSocket 연결 실패, REST API로 폴백');
           adminApi.controlGeneration(postId, {
             action: 'start',
             parameters: {}
@@ -210,13 +226,68 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
             setCurrentState('idle');
           });
         }
-      }, 1000); // WebSocket 연결 대기
+      }, 3000); // 3초 타임아웃
 
     } catch (err) {
       setError('생성 시작 실패');
       setCurrentState('idle');
       console.error(err);
       setLoading(false);
+    }
+  };
+
+  const setupTerminalLogsWebSocket = () => {
+    try {
+      // 기존 연결이 있으면 닫기
+      if (logsWebsocket) {
+        logsWebsocket.close();
+      }
+
+      // 터미널 로그 WebSocket 연결
+      const wsUrl = `ws://localhost:8000/api/v1/pipeline/ws/posts/${postId}/logs`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('터미널 로그 WebSocket 연결됨');
+        setLogsWebsocket(ws);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'terminal_log') {
+            setTerminalLogs(prev => {
+              const newLogs = [...prev, data.data];
+              // 최근 100개만 유지
+              return newLogs.slice(-100);
+            });
+          } else if (data.type === 'connection_established') {
+            console.log('터미널 로그 모니터링 연결됨:', data.message);
+          } else if (data.type === 'error') {
+            console.error('터미널 로그 WebSocket 에러:', data.message);
+          }
+        } catch (error) {
+          console.error('터미널 로그 WebSocket 메시지 파싱 실패:', error);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log('터미널 로그 WebSocket 연결 종료:', event.code, event.reason);
+        setLogsWebsocket(null);
+
+        // 재연결 로직 (단순화)
+        if (event.code !== 1000) {
+          setTimeout(() => setupTerminalLogsWebSocket(), 3000);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('터미널 로그 WebSocket 에러:', error);
+      };
+
+    } catch (error) {
+      console.error('터미널 로그 WebSocket 연결 실패:', error);
     }
   };
 
@@ -232,8 +303,18 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('WebSocket 연결됨');
+        console.log('✅ 파이프라인 모니터링 WebSocket 연결됨');
+        console.log('WebSocket readyState:', ws.readyState);
         setWebsocket(ws);
+        websocketRef.current = ws; // ref에도 저장
+
+        // 연결 즉시 파이프라인 시작 메시지 전송
+        console.log('🚀 WebSocket 연결 즉시 파이프라인 시작 메시지 전송:', postId);
+        ws.send(JSON.stringify({
+          type: 'start_pipeline',
+          input_data: {},
+          config: { websocket_enabled: true }
+        }));
       };
 
       ws.onmessage = (event) => {
@@ -244,6 +325,36 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
           if (data.type === 'pipeline_status') {
             setPipelineStatus(data.data);
             updateProgressFromPipelineStatus(data.data);
+          } else if (data.type === 'pipeline_started') {
+            // 파이프라인이 실제로 시작되었을 때 (새 실행의 경우에만 초기화)
+            console.log('🎯 파이프라인 시작됨, progress 초기화');
+            setProgress({
+              current_step: 'data_aggregation',
+              progress_percent: 0,
+              total_steps: 6,
+              completed_steps: 0,
+              steps: {
+                'data_aggregation': { status: 'pending', step_name: '데이터 집계' },
+                'input': { status: 'pending', step_name: '데이터 입력' },
+                'plan': { status: 'pending', step_name: '콘텐츠 계획' },
+                'title': { status: 'pending', step_name: '제목 생성' },
+                'content': { status: 'pending', step_name: '본문 생성' },
+                'evaluation': { status: 'pending', step_name: '품질 평가' },
+                'edit': { status: 'pending', step_name: '콘텐츠 편집' }
+              }
+            });
+          } else if (data.type === 'agent_started') {
+            // 에이전트 시작 알림
+            console.log(`🚀 에이전트 시작: ${data.data.agent_name} (${data.data.agent_type})`);
+            updateStepStatus(data.data.agent_type, 'running', data.data.agent_name);
+          } else if (data.type === 'agent_completed') {
+            // 에이전트 완료 알림
+            console.log(`✅ 에이전트 완료: ${data.data.agent_name} (${data.data.agent_type}) - ${data.data.success ? '성공' : '실패'}`);
+            updateStepStatus(data.data.agent_type, 'completed', data.data.agent_name);
+          } else if (data.type === 'agent_failed') {
+            // 에이전트 실패 알림
+            console.log(`${data.data.agent_name} 실패: ${data.data.error}`);
+            updateStepStatus(data.data.agent_type, 'failed', data.data.agent_name, undefined, data.data.error);
           } else if (data.type === 'step_started') {
             // 단계 시작 알림
             console.log(`${data.data.step_name} 시작: ${data.data.description}`);
@@ -252,6 +363,15 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
             // 단계 완료 알림
             console.log(`${data.data.step_name} 완료: ${data.data.duration?.toFixed(1)}초`);
             updateStepStatus(data.data.step, 'completed', data.data.step_name, data.data.duration);
+          } else if (data.type === 'pipeline_stopped') {
+            // 파이프라인 중단 완료 알림
+            console.log('파이프라인 중단됨:', data.message);
+            setCurrentState('idle');
+          } else if (data.type === 'pipeline_cancelled') {
+            // 파이프라인 취소 알림
+            console.log('파이프라인 취소됨:', data.message);
+            setCurrentState('idle');
+            setError('파이프라인이 중단되었습니다.');
           } else if (data.type === 'pipeline_completed') {
             // 파이프라인 완료
             console.log('파이프라인 완료:', data.data);
@@ -291,17 +411,20 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket 오류:', error);
+        console.error('❌ 파이프라인 모니터링 WebSocket 오류:', error);
+        console.error('WebSocket URL:', wsUrl);
+        console.error('WebSocket readyState:', ws.readyState);
         setError('실시간 모니터링 연결에 실패했습니다');
       };
 
       ws.onclose = () => {
         console.log('WebSocket 연결 종료');
         setWebsocket(null);
+        websocketRef.current = null;
       };
 
     } catch (error) {
-      console.error('WebSocket 설정 실패:', error);
+      console.error('❌ WebSocket 설정 실패:', error);
       setError('실시간 모니터링 연결에 실패했습니다');
     }
   };
@@ -334,7 +457,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     });
   };
 
-  const updateStepStatus = (step: string, status: string, stepName?: string, duration?: number) => {
+  const updateStepStatus = (step: string, status: string, stepName?: string, duration?: number, error?: string) => {
     setProgress(prevProgress => {
       if (!prevProgress) {
         // 초기 progress 객체가 없을 때
@@ -347,7 +470,8 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
             [step]: {
               status,
               duration,
-              step_name: stepName
+              step_name: stepName,
+              error: error
             }
           }
         };
@@ -357,7 +481,8 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       updatedSteps[step] = {
         status,
         duration,
-        step_name: stepName
+        step_name: stepName,
+        error: error
       };
 
       // 완료된 단계 수 계산
@@ -482,8 +607,42 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       {currentState === 'running' && (
         <GenerationProgressView
           progress={progress}
-          onStop={() => setCurrentState('idle')}
+          onStop={handleStopGeneration}
         />
+      )}
+
+      {/* 터미널 로그 실시간 모니터링 */}
+      {(currentState === 'running' || currentState === 'completed') && (
+        <div className="bg-white border rounded-lg p-6" style={{borderColor: 'rgba(74, 124, 158, 0.3)'}}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium" style={{color: '#2A485E'}}>실시간 터미널 로그</h3>
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${logsWebsocket ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-xs" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
+                {logsWebsocket ? '연결됨' : '연결 해제'}
+              </span>
+            </div>
+          </div>
+          <div className="bg-gray-900 text-green-400 rounded-lg p-4 max-h-64 overflow-y-auto font-mono text-sm">
+            {terminalLogs.length === 0 ? (
+              <div className="text-gray-500 italic">로그 대기 중...</div>
+            ) : (
+              terminalLogs.map((log, index) => (
+                <div key={index} className="mb-1">
+                  <span className="text-blue-400">[{log.level}]</span>
+                  <span className="text-yellow-400 ml-2">{log.logger}</span>
+                  <span className="ml-2">{log.message}</span>
+                  {log.agent_type && (
+                    <span className="text-purple-400 ml-2">({log.agent_type})</span>
+                  )}
+                  {log.elapsed_seconds && (
+                    <span className="text-gray-500 ml-2">+{log.elapsed_seconds.toFixed(1)}s</span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       )}
 
       {currentState === 'completed' && result && (
@@ -1359,6 +1518,21 @@ function GenerationProgressView({
         return { text: '알 수 없음', color: '#6b7280' };
     }
   };
+
+  // progress가 null이면 초기 로딩 상태 표시
+  if (!progress) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{borderColor: '#4A7C9E'}}></div>
+          <h3 className="text-lg font-medium" style={{color: '#2A485E'}}>AI 생성 준비 중</h3>
+          <p className="text-sm mt-2" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
+            파이프라인을 초기화하고 있습니다...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
