@@ -30,6 +30,7 @@ const dummySchedules: PostSchedule[] = [
     final_revision_deadline: '2024-09-25T09:00:00Z',
     priority: 2,
     delay_status: 'on_track',
+    created_at: '2024-09-20T10:00:00Z',
     status: 'pending',
     notes: '테스트 일정 1',
   },
@@ -46,6 +47,7 @@ const dummySchedules: PostSchedule[] = [
     final_revision_deadline: '2024-09-26T13:00:00Z',
     priority: 1,
     delay_status: 'at_risk',
+    created_at: '2024-09-21T10:00:00Z',
     status: 'pending',
     notes: '테스트 일정 2',
   }

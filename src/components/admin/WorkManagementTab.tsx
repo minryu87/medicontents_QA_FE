@@ -209,23 +209,30 @@ export default function WorkManagementTab({
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
                   ) : kanbanPosts?.admin_pre_review?.length > 0 ? (
-                    kanbanPosts.admin_pre_review.map((post: any) => (
-                      <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{post.post_id}</span>
-                          <i className="fa-solid fa-eye text-neutral-600 text-xs"></i>
-                        </div>
-                        <h5 className="text-sm text-neutral-800 mb-2">{post.title}</h5>
-                        <p className="text-xs text-neutral-600 mb-2">어드민 검토 중</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-1">
-                            <img src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${post.creator_name}`} alt="User" className="w-5 h-5 rounded-full" />
-                            <span className="text-xs text-neutral-600">{post.creator_name}</span>
+                    kanbanPosts.admin_pre_review.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
-                          <span className="text-xs text-neutral-500">검토중</span>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center text-neutral-500 text-sm py-4">
                       포스트 없음
@@ -261,7 +268,7 @@ export default function WorkManagementTab({
                       };
 
                       return (
-                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
                           <div className="text-xs text-neutral-600 mb-2">
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
@@ -307,7 +314,7 @@ export default function WorkManagementTab({
                       };
 
                       return (
-                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
                           <div className="text-xs text-neutral-600 mb-2">
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
@@ -353,7 +360,7 @@ export default function WorkManagementTab({
                       };
 
                       return (
-                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
                           <div className="text-xs text-neutral-600 mb-2">
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
@@ -399,7 +406,7 @@ export default function WorkManagementTab({
                       };
 
                       return (
-                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-600 shadow-sm">
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
                           <div className="text-xs text-neutral-600 mb-2">
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
@@ -438,23 +445,30 @@ export default function WorkManagementTab({
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
                   ) : kanbanPosts?.material_delay?.length > 0 ? (
-                    kanbanPosts.material_delay.map((post: any) => (
-                      <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{post.post_id}</span>
-                          <i className="fa-solid fa-exclamation-triangle text-neutral-600 text-xs"></i>
-                        </div>
-                        <h5 className="text-sm text-neutral-800 mb-2">{post.title}</h5>
-                        <p className="text-xs text-neutral-600 mb-2">자료 제공 지연</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-1">
-                            <img src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${post.creator_name}`} alt="User" className="w-5 h-5 rounded-full" />
-                            <span className="text-xs text-neutral-600">{post.creator_name}</span>
+                    kanbanPosts.material_delay.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
-                          <span className="text-xs text-neutral-500">지연</span>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center text-neutral-500 text-sm py-4">
                       포스트 없음
@@ -493,7 +507,7 @@ export default function WorkManagementTab({
                       };
 
                       return (
-                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
                           <div className="text-xs text-neutral-600 mb-2">
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
@@ -529,23 +543,30 @@ export default function WorkManagementTab({
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-neutral-600 mx-auto"></div>
                     </div>
                   ) : kanbanPosts?.client_delay?.length > 0 ? (
-                    kanbanPosts.client_delay.map((post: any) => (
-                      <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{post.post_id}</span>
-                          <i className="fa-solid fa-clock text-neutral-600 text-xs"></i>
-                        </div>
-                        <h5 className="text-sm text-neutral-800 mb-2">{post.title}</h5>
-                        <p className="text-xs text-neutral-600 mb-2">검토 기한 초과</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-1">
-                            <img src={`https://api.dicebear.com/7.x/notionists/svg?scale=200&seed=${post.creator_name}`} alt="User" className="w-5 h-5 rounded-full" />
-                            <span className="text-xs text-neutral-600">{post.creator_name}</span>
+                    kanbanPosts.client_delay.map((post: any) => {
+                      const calculateDDay = (publishDate: string | null) => {
+                        if (!publishDate) return '미정';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const publish = new Date(publishDate);
+                        publish.setHours(0, 0, 0, 0);
+                        const diffTime = publish.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays === 0 ? 'D-DAY' : diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+                      };
+
+                      return (
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
+                          <div className="text-xs text-neutral-600 mb-2">
+                            {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>
-                          <span className="text-xs text-neutral-500">지연</span>
+                          <h5 className="text-sm text-neutral-800 mb-2 line-clamp-2">{post.title}</h5>
+                          <div className="text-xs text-neutral-600">
+                            {calculateDDay(post.publish_date)}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center text-neutral-500 text-sm py-4">
                       포스트 없음
@@ -581,7 +602,7 @@ export default function WorkManagementTab({
                       };
 
                       return (
-                        <div key={post.id} className="bg-white p-3 rounded-lg border-l-4 border-neutral-500 shadow-sm">
+                        <div key={post.id} className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
                           <div className="text-xs text-neutral-600 mb-2">
                             {post.post_id} / {post.post_type === 'informational' ? '정보성' : '치료사례'}
                           </div>

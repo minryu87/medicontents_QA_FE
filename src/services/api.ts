@@ -51,7 +51,7 @@ export class AdminApiService {
   }
 
   // 긴급 처리 관련 API 메소드들
-  async getSystemErrors(): Promise<{
+  async getSystemErrors(hospitalId?: number): Promise<{
     success: boolean;
     data: Array<{
       id: string;
@@ -61,11 +61,12 @@ export class AdminApiService {
     }>;
     total: number;
   }> {
-    const response = await api.get('/api/v1/admin/dashboard/system-errors');
+    const params = hospitalId ? { hospital_id: hospitalId } : {};
+    const response = await api.get('/api/v1/admin/dashboard/system-errors', { params });
     return response.data;
   }
 
-  async getFailedAgentJobs(): Promise<{
+  async getFailedAgentJobs(hospitalId?: number): Promise<{
     success: boolean;
     data: Array<{
       id: string;
@@ -77,11 +78,12 @@ export class AdminApiService {
     }>;
     total: number;
   }> {
-    const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs');
+    const params = hospitalId ? { hospital_id: hospitalId } : {};
+    const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs', { params });
     return response.data;
   }
 
-  async getDelayedScheduleJobs(): Promise<{
+  async getDelayedScheduleJobs(hospitalId?: number): Promise<{
     success: boolean;
     data: Array<{
       id: string;
@@ -96,7 +98,8 @@ export class AdminApiService {
     }>;
     total: number;
   }> {
-    const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs');
+    const params = hospitalId ? { hospital_id: hospitalId } : {};
+    const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs', { params });
     return response.data;
   }
 
@@ -138,6 +141,44 @@ export class AdminApiService {
     }>;
   }[]> {
     const response = await api.get(`/api/v1/admin/dashboard/calendar/${year}/${month}`);
+    return response.data;
+  }
+
+  async getHospitalStats(hospitalId: number): Promise<{
+    urgent_count: number;
+    campaign_progress: number;
+    total_views: number;
+    total_likes: number;
+    recent_activities: Array<{
+      description: string;
+      time: string;
+    }>;
+  }> {
+    const response = await api.get(`/api/v1/admin/dashboard/hospitals/${hospitalId}/stats`);
+    return response.data;
+  }
+
+  async planCampaignSchedule(campaignId: number): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    const response = await api.post(`/api/v1/admin/schedules/campaigns/${campaignId}/plan`);
+    return response.data;
+  }
+
+  async updatePostPriority(postId: string, priority: number): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    const response = await api.patch(`/api/v1/admin/posts/${postId}/priority`, { priority });
+    return response.data;
+  }
+
+  async updatePostSchedule(postId: string, scheduleData: any): Promise<{
+    success: boolean;
+    data: any;
+  }> {
+    const response = await api.patch(`/api/v1/admin/posts/${postId}/schedule`, scheduleData);
     return response.data;
   }
 
@@ -1078,23 +1119,26 @@ export class ClientApiService {
 }
 
 // 긴급 처리 필요 API 함수들
-const getSystemErrorsFn = async (): Promise<any> => {
-  console.log('getSystemErrors 메소드 호출됨');
-  const response = await api.get('/api/v1/admin/dashboard/system-errors');
+const getSystemErrorsFn = async (hospitalId?: number): Promise<any> => {
+  console.log('getSystemErrors 메소드 호출됨 (병원:', hospitalId || '전체)');
+  const params = hospitalId ? { hospital_id: hospitalId } : {};
+  const response = await api.get('/api/v1/admin/dashboard/system-errors', { params });
   console.log('getSystemErrors 응답:', response.data);
   return response.data;
 };
 
-const getFailedAgentJobsFn = async (): Promise<any> => {
-  console.log('getFailedAgentJobs 메소드 호출됨');
-  const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs');
+const getFailedAgentJobsFn = async (hospitalId?: number): Promise<any> => {
+  console.log('getFailedAgentJobs 메소드 호출됨 (병원:', hospitalId || '전체)');
+  const params = hospitalId ? { hospital_id: hospitalId } : {};
+  const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs', { params });
   console.log('getFailedAgentJobs 응답:', response.data);
   return response.data;
 };
 
-const getDelayedScheduleJobsFn = async (): Promise<any> => {
-  console.log('getDelayedScheduleJobs 메소드 호출됨');
-  const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs');
+const getDelayedScheduleJobsFn = async (hospitalId?: number): Promise<any> => {
+  console.log('getDelayedScheduleJobs 메소드 호출됨 (병원:', hospitalId || '전체)');
+  const params = hospitalId ? { hospital_id: hospitalId } : {};
+  const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs', { params });
   console.log('getDelayedScheduleJobs 응답:', response.data);
   return response.data;
 };

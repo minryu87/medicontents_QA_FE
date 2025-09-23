@@ -378,7 +378,7 @@ export function CampaignSchedulePlanner({ campaign, onPlanGenerated }: CampaignS
               <span className="text-gray-600">진행률:</span>
               <div className="font-medium">
                 {campaign.target_post_count > 0
-                  ? Math.round((campaign.completed_post_count / campaign.target_post_count) * 100)
+                  ? Math.round(((campaign.completed_post_count || 0) / campaign.target_post_count) * 100)
                   : 0}%
               </div>
             </div>
@@ -512,14 +512,14 @@ export function PostPriorityManager({ campaignId, onPriorityUpdated }: PostPrior
                 <div className="relative mb-3">
                   <div className="w-20 h-20 mx-auto rounded-full bg-gray-200 flex items-center justify-center">
                     <div
-                      className={`w-16 h-16 rounded-full ${priorityColors[priority as keyof typeof priorityColors]} flex items-center justify-center text-white font-bold`}
+                      className={`w-16 h-16 rounded-full ${priorityColors[priority as unknown as keyof typeof priorityColors]} flex items-center justify-center text-white font-bold`}
                     >
-                      {count}
+                      {count as number}
                     </div>
                   </div>
                 </div>
                 <div className="text-sm font-medium text-gray-900">
-                  {priorityLabels[priority as keyof typeof priorityLabels]}
+                  {priorityLabels[priority as unknown as keyof typeof priorityLabels]}
                 </div>
                 <div className="text-xs text-gray-500">
                   {percentage.toFixed(1)}%

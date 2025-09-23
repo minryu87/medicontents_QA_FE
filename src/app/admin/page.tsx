@@ -91,7 +91,7 @@ export default function AdminDashboard() {
         const year = currentCalendarDate.getFullYear();
         const month = currentCalendarDate.getMonth() + 1;
         const calendarDataResponse = await adminApi.getCalendarSchedule(year, month);
-        setCalendarData(calendarDataResponse?.data || []);
+        setCalendarData(calendarDataResponse || []);
       } catch (error) {
         console.warn('캘린더 데이터 로드 실패:', error);
         setCalendarData([]);

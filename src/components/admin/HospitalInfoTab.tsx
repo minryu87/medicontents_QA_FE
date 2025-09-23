@@ -11,6 +11,15 @@ interface SummaryCard {
   progress?: number;
   action?: string;
   activities?: Array<{ description: string; time: string }>;
+  urgentTasks?: Array<{
+    id: string;
+    type: 'system_error' | 'failed_agent' | 'delayed_schedule';
+    title: string;
+    description: string;
+    color: string;
+    icon: string;
+    postId?: string;
+  }>;
 }
 
 interface BasicInfo {
@@ -79,6 +88,11 @@ interface HospitalInfoTabProps {
   calendarEvents: CalendarEvent[];
   onDateSelect?: (date: Date) => void;
   selectedDate?: Date | null;
+  onUrgentTaskClick?: (task: {
+    id: string;
+    type: 'system_error' | 'failed_agent' | 'delayed_schedule';
+    postId?: string;
+  }) => void;
 }
 
 export default function HospitalInfoTab({
@@ -88,7 +102,8 @@ export default function HospitalInfoTab({
   schedule,
   calendarEvents,
   onDateSelect,
-  selectedDate
+  selectedDate,
+  onUrgentTaskClick
 }: HospitalInfoTabProps) {
   return (
     <>
@@ -96,32 +111,50 @@ export default function HospitalInfoTab({
       <div className="px-6 py-4">
         <div className="grid grid-cols-4 gap-4 mb-6">
           {summaryCards.map((card) => (
-            <div key={card.id} className="bg-white rounded-xl shadow-lg p-4">
+            <div key={card.id} className="bg-white border border-sky-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm text-neutral-900">{card.title}</h2>
-                {card.id === 'urgent' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-exclamation text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-                {card.id === 'progress' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-chart-line text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-                {card.id === 'performance' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-eye text-neutral-600 text-xs"></i>
-                  </div>
-                )}
-                {card.id === 'activity' && (
-                  <div className="w-6 h-6 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <i className="fa-solid fa-clock text-neutral-600 text-xs"></i>
-                  </div>
-                )}
+                <h3 className="text-sm text-neutral-800 font-medium">{card.title}</h3>
               </div>
 
-              {card.id === 'activity' ? (
+              {card.id === 'urgent' ? (
+                // 긴급 처리 필요 카드 - 작업 목록 표시
+                <div className="space-y-1">
+                  {card.urgentTasks && card.urgentTasks.length > 0 ? (
+                    card.urgentTasks.slice(0, 3).map((task, index) => (
+                      <div key={task.id} className="flex items-start space-x-2 p-1 bg-gray-50 rounded">
+                        <div className="flex-shrink-0">
+                          <i className={`fa-solid ${task.icon} text-xs`} style={{ color: task.color }}></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-neutral-800 truncate">{task.title}</p>
+                          <p className="text-xs text-neutral-500 truncate">{task.description}</p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <button
+                            className="text-xs font-bold hover:opacity-70"
+                            style={{ color: task.color }}
+                            onClick={() => {
+                              if (onUrgentTaskClick) {
+                                onUrgentTaskClick({
+                                  id: task.id,
+                                  type: task.type,
+                                  postId: task.postId
+                                });
+                              }
+                            }}
+                          >
+                            &gt;&gt;
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-2">
+                      <p className="text-xs text-neutral-500">현재 긴급한 이슈가 없습니다</p>
+                    </div>
+                  )}
+                </div>
+              ) : card.id === 'activity' ? (
                 <div className="space-y-2">
                   {card.activities?.map((activity, index) => (
                     <div key={index}>
@@ -138,9 +171,9 @@ export default function HospitalInfoTab({
                     <p className="text-xs text-neutral-600 mt-1">{card.change}</p>
                   )}
                   {card.progress !== undefined && (
-                    <div className="w-full bg-neutral-200 rounded-full h-1 mt-3">
+                    <div className="w-full bg-sky-100 rounded-full h-2 mt-3">
                       <div
-                        className="bg-neutral-600 h-1 rounded-full transition-all duration-300"
+                        className="bg-sky-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${card.progress}%` }}
                       ></div>
                     </div>
@@ -161,7 +194,7 @@ export default function HospitalInfoTab({
       <div className="px-6">
         <div className="grid gap-6 mb-6" style={{ gridTemplateColumns: '1fr 1fr 2fr' }}>
           {/* 병원 기본 정보 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
+          <div className="bg-white border border-sky-200 rounded-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">병원 기본 정보</h2>
             <div className="space-y-4">
               {/* 로고 이미지와 병원명 */}
@@ -242,25 +275,25 @@ export default function HospitalInfoTab({
           </div>
 
           {/* 진행 중 캠페인 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
+          <div className="bg-white border border-sky-200 rounded-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">진행 중 캠페인</h2>
             <div className="space-y-3">
               {campaigns.map((campaign) => (
-                <div key={campaign.id} className="border border-neutral-200 rounded-lg p-3">
+                <div key={campaign.id} className="bg-white border border-sky-200 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm text-neutral-800">{campaign.name}</h3>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      campaign.status === '진행중' ? 'bg-neutral-100 text-neutral-800' :
-                      campaign.status === '완료' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
+                    <h3 className="text-sm text-neutral-800 font-medium">{campaign.name}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      campaign.status === '진행중' ? 'bg-sky-100 text-sky-700' :
+                      campaign.status === '완료' ? 'bg-green-100 text-green-700' :
+                      'bg-neutral-100 text-neutral-700'
                     }`}>
                       {campaign.status}
                     </span>
                   </div>
                   <p className="text-xs text-neutral-600 mb-2">{campaign.period}</p>
-                  <div className="w-full bg-neutral-200 rounded-full h-1">
+                  <div className="w-full bg-sky-100 rounded-full h-2">
                     <div
-                      className="bg-neutral-600 h-1 rounded-full transition-all duration-300"
+                      className="bg-sky-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${campaign.progress}%` }}
                     ></div>
                   </div>
@@ -271,7 +304,7 @@ export default function HospitalInfoTab({
           </div>
 
           {/* 작업 일정 */}
-          <div className="bg-white rounded-xl shadow-lg p-4">
+          <div className="bg-white border border-sky-200 rounded-lg p-4">
             <h2 className="text-lg text-neutral-900 mb-4">작업 일정</h2>
             <div className="calendar-wrapper custom-calendar" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', minHeight: '120px', padding: '0 4px' }}>
               <style jsx>{`
@@ -292,20 +325,20 @@ export default function HospitalInfoTab({
                 }
                 .custom-calendar .calendar-campaign-completed,
                 .custom-calendar .calendar-campaign-completed.react-calendar__tile--now {
-                  background-color: rgba(74, 124, 158, 0.1) !important;
-                  border: 1px solid rgba(74, 124, 158, 0.2) !important;
+                  background-color: rgba(14, 165, 233, 0.1) !important;
+                  border: 1px solid rgba(14, 165, 233, 0.2) !important;
                   position: relative;
                 }
                 .custom-calendar .calendar-campaign-active,
                 .custom-calendar .calendar-campaign-active.react-calendar__tile--now {
-                  background-color: rgba(74, 124, 158, 0.2) !important;
-                  border: 1px solid rgba(74, 124, 158, 0.3) !important;
+                  background-color: rgba(14, 165, 233, 0.2) !important;
+                  border: 1px solid rgba(14, 165, 233, 0.3) !important;
                   position: relative;
                 }
                 .custom-calendar .calendar-campaign-scheduled,
                 .custom-calendar .calendar-campaign-scheduled.react-calendar__tile--now {
-                  background-color: rgba(74, 124, 158, 0.15) !important;
-                  border: 1px solid rgba(74, 124, 158, 0.25) !important;
+                  background-color: rgba(14, 165, 233, 0.15) !important;
+                  border: 1px solid rgba(14, 165, 233, 0.25) !important;
                   position: relative;
                 }
                 .custom-calendar .calendar-post-published::after,
@@ -322,19 +355,19 @@ export default function HospitalInfoTab({
                   z-index: 10;
                 }
                 .custom-calendar .calendar-post-published::after {
-                  background: #4A7C9E;
+                  background: #0ea5e9;
                 }
                 .custom-calendar .calendar-post-completed::after {
-                  background: #6FA382;
+                  background: #22c55e;
                 }
                 .custom-calendar .calendar-post-pending::after {
-                  background: #EF4444;
+                  background: #ef4444;
                 }
                 .calendar-wrapper .react-calendar__navigation {
                   margin-bottom: 10px;
                 }
                 .calendar-wrapper .react-calendar__navigation button {
-                  color: #4A7C9E;
+                  color: #0ea5e9;
                   font-weight: 500;
                   font-size: 13px;
                   padding: 3px 7px;

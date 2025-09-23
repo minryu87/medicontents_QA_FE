@@ -37,14 +37,14 @@ export interface Campaign {
   name: string;
   description?: string;
   hospital_id: number;
-  medical_service_id: number;
+  medical_service_id?: number; // 선택적 속성으로 변경
   start_date: string;
   end_date: string;
   target_post_count: number;
-  completed_post_count: number;
-  published_post_count: number;
+  completed_post_count?: number; // 선택적 속성으로 변경
+  published_post_count?: number; // 선택적 속성으로 변경
   status: 'active' | 'paused' | 'completed' | 'aborted';
-  created_by: number;
+  created_by?: number; // 선택적 속성으로 변경
   created_at: string;
   updated_at: string;
 }
@@ -131,6 +131,7 @@ export interface PipelineResult {
   pipeline_status: string;
   agent_results_summary?: any;
   final_evaluation_summary?: any;
+  ai_generation?: any; // AI 생성 결과
   created_at: string;
   updated_at: string;
 }
@@ -484,44 +485,47 @@ export interface PostSchedule {
   id: number;
   post_id: string;
   hospital_id: number;
-  campaign_id: number | null;
+  campaign_id?: number | null; // 선택적 속성으로 변경
   scheduled_date: string | null;
-  published_date: string | null;
-  platforms: string[] | null;
+  published_date?: string | null; // 선택적 속성으로 변경
+  platforms?: string[] | null; // 선택적 속성으로 변경
   notes: string | null;
   status: 'pending' | 'scheduled' | 'published' | 'cancelled' | 'delayed';
-  priority: number;
-  delay_status: 'on_track' | 'at_risk' | 'delayed';
+  priority?: number; // 선택적 속성으로 변경
+  delay_status?: 'on_track' | 'at_risk' | 'delayed'; // 선택적 속성으로 변경
   material_deadline: string | null;
   guide_deadline: string | null;
   ai_deadline: string | null;
   admin_review_deadline: string | null;
   client_review_deadline: string | null;
   final_revision_deadline: string | null;
-  material_completed_at: string | null;
-  guide_completed_at: string | null;
-  ai_completed_at: string | null;
-  admin_review_completed_at: string | null;
-  client_review_completed_at: string | null;
-  final_revision_completed_at: string | null;
+  material_completed_at?: string | null; // 선택적 속성으로 변경
+  guide_completed_at?: string | null; // 선택적 속성으로 변경
+  ai_completed_at?: string | null; // 선택적 속성으로 변경
+  admin_review_completed_at?: string | null; // 선택적 속성으로 변경
+  client_review_completed_at?: string | null; // 선택적 속성으로 변경
+  final_revision_completed_at?: string | null; // 선택적 속성으로 변경
   created_at: string;
-  updated_at: string | null;
+  updated_at?: string | null; // 선택적 속성으로 변경
 }
 
 export interface ScheduleNotification {
   id: number;
   post_id: string;
+  post_title?: string; // 포스트 제목
   notification_type: 'deadline_approaching' | 'overdue' | 'priority_changed' | 'stage_completed';
   stage: 'material' | 'guide' | 'ai' | 'admin_review' | 'client_review' | 'final_revision' | 'publish' | null;
   scheduled_at: string | null;
   sent_at: string | null;
   status: 'pending' | 'sent' | 'acknowledged' | 'failed';
+  priority?: number; // 우선순위
+  campaign_id?: number | null;
   created_at: string;
 }
 
 export interface ScheduleChangeLog {
   id: number;
-  post_id: string;
+  post_id?: string; // 선택적 속성으로 변경
   change_type: 'deadline_adjusted' | 'priority_changed' | 'status_updated';
   old_value: string | null;
   new_value: string | null;

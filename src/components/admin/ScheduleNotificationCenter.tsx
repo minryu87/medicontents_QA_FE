@@ -37,16 +37,18 @@ interface NotificationFilters {
 }
 
 interface NotificationCenterProps {
+  notifications?: ScheduleNotificationList;
   onNotificationClick?: (notification: ScheduleNotification) => void;
   className?: string;
 }
 
 export function ScheduleNotificationCenter({
+  notifications: initialNotifications,
   onNotificationClick,
   className = ''
 }: NotificationCenterProps) {
-  const [notifications, setNotifications] = useState<ScheduleNotificationList | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<ScheduleNotificationList | null>(initialNotifications || null);
+  const [loading, setLoading] = useState(!initialNotifications);
   const [filters, setFilters] = useState<NotificationFilters>({
     type: 'all',
     status: 'all',

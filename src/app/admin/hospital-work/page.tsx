@@ -19,6 +19,17 @@ interface HospitalWithCampaigns {
   isSelected?: boolean;
 }
 
+interface HospitalStats {
+  urgent_count: number;
+  campaign_progress: number;
+  total_views: number;
+  total_likes: number;
+  recent_activities: Array<{
+    description: string;
+    time: string;
+  }>;
+}
+
 export default function HospitalWorkPage() {
   const [hospitals, setHospitals] = useState<HospitalWithCampaigns[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,9 +37,58 @@ export default function HospitalWorkPage() {
   const [selectedHospital, setSelectedHospital] = useState<HospitalWithCampaigns | null>(null);
   const [selectedHospitalDetail, setSelectedHospitalDetail] = useState<any>(null);
   const [selectedHospitalCampaigns, setSelectedHospitalCampaigns] = useState<any[]>([]);
+  const [hospitalStats, setHospitalStats] = useState<HospitalStats | null>(null);
+  const [systemStats, setSystemStats] = useState<any>(null);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+
+  // 긴급 처리 필요 데이터 상태
+  const [systemErrors, setSystemErrors] = useState<any[]>([]);
+  const [failedAgentJobs, setFailedAgentJobs] = useState<any[]>([]);
+  const [delayedScheduleJobs, setDelayedScheduleJobs] = useState<any[]>([]);
   const [isHospitalListCollapsed, setIsHospitalListCollapsed] = useState(false);
+
+  // 병원별 긴급 처리 필요 데이터 로드 함수
+  const loadEmergencyData = async (hospitalId: number) => {
+    try {
+      // 시스템 에러 조회 (병원별)
+      try {
+        const systemErrorsRes = await adminApi.getSystemErrors(hospitalId);
+        if (systemErrorsRes.success) {
+          setSystemErrors(systemErrorsRes.data || []);
+        }
+      } catch (error) {
+        console.warn('병원별 시스템 에러 조회 실패:', error);
+        setSystemErrors([]);
+      }
+
+      // 실패한 에이전트 작업 조회 (병원별)
+      try {
+        const failedJobsRes = await adminApi.getFailedAgentJobs(hospitalId);
+        if (failedJobsRes.success) {
+          setFailedAgentJobs(failedJobsRes.data || []);
+        }
+      } catch (error) {
+        console.warn('병원별 실패한 에이전트 작업 조회 실패:', error);
+        setFailedAgentJobs([]);
+      }
+
+      // 딜레이된 스케줄 작업 조회 (병원별)
+      try {
+        const delayedJobsRes = await adminApi.getDelayedScheduleJobs(hospitalId);
+        setDelayedScheduleJobs(delayedJobsRes.data || []);
+      } catch (error) {
+        console.warn('병원별 딜레이된 스케줄 작업 조회 실패:', error);
+        setDelayedScheduleJobs([]);
+      }
+
+    } catch (error) {
+      console.error('병원별 긴급 처리 필요 데이터 로드 실패:', error);
+      setSystemErrors([]);
+      setFailedAgentJobs([]);
+      setDelayedScheduleJobs([]);
+    }
+  };
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'posting-work' | 'monitoring'>('hospital-info');
   const [showCampaignTooltip, setShowCampaignTooltip] = useState(false);
   const [waitingTasks, setWaitingTasks] = useState<any[]>([]);
@@ -258,19 +318,43 @@ export default function HospitalWorkPage() {
         setLoading(true);
         setError(null);
 
-        const hospitalsData = await adminApi.getHospitals();
+        // 병원 데이터와 시스템 통계 데이터를 병렬로 로드
+        const [hospitalsData, systemStatsData] = await Promise.allSettled([
+          adminApi.getHospitals(),
+          adminApi.getDashboardStats() // 대시보드 통계 데이터
+        ]);
 
-        // 병원 데이터를 UI에 맞는 형태로 변환
-        const hospitalsWithCampaigns: HospitalWithCampaigns[] = hospitalsData.hospitals.map(hospital => ({
-          id: hospital.id,
-          name: hospital.name,
-          specialty: '병원',
-          activeCampaigns: hospital.active_campaigns || 0,
-          logo_image: hospital.logo_image,
-          isSelected: false
-        }));
+        // 병원 데이터 처리
+        let hospitalsWithCampaigns: HospitalWithCampaigns[] = [];
+        if (hospitalsData.status === 'fulfilled') {
+          hospitalsWithCampaigns = hospitalsData.value.hospitals.map(hospital => ({
+            id: hospital.id,
+            name: hospital.name,
+            specialty: '병원',
+            activeCampaigns: hospital.active_campaigns || 0,
+            logo_image: hospital.logo_image,
+            isSelected: false
+          }));
+          setHospitals(hospitalsWithCampaigns);
+        }
 
-        setHospitals(hospitalsWithCampaigns);
+        // 시스템 통계 데이터 처리 (대시보드 데이터 활용)
+        if (systemStatsData.status === 'fulfilled') {
+          const stats = systemStatsData.value?.data || systemStatsData.value;
+          setSystemStats({
+            urgent_count: stats?.totalPosts || 0, // 임시로 전체 포스트 수 사용
+            total_views: stats?.activePosts || 0, // 임시로 활성 포스트 수 사용
+            total_likes: 0,
+            recent_activities: [] // 최근 활동은 별도 API로 가져와야 함
+          });
+        } else {
+          setSystemStats({
+            urgent_count: 0,
+            total_views: 0,
+            total_likes: 0,
+            recent_activities: []
+          });
+        }
       } catch (error) {
         console.error('병원 목록 로드 실패:', error);
         setError('병원 목록을 불러오는 중 오류가 발생했습니다.');
@@ -286,13 +370,28 @@ export default function HospitalWorkPage() {
     setSelectedHospital(hospital);
     setSelectedCampaignForWork(null); // 병원 선택 시 캠페인 선택 초기화
 
-    // 선택된 병원의 상세 정보, 담당자 정보, 캠페인 정보를 병렬로 가져오기
+    // 선택된 병원의 상세 정보, 담당자 정보, 캠페인 정보, 통계 정보를 병렬로 가져오기
     try {
-      const [hospitalDetail, hospitalAdmin, campaigns] = await Promise.allSettled([
+      const [hospitalDetail, hospitalAdmin, campaigns, stats, systemDashboardStats] = await Promise.allSettled([
         adminApi.getHospital(hospital.id),
         adminApi.getHospitalAdmin(hospital.id),
-        adminApi.getCampaigns({ hospital_id: hospital.id, status: 'active' })
+        adminApi.getCampaigns({ hospital_id: hospital.id, status: 'active' }),
+        adminApi.getHospitalStats(hospital.id), // 병원별 통계
+        adminApi.getDashboardStats() // 시스템 전체 통계
       ]);
+
+      // 시스템 전체 통계 저장
+      if (systemDashboardStats.status === 'fulfilled') {
+        const dashboardStatsValue = systemDashboardStats.value?.data || systemDashboardStats.value;
+        setSystemStats({
+          urgent_count: dashboardStatsValue?.totalPosts || 0,
+          total_views: dashboardStatsValue?.activePosts || 0,
+          total_likes: 0, // 대시보드 통계에 좋아요 정보 없음
+          recent_activities: [] // 대시보드 통계에 상세 활동 정보 없음
+        });
+      } else {
+        setSystemStats(null);
+      }
 
       // 병원 상세 정보 저장
       if (hospitalDetail.status === 'fulfilled') {
@@ -341,6 +440,17 @@ export default function HospitalWorkPage() {
           }));
 
           setSelectedHospitalCampaigns(uiCampaigns);
+
+          // 통계 데이터 저장
+          if (stats.status === 'fulfilled') {
+            setHospitalStats(stats.value);
+          } else {
+            console.error('병원 통계 데이터 로드 실패:', stats.reason);
+            setHospitalStats(null);
+          }
+
+          // 병원별 긴급 처리 필요 데이터 로드
+          await loadEmergencyData(hospital.id);
 
           // 병원별 캠페인 및 포스트 데이터 가져오기
           try {
@@ -439,6 +549,7 @@ export default function HospitalWorkPage() {
       setSelectedHospital(updatedHospital);
       setSelectedHospitalCampaigns([]);
       setSelectedHospitalDetail(null);
+      setHospitalStats(null); // 통계 데이터 초기화
              setWaitingTasks([]);
              setWaitingTasksLoading(false);
              setKanbanPosts({
@@ -695,7 +806,11 @@ export default function HospitalWorkPage() {
              {activeTab === 'hospital-info' && (
                selectedHospital ? (
                  <HospitalInfoTab
-                   summaryCards={createSummaryCards(selectedHospital)}
+                   summaryCards={createSummaryCards(selectedHospital, hospitalStats, systemStats, {
+                     systemErrors,
+                     failedAgentJobs,
+                     delayedScheduleJobs
+                   })}
                    basicInfo={{
                      name: selectedHospital.name,
                      specialty: '병원',
@@ -719,6 +834,25 @@ export default function HospitalWorkPage() {
                    calendarEvents={calendarEvents}
                    onDateSelect={handleDateSelect}
                    selectedDate={selectedCalendarDate}
+                   onUrgentTaskClick={(task) => {
+                     console.log('긴급 작업 클릭:', task);
+
+                     // 작업 타입에 따라 다른 처리
+                     if (task.type === 'system_error') {
+                       // 시스템 에러: 에러 상세 모달 표시 또는 에러 탭으로 이동
+                       alert(`시스템 에러 상세: ${task.id}`);
+                     } else if (task.type === 'failed_agent' && task.postId) {
+                       // 실패한 에이전트 작업: 포스팅 작업 탭으로 이동하고 해당 포스트 선택
+                       setActiveTab('posting-work');
+                       // TODO: 해당 포스트 선택 로직 추가
+                       console.log(`포스팅 작업 탭으로 이동 - 포스트: ${task.postId}`);
+                     } else if (task.type === 'delayed_schedule' && task.postId) {
+                       // 일정 딜레이 작업: 포스팅 작업 탭으로 이동하고 해당 포스트 선택
+                       setActiveTab('posting-work');
+                       // TODO: 해당 포스트 선택 로직 추가
+                       console.log(`포스팅 작업 탭으로 이동 - 포스트: ${task.postId}`);
+                     }
+                   }}
                  />
                ) : (
           <EmptyState
@@ -794,33 +928,88 @@ export default function HospitalWorkPage() {
 // Mock 데이터들 (나중에 API로 대체)
 
 // 병원별 요약 카드 생성 함수
-const createSummaryCards = (hospital: HospitalWithCampaigns | null) => {
+const createSummaryCards = (hospital: HospitalWithCampaigns | null, stats: HospitalStats | null, systemStats?: any, emergencyData?: any) => {
+  // 긴급 처리 필요 작업 목록 생성
+  const urgentTasks: Array<{
+    id: string;
+    type: 'system_error' | 'failed_agent' | 'delayed_schedule';
+    title: string;
+    description: string;
+    color: string;
+    icon: string;
+    postId?: string;
+  }> = [];
+
+  // 시스템 에러 추가
+  if (emergencyData?.systemErrors) {
+    emergencyData.systemErrors.forEach((error: any) => {
+      urgentTasks.push({
+        id: `system_error_${error.id}`,
+        type: 'system_error',
+        title: '시스템 에러',
+        description: error.message || '심각한 시스템 오류 발생',
+        color: '#dc2626', // red-600
+        icon: 'fa-triangle-exclamation',
+        postId: undefined // 시스템 에러는 특정 포스트와 연결되지 않음
+      });
+    });
+  }
+
+  // 실패한 에이전트 작업 추가
+  if (emergencyData?.failedAgentJobs) {
+    emergencyData.failedAgentJobs.forEach((job: any) => {
+      urgentTasks.push({
+        id: `failed_agent_${job.id}`,
+        type: 'failed_agent',
+        title: '실패한 에이전트 작업',
+        description: `${job.agent_type} 작업 실패: ${job.post_title || job.post_id}`,
+        color: '#ea580c', // orange-600
+        icon: 'fa-exclamation-triangle',
+        postId: job.post_id
+      });
+    });
+  }
+
+  // 일정 딜레이 작업 추가
+  if (emergencyData?.delayedScheduleJobs) {
+    emergencyData.delayedScheduleJobs.forEach((job: any) => {
+      urgentTasks.push({
+        id: `delayed_schedule_${job.id}`,
+        type: 'delayed_schedule',
+        title: '일정 딜레이 작업',
+        description: `${job.hospital_name} - ${job.post_title || job.post_id} - ${job.delay_days}일 지연`,
+        color: '#2563eb', // blue-600
+        icon: 'fa-clock',
+        postId: job.post_id
+      });
+    });
+  }
+
   return [
   {
     id: 'urgent',
-    title: '🚨 긴급 처리 필요',
-      value: undefined, // 데이터 없음 표시
-      description: '표시할 데이터가 없습니다.'
+    title: '긴급 처리 필요',
+    urgentTasks: urgentTasks
   },
   {
     id: 'progress',
     title: '캠페인 진행률',
-      value: hospital ? `${Math.round(hospital.averageProgress || 0)}%` : '0%',
+      value: stats ? `${stats.campaign_progress}%` : '0%',
       description: hospital ? `${hospital.activeCampaigns}개 캠페인 평균` : '캠페인 없음',
-      progress: hospital?.averageProgress || 0
+      progress: stats?.campaign_progress || 0
   },
   {
     id: 'performance',
     title: '성과 모니터링',
-      value: undefined, // 데이터 없음 표시
-      description: '표시할 데이터가 없습니다.'
+      value: systemStats ? `${(systemStats.total_views || 0).toLocaleString()}회` : '0회',
+      description: systemStats ? `${systemStats.total_likes || 0}개 좋아요` : '시스템 전체 성과'
   },
   {
     id: 'activity',
     title: '최근 활동',
-      activities: undefined // 데이터 없음 표시
+      activities: systemStats?.recent_activities || []
   }
-];
+  ];
 };
 
 const mockHospitalDetails = {

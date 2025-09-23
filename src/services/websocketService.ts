@@ -43,7 +43,12 @@ export interface SystemAlert {
   };
 }
 
-export type WebSocketEvent = ScheduleNotification | PipelineUpdate | SystemAlert;
+export interface PongMessage {
+  type: 'pong';
+  data?: any;
+}
+
+export type WebSocketEvent = ScheduleNotification | PipelineUpdate | SystemAlert | PongMessage;
 
 export class WebSocketService {
   private ws: WebSocket | null = null;
