@@ -96,13 +96,13 @@ export function ScheduleNotificationCenter({
       */
 
       // Mock 데이터
-      const mockNotifications = [
+      const mockNotifications: ScheduleNotification[] = [
         {
           id: 1,
           post_id: 'QA_001',
           post_title: '치아 신경치료의 모든 것',
           notification_type: 'deadline_approaching' as const,
-          stage: 'material',
+          stage: 'material' as const,
           scheduled_at: '2024-09-22T18:00:00Z',
           sent_at: null,
           status: 'pending' as const,
@@ -115,7 +115,7 @@ export function ScheduleNotificationCenter({
           post_id: 'QA_002',
           post_title: '임플란트 수술 전 주의사항',
           notification_type: 'overdue' as const,
-          stage: 'ai',
+          stage: 'ai' as const,
           scheduled_at: '2024-09-25T18:00:00Z',
           sent_at: '2024-09-25T20:00:00Z',
           status: 'sent' as const,
@@ -251,7 +251,7 @@ export function ScheduleNotificationCenter({
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(n =>
-        n.post_title.toLowerCase().includes(searchLower) ||
+        (n.post_title?.toLowerCase().includes(searchLower) ?? false) ||
         n.notification_type.toLowerCase().includes(searchLower)
       );
     }

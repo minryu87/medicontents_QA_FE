@@ -41,7 +41,7 @@ export interface Campaign {
   start_date: string;
   end_date: string;
   target_post_count: number;
-  completed_post_count?: number; // 선택적 속성으로 변경
+  completed_post_count: number; // 필수 속성으로 변경 (기본값 0)
   published_post_count?: number; // 선택적 속성으로 변경
   status: 'active' | 'paused' | 'completed' | 'aborted';
   created_by?: number; // 선택적 속성으로 변경

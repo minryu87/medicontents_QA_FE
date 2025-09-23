@@ -61,7 +61,8 @@ export default function CampaignsPage() {
   };
 
   const calculateProgress = (campaign: BaseCampaign) => {
-    return Math.round((campaign.completed_post_count / Math.max(campaign.target_post_count, 1)) * 100);
+    const completedCount = campaign.completed_post_count || 0;
+    return Math.round((completedCount / Math.max(campaign.target_post_count, 1)) * 100);
   };
 
   const getDaysRemaining = (endDate: string) => {

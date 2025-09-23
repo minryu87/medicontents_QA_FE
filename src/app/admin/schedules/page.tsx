@@ -90,6 +90,7 @@ const dummyCampaign: Campaign = {
   start_date: '2024-09-01',
   end_date: '2024-12-31',
   target_post_count: 50,
+  completed_post_count: 0,
   status: 'active',
   created_at: '2024-09-01T00:00:00Z',
   updated_at: '2024-09-20T00:00:00Z',

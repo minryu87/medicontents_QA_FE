@@ -53,7 +53,14 @@ export default function CampaignDetailPage() {
         adminApi.getCampaignPosts(parseInt(campaignId))
       ]);
 
-      setCampaign(campaignData);
+      // API 응답을 Campaign 타입에 맞게 변환
+      const processedCampaignData: Campaign = {
+        ...campaignData,
+        completed_post_count: campaignData.completed_post_count || 0,
+        published_post_count: campaignData.published_post_count || 0
+      };
+
+      setCampaign(processedCampaignData);
       setPosts(postsData);
     } catch (error) {
       console.error('Error loading campaign detail:', error);
