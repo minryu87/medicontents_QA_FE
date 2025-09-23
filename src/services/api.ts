@@ -391,7 +391,7 @@ export class AdminApiService {
   // 포스팅 작업용 포스트 상세 정보 API
   async getPostsForPostingWork(hospitalId: number): Promise<any[]> {
     try {
-      const response = await api.get(`/api/v1/blog-posts?hospital_id=${hospitalId}&limit=50`);
+      const response = await api.get(`/api/v1/blog-posts/?hospital_id=${hospitalId}&limit=50`);
       console.log('API Response:', response);
       console.log('API Response Data:', response.data);
       console.log('API Response Data Items:', response.data?.items);
