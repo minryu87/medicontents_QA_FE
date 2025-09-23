@@ -3,6 +3,8 @@
  * 백엔드 WebSocket API와의 실시간 통신 관리
  */
 
+import config from '../lib/config';
+
 export interface WebSocketMessage {
   type: string;
   data?: any;
@@ -73,9 +75,20 @@ export class WebSocketService {
     if (typeof window === 'undefined') {
       return '';
     }
-    // 백엔드 WebSocket 서버 URL (개발 환경용)
-    const wsHost = process.env.NEXT_PUBLIC_WS_HOST || 'localhost:8000';
-    return `ws://${wsHost}/api/v1/ws`;
+
+    // config.apiUrl을 기반으로 WebSocket URL 생성
+    const apiUrl = config.apiUrl;
+
+    // HTTPS이면 WSS, HTTP이면 WS 사용
+    const protocol = apiUrl.startsWith('https://') ? 'wss://' : 'ws://';
+
+    // 호스트 부분 추출 (예: https://medicontents-qa-be-u45006.vm.elestio.app → medicontents-qa-be-u45006.vm.elestio.app)
+    const host = apiUrl.replace(/^https?:\/\//, '');
+
+    const wsUrl = `${protocol}${host}/api/v1/ws`;
+    console.log('WebSocket URL generated:', wsUrl, 'from API URL:', apiUrl);
+
+    return wsUrl;
   }
 
   /**
