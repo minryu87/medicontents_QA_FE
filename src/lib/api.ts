@@ -13,6 +13,11 @@ const api = axios.create({
   timeout: 30000, // 30초 타임아웃
 });
 
+// 개발 환경에서 baseURL 디버깅
+if (typeof window !== 'undefined') {
+  console.log('API baseURL 설정:', config.apiUrl);
+}
+
 // 요청 인터셉터 (토큰 추가)
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
@@ -20,6 +25,8 @@ api.interceptors.request.use((config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // 디버깅: 실제 요청 URL 확인
+    console.log('Axios 요청 URL:', (config.baseURL || '') + config.url);
   }
   return config;
 });

@@ -3,6 +3,10 @@ import { adminApi } from '@/services/api';
 import type { CompletePostingWorkflow } from '@/types/common';
 import GuideProvisionTab from '@/components/admin/GuideProvisionTab';
 import AIGenerationTab from '@/components/admin/AIGenerationTab';
+import PipelineResultHeader from '@/components/admin/result-dashboard/PipelineResultHeader';
+import HTMLPreviewPopup from '@/components/admin/result-dashboard/HTMLPreviewPopup';
+import EvaluationResultsCard from '@/components/admin/result-dashboard/EvaluationResultsCard';
+import IterationHistoryCard from '@/components/admin/result-dashboard/IterationHistoryCard';
 
 interface Post {
   id: string;
@@ -45,6 +49,14 @@ export default function PostingWorkTab({
   const [editContent, setEditContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
+  // 새로운 대시보드 데이터 상태
+  const [pipelineResult, setPipelineResult] = useState<any>(null);
+  const [evaluationData, setEvaluationData] = useState<any>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+
+  // HTML 미리보기 팝업 상태
+  const [showHTMLPreview, setShowHTMLPreview] = useState(false);
+
 
   const steps = [
     { id: 'material-review', label: '자료 검토', icon: '📋' },
@@ -67,7 +79,10 @@ export default function PostingWorkTab({
   // 워크플로우 데이터 로드
   const loadWorkflowData = async (postId: string) => {
     setWorkflowLoading(true);
+    setDashboardLoading(true);
+
     try {
+      // 기존 워크플로우 데이터 로드
       const data = await adminApi.getCompletePostingWorkflow(postId);
       setWorkflowData(data);
 
@@ -88,17 +103,60 @@ export default function PostingWorkTab({
       setEditContent(data.result_review?.content?.content || '');
       setIsEditing(false);
 
+      // 새로운 대시보드 데이터 로드 (병렬 처리)
+      try {
+        console.log('API 호출 시작:', postId);
+        console.log('adminApi:', adminApi);
+        console.log('adminApi type:', typeof adminApi);
+        console.log('getLatestPipelineResult 존재:', typeof (adminApi as any).getLatestPipelineResult);
+        console.log('getLatestPipelineResult 함수:', (adminApi as any).getLatestPipelineResult);
+
+        // 함수 존재 여부 확인
+        if (typeof (adminApi as any).getLatestPipelineResult !== 'function') {
+          console.error('getLatestPipelineResult 함수가 존재하지 않습니다!');
+          throw new Error('API 함수가 로드되지 않았습니다');
+        }
+
+        const [pipelineResultData, evaluationResultData] = await Promise.allSettled([
+          (adminApi as any).getLatestPipelineResult(postId),
+          (adminApi as any).getEvaluationResultsDashboard(postId)
+        ]);
+
+        if (pipelineResultData.status === 'fulfilled') {
+          setPipelineResult(pipelineResultData.value);
+        } else {
+          console.warn('PipelineResult 로드 실패:', pipelineResultData.reason);
+          setPipelineResult(null);
+        }
+
+        if (evaluationResultData.status === 'fulfilled') {
+          setEvaluationData(evaluationResultData.value);
+        } else {
+          console.warn('EvaluationResults 로드 실패:', evaluationResultData.reason);
+          setEvaluationData(null);
+        }
+      } catch (dashboardError) {
+        console.error('대시보드 데이터 로드 실패:', dashboardError);
+        setPipelineResult(null);
+        setEvaluationData(null);
+      }
+
     } catch (error) {
       console.error('워크플로우 데이터 로드 실패:', error);
       setWorkflowData(null);
+      setPipelineResult(null);
+      setEvaluationData(null);
     } finally {
       setWorkflowLoading(false);
+      setDashboardLoading(false);
     }
   };
 
   // 데이터 초기화
   const resetWorkflowData = () => {
     setWorkflowData(null);
+    setPipelineResult(null);
+    setEvaluationData(null);
     setGuideText('');
     setEditContent('');
     setIsEditing(false);
@@ -622,129 +680,94 @@ export default function PostingWorkTab({
                     )}
 
                     {activeStep === 'result-review' && (
-                      <div className="space-y-4">
-                        <div className="bg-white p-4 rounded-lg border border-neutral-200">
-                          <h5 className="font-medium text-neutral-900 mb-4">AI 생성 결과 검토</h5>
+                      <div className="space-y-6">
+                        {/* PipelineResult 헤더 */}
+                        <PipelineResultHeader
+                          pipelineResult={pipelineResult}
+                          loading={dashboardLoading}
+                        />
 
-                          {workflowData.result_review.content ? (
-                            <div className="space-y-4">
-                              {/* 콘텐츠 정보 */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">생성 일시:</span>
-                                  <p className="text-sm text-neutral-600 mt-1">
-                                    {workflowData.result_review.content.created_at ?
-                                      new Date(workflowData.result_review.content.created_at).toLocaleString() : '알 수 없음'}
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">최종 수정:</span>
-                                  <p className="text-sm text-neutral-600 mt-1">
-                                    {workflowData.result_review.content.updated_at ?
-                                      new Date(workflowData.result_review.content.updated_at).toLocaleString() : '없음'}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* 콘텐츠 미리보기 및 편집 */}
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <label className="text-sm font-medium text-neutral-700">콘텐츠 내용</label>
-                                  <button
-                                    onClick={() => setIsEditing(!isEditing)}
-                                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                                  >
-                                    {isEditing ? '편집 취소' : '편집'}
-                                  </button>
-                                </div>
-
-                                {isEditing ? (
-                                  <textarea
-                                    value={editContent}
-                                    onChange={(e) => setEditContent(e.target.value)}
-                                    className="w-full h-64 p-3 border border-neutral-300 rounded resize-none text-sm"
-                                    placeholder="콘텐츠를 수정하세요..."
-                                  />
-                                ) : workflowData.result_review.content.html_content ? (
-                                  <div className="bg-white p-4 rounded border text-sm max-h-64 overflow-y-auto">
-                                    <div
-                                      dangerouslySetInnerHTML={{
-                                        __html: workflowData.result_review.content.html_content || '<p>생성된 콘텐츠가 없습니다.</p>'
-                                      }}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="bg-white p-4 rounded border text-sm max-h-64 overflow-y-auto whitespace-pre-wrap">
-                                    {workflowData.result_review.content.content || '생성된 콘텐츠가 없습니다.'}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* 메타데이터 */}
-                              {workflowData.result_review.content.metadata && (
-                                <div className="p-3 bg-neutral-50 rounded">
-                                  <span className="text-sm font-medium text-neutral-700">메타데이터:</span>
-                                  <div className="mt-2 text-xs text-neutral-600">
-                                    <div>단어 수: {workflowData.result_review.content.metadata.word_count || 0}</div>
-                                    <div>읽기 시간: {workflowData.result_review.content.metadata.read_time || 0}분</div>
-                                    <div>품질 점수: {workflowData.result_review.content.metadata.quality_score || 0}/100</div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* 액션 버튼들 */}
-                              <div className="flex space-x-2">
-                                {isEditing ? (
-                                  <>
-                                    <button
-                                      onClick={saveEditedContent}
-                                      disabled={isWorking}
-                                      className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {isWorking ? '저장중...' : '수정 저장'}
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setIsEditing(false);
-                                        setEditContent(workflowData.result_review.content?.content || '');
-                                      }}
-                                      className="px-4 py-2 bg-neutral-600 text-white text-sm rounded hover:bg-neutral-700"
-                                    >
-                                      취소
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      onClick={approveResult}
-                                      disabled={isWorking}
-                                      className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {isWorking ? '처리중...' : '승인'}
-                                    </button>
-                                    <button
-                                      onClick={() => setActiveStep('admin-guide')}
-                                      className="px-4 py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-                                    >
-                                      수정 요청
-                                    </button>
-                                    <button
-                                      onClick={executeAIPipeline}
-                                      disabled={isWorking}
-                                      className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {isWorking ? '재생성중...' : '재생성'}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                        {/* 콘텐츠 미리보기 카드 */}
+                        {pipelineResult && (
+                          <div className="bg-white p-6 rounded-lg border border-neutral-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-neutral-900">최종 콘텐츠</h3>
+                              <button
+                                onClick={() => setShowHTMLPreview(true)}
+                                className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                              >
+                                📱 전체 화면 미리보기
+                              </button>
                             </div>
-                          ) : (
-                            <div className="text-center py-8 text-neutral-500">
-                              <p className="text-sm">생성된 콘텐츠가 없습니다</p>
-                            </div>
-                          )}
+
+                            {pipelineResult.final_html_content ? (
+                              <div className="bg-neutral-50 p-4 rounded border max-h-96 overflow-y-auto">
+                                <div
+                                  dangerouslySetInnerHTML={{
+                                    __html: pipelineResult.final_html_content
+                                  }}
+                                />
+                              </div>
+                            ) : pipelineResult.final_content ? (
+                              <div className="bg-neutral-50 p-4 rounded border max-h-96 overflow-y-auto whitespace-pre-wrap text-sm">
+                                {pipelineResult.final_content}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 text-neutral-500">
+                                <p>생성된 콘텐츠가 없습니다</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 평가 결과 */}
+                        <EvaluationResultsCard
+                          evaluationData={evaluationData}
+                          loading={dashboardLoading}
+                        />
+
+                        {/* 반복 작업 히스토리 */}
+                        <IterationHistoryCard
+                          evaluationHistory={evaluationData?.evaluation_history || []}
+                          loading={dashboardLoading}
+                        />
+
+                        {/* 액션 버튼들 */}
+                        <div className="bg-white p-6 rounded-lg border border-neutral-200">
+                          <h3 className="text-lg font-semibold text-neutral-900 mb-4">작업 액션</h3>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={approveResult}
+                              disabled={isWorking}
+                              className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isWorking ? '처리중...' : '승인'}
+                            </button>
+                            <button
+                              onClick={() => setActiveStep('admin-guide')}
+                              className="px-4 py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+                            >
+                              수정 요청
+                            </button>
+                            <button
+                              onClick={executeAIPipeline}
+                              disabled={isWorking}
+                              className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isWorking ? '재생성중...' : '재생성'}
+                            </button>
+                          </div>
                         </div>
+
+                        {/* HTML 미리보기 팝업 */}
+                        {pipelineResult && (
+                          <HTMLPreviewPopup
+                            isOpen={showHTMLPreview}
+                            onClose={() => setShowHTMLPreview(false)}
+                            title={pipelineResult.final_title || '제목 없음'}
+                            htmlContent={pipelineResult.final_html_content || '<p>콘텐츠가 없습니다.</p>'}
+                          />
+                        )}
                       </div>
                     )}
 

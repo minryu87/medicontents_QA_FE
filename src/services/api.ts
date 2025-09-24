@@ -3,6 +3,7 @@
  */
 
 import api from '@/lib/api';
+import config from '@/lib/config';
 import type {
   Post,
   Hospital,
@@ -1238,6 +1239,7 @@ export class ClientApiService {
     console.log('getDelayedScheduleJobs 응답:', response.data);
     return response.data;
   }
+
 }
 
 // 긴급 처리 필요 API 함수들
@@ -1267,6 +1269,12 @@ const getDelayedScheduleJobsFn = async (hospitalId?: number): Promise<any> => {
 
 // 싱글톤 인스턴스
 export const adminApi = new AdminApiService();
+
+// 디버깅: adminApi에 새로운 메소드가 제대로 추가되었는지 확인
+if (typeof window !== 'undefined') {
+  console.log('adminApi 메소드들:', Object.getOwnPropertyNames(adminApi));
+  console.log('getLatestPipelineResult 존재:', adminApi.hasOwnProperty('getLatestPipelineResult'));
+}
 export const clientApi = new ClientApiService();
 
 // 긴급 처리 필요 메소드들을 인스턴스에 직접 할당
@@ -1290,3 +1298,63 @@ Object.defineProperty(adminApi, 'getDelayedScheduleJobs', {
   enumerable: true,
   configurable: true
 });
+
+// Pipeline Result 대시보드 API 메소드들
+const getLatestPipelineResultFn = async (postId: string) => {
+  console.log('getLatestPipelineResult 호출:', postId);
+
+  // config를 사용해서 환경에 맞는 URL 구성
+  const baseUrl = config.apiUrl;
+  const fullUrl = `${baseUrl}/api/v1/admin/posts/${postId}/latest-pipeline-result`;
+  console.log('환경 기반 URL:', fullUrl);
+
+  const response = await fetch(fullUrl, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+Object.defineProperty(adminApi, 'getLatestPipelineResult', {
+  value: getLatestPipelineResultFn,
+  writable: false,
+  enumerable: true,
+  configurable: true
+});
+
+const getEvaluationResultsDashboardFn = async (postId: string) => {
+  console.log('getEvaluationResultsDashboard 호출:', postId);
+
+  // config를 사용해서 환경에 맞는 URL 구성
+  const baseUrl = config.apiUrl;
+  const fullUrl = `${baseUrl}/api/v1/admin/posts/${postId}/evaluation-results-dashboard`;
+  console.log('환경 기반 URL:', fullUrl);
+
+  const response = await fetch(fullUrl, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+Object.defineProperty(adminApi, 'getEvaluationResultsDashboard', {
+  value: getEvaluationResultsDashboardFn,
+  writable: false,
+  enumerable: true,
+  configurable: true
+});
+
