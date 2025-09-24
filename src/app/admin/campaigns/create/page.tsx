@@ -20,9 +20,21 @@ interface CampaignFormData {
 
 interface MedicalService {
   id: number;
-  category: string;
-  treatment: string;
-  description: string;
+  medical_service: {
+    id: number;
+    category: string;
+    treatment: string;
+    description: string;
+    is_active: boolean;
+  };
+  hospital_service: {
+    id: number;
+    hospital_id: number;
+    medical_service_id: number;
+    specific_treatments: string[];
+    treatment_description?: string;
+    special_equipment: string[];
+  };
 }
 
 export default function CreateCampaign() {
@@ -45,15 +57,12 @@ export default function CreateCampaign() {
     const loadFormData = async () => {
       try {
         setDataLoading(true);
-        const [hospitalsData, servicesData] = await Promise.all([
-          adminApi.getHospitals(),
-          fetch('/api/v1/medical-services/').then(res => res.json())
-        ]);
+        const hospitalsData = await adminApi.getHospitals();
 
         setHospitals(hospitalsData.hospitals || []);
-        setMedicalServices(servicesData.services || []);
+        setMedicalServices([]); // 초기에는 빈 배열
       } catch (error) {
-        console.error('폼 데이터 로드 실패:', error);
+        console.error('병원 데이터 로드 실패:', error);
       } finally {
         setDataLoading(false);
       }
@@ -62,8 +71,24 @@ export default function CreateCampaign() {
     loadFormData();
   }, []);
 
-  const handleInputChange = (field: keyof CampaignFormData, value: string | number) => {
+  const handleInputChange = async (field: keyof CampaignFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+
+    // 병원이 선택되면 해당 병원의 진료 서비스 로드
+    if (field === 'hospital_id' && value) {
+      try {
+        setDataLoading(true);
+        const servicesData = await adminApi.getHospitalMedicalServices(parseInt(value.toString()));
+        setMedicalServices(servicesData || []);
+        // 진료 서비스 선택 초기화
+        setFormData(prev => ({ ...prev, medical_service_id: '' }));
+      } catch (error) {
+        console.error('진료 서비스 로드 실패:', error);
+        setMedicalServices([]);
+      } finally {
+        setDataLoading(false);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,15 +102,11 @@ export default function CreateCampaign() {
         medical_service_id: parseInt(formData.medical_service_id),
         completed_post_count: 0,
         published_post_count: 0,
-        status: 'active',
+        status: 'draft',
         created_by: 0 // 시스템 어드민
       };
 
-      await fetch('/api/v1/campaigns/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(campaignData)
-      });
+      await adminApi.createCampaign(campaignData);
 
       router.push('/admin/campaigns');
     } catch (error) {
@@ -163,13 +184,63 @@ export default function CreateCampaign() {
                   <option value="">진료 서비스를 선택하세요</option>
                   {medicalServices.map((service) => (
                     <option key={service.id} value={service.id.toString()}>
-                      {service.category} - {service.treatment}
+                      {service.medical_service.category} - {service.medical_service.treatment}
+                      {service.hospital_service.specific_treatments.length > 0 &&
+                        ` (${service.hospital_service.specific_treatments[0]})`
+                      }
                     </option>
                   ))}
                 </select>
               </div>
             </div>
-            
+
+            {/* 선택된 진료 서비스 상세 정보 */}
+            {formData.medical_service_id && medicalServices.length > 0 && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-900 mb-2">진료 서비스 상세 정보</h4>
+                {(() => {
+                  const selectedService = medicalServices.find(s => s.id.toString() === formData.medical_service_id);
+                  if (!selectedService) return null;
+
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-sm text-blue-800">
+                        <strong>기본 정보:</strong> {selectedService.medical_service.description}
+                      </p>
+
+                      {selectedService.hospital_service.specific_treatments.length > 0 && (
+                        <div className="text-sm text-blue-800">
+                          <strong>구체적인 진료:</strong>
+                          <ul className="list-disc list-inside ml-4 mt-1">
+                            {selectedService.hospital_service.specific_treatments.map((treatment, idx) => (
+                              <li key={idx}>{treatment}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {selectedService.hospital_service.treatment_description && (
+                        <p className="text-sm text-blue-800">
+                          <strong>병원별 설명:</strong> {selectedService.hospital_service.treatment_description}
+                        </p>
+                      )}
+
+                      {selectedService.hospital_service.special_equipment.length > 0 && (
+                        <div className="text-sm text-blue-800">
+                          <strong>특수 장비:</strong>
+                          <ul className="list-disc list-inside ml-4 mt-1">
+                            {selectedService.hospital_service.special_equipment.map((equipment, idx) => (
+                              <li key={idx}>{equipment}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 캠페인 설명

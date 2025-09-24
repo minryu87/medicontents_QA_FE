@@ -319,6 +319,16 @@ export class AdminApiService {
     return response.data;
   }
 
+  async createCampaign(campaignData: any): Promise<Campaign> {
+    const response = await api.post('/api/v1/campaigns/', campaignData);
+    return response.data;
+  }
+
+  async generatePosts(campaignId: number, postData: any): Promise<any> {
+    const response = await api.post(`/api/v1/campaigns/${campaignId}/generate-posts`, postData);
+    return response.data;
+  }
+
   // 병원 관리 API
   async getHospitals(): Promise<{ hospitals: Hospital[] }> {
     const response = await api.get('/api/v1/user/hospitals/');
@@ -329,6 +339,17 @@ export class AdminApiService {
     const response = await api.get(`/api/v1/user/hospitals/${hospitalId}`);
     return response.data;
   }
+
+  async getMedicalServices(): Promise<any[]> {
+    const response = await api.get('/api/v1/medical-services/');
+    return response.data.items || [];
+  }
+
+  async getHospitalMedicalServices(hospitalId: number): Promise<any[]> {
+    const response = await api.get(`/api/v1/user/hospital-services/hospitals/${hospitalId}/medical-services`);
+    return response.data || [];
+  }
+
 
   async getHospitalAdmin(hospitalId: number): Promise<{username: string} | null> {
     try {
@@ -1039,11 +1060,6 @@ export class ClientApiService {
     });
   }
 
-  async getMedicalServices(): Promise<any[]> {
-    const response = await api.get('/api/v1/medical-services/');
-    return response.data.services || [];
-  }
-
   async getPersonaStyles(params?: {
     medical_service_id?: number;
     is_active?: boolean;
@@ -1242,30 +1258,7 @@ export class ClientApiService {
 
 }
 
-// 긴급 처리 필요 API 함수들
-const getSystemErrorsFn = async (hospitalId?: number): Promise<any> => {
-  console.log('getSystemErrors 메소드 호출됨 (병원:', hospitalId || '전체)');
-  const params = hospitalId ? { hospital_id: hospitalId } : {};
-  const response = await api.get('/api/v1/admin/dashboard/system-errors', { params });
-  console.log('getSystemErrors 응답:', response.data);
-  return response.data;
-};
-
-const getFailedAgentJobsFn = async (hospitalId?: number): Promise<any> => {
-  console.log('getFailedAgentJobs 메소드 호출됨 (병원:', hospitalId || '전체)');
-  const params = hospitalId ? { hospital_id: hospitalId } : {};
-  const response = await api.get('/api/v1/admin/dashboard/failed-agent-jobs', { params });
-  console.log('getFailedAgentJobs 응답:', response.data);
-  return response.data;
-};
-
-const getDelayedScheduleJobsFn = async (hospitalId?: number): Promise<any> => {
-  console.log('getDelayedScheduleJobs 메소드 호출됨 (병원:', hospitalId || '전체)');
-  const params = hospitalId ? { hospital_id: hospitalId } : {};
-  const response = await api.get('/api/v1/admin/dashboard/delayed-schedule-jobs', { params });
-  console.log('getDelayedScheduleJobs 응답:', response.data);
-  return response.data;
-};
+// 긴급 처리 필요 API 함수들은 AdminApiService 클래스에 통합됨
 
 // 싱글톤 인스턴스
 export const adminApi = new AdminApiService();
@@ -1277,27 +1270,7 @@ if (typeof window !== 'undefined') {
 }
 export const clientApi = new ClientApiService();
 
-// 긴급 처리 필요 메소드들을 인스턴스에 직접 할당
-Object.defineProperty(adminApi, 'getSystemErrors', {
-  value: getSystemErrorsFn,
-  writable: false,
-  enumerable: true,
-  configurable: true
-});
-
-Object.defineProperty(adminApi, 'getFailedAgentJobs', {
-  value: getFailedAgentJobsFn,
-  writable: false,
-  enumerable: true,
-  configurable: true
-});
-
-Object.defineProperty(adminApi, 'getDelayedScheduleJobs', {
-  value: getDelayedScheduleJobsFn,
-  writable: false,
-  enumerable: true,
-  configurable: true
-});
+// 긴급 처리 필요 메소드들은 클래스 메서드로 추가됨
 
 // Pipeline Result 대시보드 API 메소드들
 const getLatestPipelineResultFn = async (postId: string) => {

@@ -43,7 +43,7 @@ export interface Campaign {
   target_post_count: number;
   completed_post_count: number; // 필수 속성으로 변경 (기본값 0)
   published_post_count?: number; // 선택적 속성으로 변경
-  status: 'active' | 'paused' | 'completed' | 'aborted';
+  status: 'draft' | 'ready' | 'active' | 'paused' | 'completed' | 'aborted';
   created_by?: number; // 선택적 속성으로 변경
   created_at: string;
   updated_at: string;
