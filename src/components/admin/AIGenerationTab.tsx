@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { adminApi } from '@/services/api';
+import config from '@/lib/config';
 
 interface PreGenerationView {
   post_id: string;
@@ -347,6 +348,16 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     }
   };
 
+  // 환경에 맞는 WebSocket URL 생성 헬퍼 함수
+  const createWebSocketUrl = (path: string) => {
+    const apiUrl = config.apiUrl;
+    // HTTPS이면 WSS, HTTP이면 WS 사용
+    const protocol = apiUrl.startsWith('https://') ? 'wss://' : 'ws://';
+    // 호스트 부분 추출
+    const host = apiUrl.replace(/^https?:\/\//, '');
+    return `${protocol}${host}${path}`;
+  };
+
   const setupTerminalLogsWebSocket = () => {
     try {
       // 기존 연결이 있으면 닫기
@@ -355,7 +366,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       }
 
       // 터미널 로그 WebSocket 연결
-      const wsUrl = `ws://localhost:8000/api/v1/pipeline/ws/posts/${postId}/logs`;
+      const wsUrl = createWebSocketUrl(`/api/v1/pipeline/ws/posts/${postId}/logs`);
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
@@ -410,7 +421,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       }
 
       // WebSocket 연결
-      const wsUrl = `ws://localhost:8000/api/v1/pipeline/ws/posts/${postId}/generation`;
+      const wsUrl = createWebSocketUrl(`/api/v1/pipeline/ws/posts/${postId}/generation`);
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
