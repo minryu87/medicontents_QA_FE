@@ -665,6 +665,14 @@ export default function PostingWorkTab({
                                     className="w-full h-64 p-3 border border-neutral-300 rounded resize-none text-sm"
                                     placeholder="콘텐츠를 수정하세요..."
                                   />
+                                ) : workflowData.result_review.content.content_type === 'html' ? (
+                                  <div className="bg-white p-4 rounded border text-sm max-h-64 overflow-y-auto">
+                                    <div
+                                      dangerouslySetInnerHTML={{
+                                        __html: workflowData.result_review.content.content || '<p>생성된 콘텐츠가 없습니다.</p>'
+                                      }}
+                                    />
+                                  </div>
                                 ) : (
                                   <div className="bg-white p-4 rounded border text-sm max-h-64 overflow-y-auto whitespace-pre-wrap">
                                     {workflowData.result_review.content.content || '생성된 콘텐츠가 없습니다.'}

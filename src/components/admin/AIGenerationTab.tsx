@@ -256,9 +256,9 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
   const loadGenerationResult = async () => {
     try {
       setLoading(true);
-      // 타임아웃을 5초로 제한
+      // 타임아웃을 10초로 제한
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('TIMEOUT')), 5000);
+        setTimeout(() => reject(new Error('TIMEOUT')), 10000);
       });
 
       const dataPromise = adminApi.getGenerationResults(postId);
@@ -1922,9 +1922,22 @@ function GenerationResultView({
             </div>
           )}
 
+          {result.final_content.html_content && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2" style={{color: 'rgba(42, 72, 94, 0.7)'}}>HTML 콘텐츠</h4>
+              <div className="text-sm max-h-64 overflow-y-auto border rounded p-3" style={{
+                color: 'rgba(42, 72, 94, 0.7)',
+                borderColor: 'rgba(74, 124, 158, 0.3)',
+                backgroundColor: 'rgba(74, 124, 158, 0.1)'
+              }}>
+                <div dangerouslySetInnerHTML={{ __html: result.final_content.html_content }} />
+              </div>
+            </div>
+          )}
+
           {result.final_content.content && (
             <div>
-              <h4 className="text-sm font-medium mb-2" style={{color: 'rgba(42, 72, 94, 0.7)'}}>본문</h4>
+              <h4 className="text-sm font-medium mb-2" style={{color: 'rgba(42, 72, 94, 0.7)'}}>마크다운 콘텐츠</h4>
               <div className="text-sm whitespace-pre-wrap max-h-64 overflow-y-auto border rounded p-3" style={{
                 color: 'rgba(42, 72, 94, 0.7)',
                 borderColor: 'rgba(74, 124, 158, 0.3)',
