@@ -118,7 +118,7 @@ export default function ClientDashboard() {
           <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-6">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
           </div>
-          <p className="text-lg font-medium text-gray-700">대시보드 로딩 중...</p>
+          <p className="text-sm font-medium text-gray-700">대시보드 로딩 중...</p>
         </div>
       </div>
     );
@@ -129,8 +129,8 @@ export default function ClientDashboard() {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center max-w-md">
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-6" />
-          <h2 className="text-xl font-bold text-gray-700 mb-2">캠페인이 없습니다</h2>
-          <p className="text-gray-600 mb-6">현재 진행 중인 캠페인이 없습니다.</p>
+          <h2 className="text-base font-bold text-gray-700 mb-2">캠페인이 없습니다</h2>
+          <p className="text-sm text-gray-600 mb-6">현재 진행 중인 캠페인이 없습니다.</p>
           <Button
             onClick={loadCampaignsData}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-medium"
@@ -144,35 +144,10 @@ export default function ClientDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 영역 - Style 1: 기본 컨테이너 */}
-      <div className="bg-white rounded-3xl mx-6 mt-6 p-8 shadow-lg">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-5xl font-bold text-gray-800 mb-2">콘텐츠 대시보드</h1>
-            <p className="text-xl text-gray-600">캠페인별 콘텐츠 생성 현황 및 작업 관리</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 border-2 border-blue-200 text-blue-700 hover:bg-blue-50 px-6 py-3 rounded-2xl"
-            >
-              <Bell className="w-5 h-5" />
-              알림 설정
-            </Button>
-            <Button
-              onClick={loadCampaignsData}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-medium"
-            >
-              새로고침
-            </Button>
-          </div>
-        </div>
-      </div>
-
       <div className="mx-6 mt-6 space-y-6">
         {/* 캠페인 선택 영역 - Style 2: 강조 컨테이너 */}
         <div className="bg-white rounded-3xl p-8 shadow-xl">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+          <h2 className="text-base font-bold text-gray-800 mb-6 flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
             캠페인 선택
           </h2>
@@ -194,8 +169,8 @@ export default function ClientDashboard() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-800 mb-1">{campaign.name}</h3>
-                      <p className="text-gray-600 text-sm">{campaign.description}</p>
+                      <h3 className="text-sm font-bold text-gray-800 mb-1">{campaign.name}</h3>
+                      <p className="text-gray-600 text-xs">{campaign.description}</p>
                     </div>
                     {isSelected && <CheckCircle className="w-6 h-6 text-blue-600 flex-shrink-0" />}
                   </div>
@@ -226,12 +201,12 @@ export default function ClientDashboard() {
             <div className="bg-white rounded-3xl p-8 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-800">{selectedCampaign.campaign.name}</h2>
-                  <p className="text-lg text-gray-600 mt-1">{selectedCampaign.campaign.description}</p>
+                  <h2 className="text-base font-bold text-gray-800">{selectedCampaign.campaign.name}</h2>
+                  <p className="text-sm text-gray-600 mt-1">{selectedCampaign.campaign.description}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-bold text-blue-600">{selectedCampaign.campaign.total_posts}</div>
-                  <div className="text-gray-600">총 포스트</div>
+                  <div className="text-base font-bold text-blue-600">{selectedCampaign.campaign.total_posts}</div>
+                  <div className="text-xs text-gray-600">총 포스트</div>
                 </div>
               </div>
 
@@ -243,10 +218,10 @@ export default function ClientDashboard() {
                     className={`rounded-2xl p-6 border-2 ${getCategoryColor(category)}`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-bold text-lg">{categoryData.category_name}</h3>
-                      <span className="text-2xl font-bold">{categoryData.count}</span>
+                      <h3 className="font-bold text-sm">{categoryData.category_name}</h3>
+                      <span className="text-base font-bold">{categoryData.count}</span>
                     </div>
-                    <p className="text-sm opacity-80 mb-4">{categoryData.description}</p>
+                    <p className="text-xs opacity-80 mb-4">{categoryData.description}</p>
 
                     {/* 액션 버튼 - Primary Action은 최소한으로 */}
                     {categoryData.action_required && categoryData.count > 0 && (
@@ -265,22 +240,22 @@ export default function ClientDashboard() {
             {Object.entries(selectedCampaign.posts_by_category).map(([category, categoryData]) => (
               categoryData.count > 0 && (
                 <div key={category} className="bg-white rounded-3xl p-8 shadow-lg">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                  <h3 className="text-base font-bold text-gray-800 mb-6 flex items-center gap-3">
                     <div className={`w-4 h-4 rounded-full ${getCategoryColor(category).includes('red') ? 'bg-red-400' :
                       getCategoryColor(category).includes('orange') ? 'bg-orange-400' :
                       getCategoryColor(category).includes('blue') ? 'bg-blue-400' :
                       getCategoryColor(category).includes('yellow') ? 'bg-yellow-400' :
                       getCategoryColor(category).includes('green') ? 'bg-green-400' : 'bg-gray-400'}`} />
                     {categoryData.category_name}
-                    <span className="text-lg font-normal text-gray-600">({categoryData.count}개)</span>
+                    <span className="text-sm font-normal text-gray-600">({categoryData.count}개)</span>
                   </h3>
 
                   <div className="space-y-4">
                     {categoryData.posts.slice(0, 5).map((post) => (
                       <div key={post.id} className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl">
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-800 text-lg mb-1">{post.title}</h4>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <h4 className="font-bold text-gray-800 text-sm mb-1">{post.title}</h4>
+                          <div className="flex items-center gap-4 text-xs text-gray-600">
                             <span>포스트 ID: {post.post_id}</span>
                             <span>생성일: {new Date(post.created_at).toLocaleDateString('ko-KR')}</span>
                           </div>
