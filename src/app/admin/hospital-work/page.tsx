@@ -91,6 +91,7 @@ export default function HospitalWorkPage() {
   };
   const [activeTab, setActiveTab] = useState<'hospital-info' | 'work-management' | 'posting-work' | 'monitoring'>('hospital-info');
   const [showCampaignTooltip, setShowCampaignTooltip] = useState(false);
+  const [showCampaignDropdown, setShowCampaignDropdown] = useState(false);
   const [waitingTasks, setWaitingTasks] = useState<any[]>([]);
   const [waitingTasksLoading, setWaitingTasksLoading] = useState(false);
   const [kanbanPosts, setKanbanPosts] = useState<any>(null);
@@ -106,19 +107,20 @@ export default function HospitalWorkPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.campaign-tooltip') && !target.closest('.campaign-selector')) {
+      if (!target.closest('.campaign-tooltip') && !target.closest('.campaign-selector') && !target.closest('.campaign-dropdown')) {
         setShowCampaignTooltip(false);
+        setShowCampaignDropdown(false);
       }
     };
 
-    if (showCampaignTooltip) {
+    if (showCampaignTooltip || showCampaignDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showCampaignTooltip]);
+  }, [showCampaignTooltip, showCampaignDropdown]);
 
   // URL 쿼리 파라미터 처리 (긴급 처리 필요에서 이동 시)
   useEffect(() => {
@@ -188,10 +190,8 @@ export default function HospitalWorkPage() {
 
     setPostingWorkPostsLoading(true);
     try {
-      // 캠페인 ID로 포스트 조회 (새로운 API가 필요할 수 있음)
-      // 현재는 전체 포스트에서 필터링하는 방식으로 임시 구현
-      const allPosts = await adminApi.getPostsForPostingWork(selectedHospital.id);
-      const campaignPosts = allPosts.filter((post: any) => post.campaign_id === campaignId);
+      // 캠페인 ID로 포스트 조회 (백엔드에서 필터링)
+      const campaignPosts = await adminApi.getPostsForPostingWork(selectedHospital.id, campaignId);
       setPostingWorkPosts(campaignPosts);
       setAllPostingWorkPosts(campaignPosts);
     } catch (error) {
@@ -215,10 +215,9 @@ export default function HospitalWorkPage() {
     try {
       // 병렬로 작업 관리 데이터 로드
       const [waitingTasksResult, kanbanResult, statusPostsResult] = await Promise.allSettled([
-        // 작업 대기 포스트 (캠페인별 필터링)
-        adminApi.getWaitingTasks(selectedHospital.id, 20).then(data => {
-          const filteredTasks = data.waiting_tasks.filter((task: any) => task.campaign_id === campaignId);
-          return filteredTasks.map(task => ({
+        // 작업 대기 포스트 (백엔드에서 캠페인 필터링)
+        adminApi.getWaitingTasks(selectedHospital.id, campaignId, 20).then(data => {
+          return data.waiting_tasks.map(task => ({
             id: task.post_id,
             post_type: task.post_type,
             title: task.title,
@@ -227,19 +226,11 @@ export default function HospitalWorkPage() {
           }));
         }),
 
-        // 칸반 포스트 (캠페인별 필터링이 필요하다면 여기에 추가)
-        adminApi.getKanbanPosts(selectedHospital.id),
+        // 칸반 포스트 (백엔드에서 캠페인 필터링)
+        adminApi.getKanbanPosts(selectedHospital.id, campaignId),
 
-        // 상태별 포스트 (캠페인별 필터링)
-        adminApi.getPostsByStatus(selectedHospital.id).then(data => {
-          const filteredPosts = {
-            publish_scheduled: data.publish_scheduled?.filter((post: any) => post.campaign_id === campaignId) || [],
-            published: data.published?.filter((post: any) => post.campaign_id === campaignId) || [],
-            monitoring: data.monitoring?.filter((post: any) => post.campaign_id === campaignId) || [],
-            monitoring_issue: data.monitoring_issue?.filter((post: any) => post.campaign_id === campaignId) || []
-          };
-          return filteredPosts;
-        })
+        // 상태별 포스트 (백엔드에서 캠페인 필터링)
+        adminApi.getPostsByStatus(selectedHospital.id, campaignId)
       ]);
 
       // 작업 대기 데이터 설정
@@ -536,11 +527,8 @@ export default function HospitalWorkPage() {
         }
       // 작업 관리 데이터는 캠페인 선택 시 로드하도록 변경
 
-            // 포스팅 작업 탭용 기본 캠페인 설정 (첫 번째 active 캠페인)
-            if (campaigns.status === 'fulfilled' && campaigns.value && campaigns.value.length > 0) {
-              const activeCampaign = campaigns.value.find((c: any) => c.status === '진행중') || campaigns.value[0];
-              setSelectedCampaignForWork(activeCampaign);
-            }
+            // 포스팅 작업 탭용 기본 캠페인 설정 제거 - 사용자가 드롭다운에서 직접 선택하도록 함
+            setSelectedCampaignForWork(null);
 
     } catch (error) {
       console.error('병원 정보 로드 실패:', error);
@@ -731,37 +719,77 @@ export default function HospitalWorkPage() {
             <div className="relative">
               <div
                 className="campaign-selector border border-neutral-200 rounded-lg p-3 hover:bg-neutral-50 transition-colors duration-200 cursor-pointer"
-                onClick={() => setShowCampaignTooltip(!showCampaignTooltip)}
+                onClick={() => setShowCampaignDropdown(!showCampaignDropdown)}
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm text-neutral-800">
-                    {selectedHospitalCampaigns.length > 0
-                      ? selectedHospitalCampaigns[0]?.name || '캠페인 없음'
-                      : '캠페인 없음'
+                    {selectedCampaignForWork
+                      ? selectedCampaignForWork.name
+                      : '캠페인을 선택하세요'
                     }
                   </h3>
-                  <div className="flex items-center space-x-1">
-                    <button className="p-1 text-neutral-500 hover:text-neutral-700">
-                      <i className="fa-solid fa-chevron-left text-xs"></i>
-                    </button>
-                    <span className={`px-1 py-1 rounded text-xs ${
-                      selectedHospitalCampaigns.length > 0 && selectedHospitalCampaigns[0]?.status === '진행중'
-                        ? 'bg-neutral-100 text-neutral-800' :
-                      selectedHospitalCampaigns.length > 0 && selectedHospitalCampaigns[0]?.status === '완료'
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      selectedCampaignForWork?.status === 'active'
                         ? 'bg-green-100 text-green-800' :
-                        'bg-blue-100 text-blue-800'
+                      selectedCampaignForWork?.status === 'completed'
+                        ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
                     }`}>
-                      {selectedHospitalCampaigns.length > 0
-                        ? selectedHospitalCampaigns[0]?.status || '대기'
-                        : '없음'
+                      {selectedCampaignForWork
+                        ? (selectedCampaignForWork.status === 'active' ? '진행중' :
+                           selectedCampaignForWork.status === 'completed' ? '완료' : '대기')
+                        : '선택'
                       }
                     </span>
-                    <button className="p-1 text-neutral-500 hover:text-neutral-700">
-                      <i className="fa-solid fa-chevron-right text-xs"></i>
-                    </button>
+                    <i className={`fa-solid fa-chevron-down text-xs transition-transform ${
+                      showCampaignDropdown ? 'rotate-180' : ''
+                    }`}></i>
                   </div>
                 </div>
               </div>
+
+              {/* 캠페인 드롭다운 */}
+              {showCampaignDropdown && (
+                <div className="campaign-dropdown absolute top-full left-0 mt-2 w-full bg-white border border-neutral-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {selectedHospitalCampaigns.map((campaign, index) => (
+                    <div
+                      key={campaign.id}
+                      className={`px-4 py-3 hover:bg-neutral-50 cursor-pointer border-b border-neutral-100 last:border-b-0 ${
+                        selectedCampaignForWork?.id === campaign.id ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedCampaignForWork(campaign);
+                        setShowCampaignDropdown(false);
+                        // 데이터 로드는 useEffect에서 처리하므로 여기서는 상태만 변경
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-sm text-neutral-900 font-medium">
+                            {campaign.name}
+                          </h4>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            {campaign.description || '설명 없음'}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            campaign.status === 'active'
+                              ? 'bg-green-100 text-green-800' :
+                            campaign.status === 'completed'
+                              ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                          }`}>
+                            {campaign.status === 'active' ? '진행중' :
+                             campaign.status === 'completed' ? '완료' : '대기'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* 캠페인 상세 정보 툴팁 */}
               {showCampaignTooltip && selectedHospitalCampaigns.length > 0 && (

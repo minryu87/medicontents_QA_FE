@@ -323,6 +323,7 @@ export default function PostingWorkTab({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'initial': return '초기';
+      case 'hospital_completed': return '병원 자료 완료';
       case 'material_completed': return '자료 완료';
       case 'guide_completed': return '가이드 완료';
       case 'generation_completed': return 'AI 생성 완료';
@@ -532,7 +533,7 @@ export default function PostingWorkTab({
                                           {image.filename}
                                         </div>
                                         <div className="text-xs text-blue-600">
-                                          <a href={image.path} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                          <a href={image.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                             이미지 링크
                                           </a>
                                         </div>
@@ -568,7 +569,7 @@ export default function PostingWorkTab({
                                           {image.filename}
                                         </div>
                                         <div className="text-xs text-blue-600">
-                                          <a href={image.path} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                          <a href={image.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                             이미지 링크
                                           </a>
                                         </div>
@@ -604,7 +605,7 @@ export default function PostingWorkTab({
                                           {image.filename}
                                         </div>
                                         <div className="text-xs text-blue-600">
-                                          <a href={image.path} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                          <a href={image.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                             이미지 링크
                                           </a>
                                         </div>

@@ -366,12 +366,13 @@ export class AdminApiService {
   }
 
   // 작업 대기 포스트 목록 API
-  async getWaitingTasks(hospitalId?: number, limit: number = 10): Promise<{
+  async getWaitingTasks(hospitalId?: number, campaignId?: number, limit: number = 10): Promise<{
     waiting_tasks: any[];
     total_count: number;
   }> {
     const params = new URLSearchParams();
     if (hospitalId) params.append('hospital_id', hospitalId.toString());
+    if (campaignId) params.append('campaign_id', campaignId.toString());
     params.append('limit', limit.toString());
 
     const response = await api.get(`/api/v1/admin/posts/waiting-tasks?${params}`);
@@ -379,7 +380,7 @@ export class AdminApiService {
   }
 
   // 칸반 포스트 목록 API
-  async getKanbanPosts(hospitalId: number): Promise<{
+  async getKanbanPosts(hospitalId: number, campaignId?: number): Promise<{
     material_completed: any[];
     admin_pre_review: any[];
     ai_completed: any[];
@@ -391,25 +392,40 @@ export class AdminApiService {
     client_delay: any[];
     aborted: any[];
   }> {
-    const response = await api.get(`/api/v1/admin/posts/kanban/${hospitalId}`);
+    const params = new URLSearchParams();
+    if (campaignId) params.append('campaign_id', campaignId.toString());
+    const queryString = params.toString();
+    const url = queryString ? `/api/v1/admin/posts/kanban/${hospitalId}?${queryString}` : `/api/v1/admin/posts/kanban/${hospitalId}`;
+
+    const response = await api.get(url);
     return response.data;
   }
 
   // 상태별 포스트 목록 API (하단 컨테이너용)
-  async getPostsByStatus(hospitalId: number): Promise<{
+  async getPostsByStatus(hospitalId: number, campaignId?: number): Promise<{
     publish_scheduled: any[];
     published: any[];
     monitoring: any[];
     monitoring_issue: any[];
   }> {
-    const response = await api.get(`/api/v1/admin/posts/status/${hospitalId}`);
+    const params = new URLSearchParams();
+    if (campaignId) params.append('campaign_id', campaignId.toString());
+    const queryString = params.toString();
+    const url = queryString ? `/api/v1/admin/posts/status/${hospitalId}?${queryString}` : `/api/v1/admin/posts/status/${hospitalId}`;
+
+    const response = await api.get(url);
     return response.data;
   }
 
   // 포스팅 작업용 포스트 상세 정보 API
-  async getPostsForPostingWork(hospitalId: number): Promise<any[]> {
+  async getPostsForPostingWork(hospitalId: number, campaignId?: number): Promise<any[]> {
     try {
-      const response = await api.get(`/api/v1/blog-posts/?hospital_id=${hospitalId}&limit=50`);
+      const params = new URLSearchParams();
+      params.append('hospital_id', hospitalId.toString());
+      if (campaignId) params.append('campaign_id', campaignId.toString());
+      params.append('limit', '50');
+
+      const response = await api.get(`/api/v1/blog-posts/?${params}`);
       console.log('API Response:', response);
       console.log('API Response Data:', response.data);
       console.log('API Response Data Items:', response.data?.items);
@@ -1188,7 +1204,9 @@ export class ClientApiService {
   }
 
   async getPost(postId: string): Promise<Post> {
-    const response = await api.get(`/api/v1/client/posts/${postId}`);
+    // user_id를 쿼리 파라미터로 추가 (실제로는 인증된 사용자 ID를 사용해야 함)
+    const params = { user_id: 13 };
+    const response = await api.get(`/api/v1/client/posts/${postId}`, { params });
     return response.data;
   }
 
