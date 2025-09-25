@@ -992,6 +992,24 @@ export class AdminApiService {
     const response = await api.get(`/api/v1/admin/hospitals/${hospitalId}`);
     return response.data;
   }
+
+  // 글로벌 포스트 관리 API
+  async getGlobalPosts(params?: any): Promise<any> {
+    const response = await api.get('/api/v1/admin/posts/global', { params });
+    return response.data;
+  }
+
+  async bulkUpdatePosts(request: {
+    post_ids: string[];
+    action: 'status_change' | 'priority_update' | 'campaign_assign';
+    new_status?: string;
+    priority?: number;
+    campaign_id?: number;
+    reason?: string;
+  }): Promise<any> {
+    const response = await api.post('/api/v1/admin/posts/bulk-update', request);
+    return response.data;
+  }
 }
 
 export class ClientApiService {
@@ -1053,26 +1071,35 @@ export class ClientApiService {
       id: number;
       name: string;
       description: string;
-      start_date: string;
-      end_date: string;
+      start_date: string | null;
+      end_date: string | null;
       target_post_count: number;
       status: string;
-      total_posts: number;
-      completed_posts: number;
-      review_pending: number;
-      materials_needed: number;
-      progress: number;
-    };
-    posts: Array<{
-      id: number;
-      post_id: string;
-      title: string;
-      status: string;
       created_at: string;
-      quality_score: number;
-      seo_score: number;
-      legal_score: number;
-      material_status: string;
+      total_posts: number;
+      category_counts: Record<string, number>;
+    };
+    posts_by_category: Record<string, {
+      category_name: string;
+      description: string;
+      count: number;
+      action_required: boolean;
+      action_type: string | null;
+      posts: Array<{
+        id: number;
+        post_id: string;
+        title: string;
+        status: string;
+        status_category: {
+          category: string;
+          category_name: string;
+          description: string;
+          action_required: boolean;
+          action_type: string | null;
+        };
+        created_at: string;
+        updated_at: string;
+      }>;
     }>;
   }>> {
     const response = await api.get('/api/v1/client/dashboard/campaigns-with-posts');
@@ -1329,13 +1356,12 @@ export class ClientApiService {
     console.log('getDelayedScheduleJobs 응답:', response.data);
     return response.data;
   }
-
 }
 
 // 긴급 처리 필요 API 함수들은 AdminApiService 클래스에 통합됨
 
 // 싱글톤 인스턴스
-export const adminApi = new AdminApiService();
+export const adminApi: AdminApiService = new AdminApiService();
 
 // 디버깅: adminApi에 새로운 메소드가 제대로 추가되었는지 확인
 if (typeof window !== 'undefined') {
