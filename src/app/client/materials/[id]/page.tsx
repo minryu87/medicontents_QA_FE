@@ -83,7 +83,12 @@ export default function MaterialsProvisionPage() {
     // Step 4: Images
     before_images: [] as File[],
     process_images: [] as File[],
-    after_images: [] as File[]
+    after_images: [] as File[],
+
+    // Image descriptions (각각 최대 5개)
+    before_image_descriptions: [] as string[],
+    process_image_descriptions: [] as string[],
+    after_image_descriptions: [] as string[]
   });
 
   useEffect(() => {
@@ -132,11 +137,16 @@ export default function MaterialsProvisionPage() {
         }
 
         if (key.includes('images')) {
-          // Handle file arrays
+          // Handle file arrays - 테스트 스크립트처럼 파일명과 content-type 명시
           const files = value as File[];
-          files.forEach(file => submitData.append(key, file));
+          files.forEach(file => submitData.append(key, file, file.name));
+        } else if (key.includes('image_descriptions')) {
+          // Handle image description arrays
+          const descriptions = value as string[];
+          const filteredDescriptions = descriptions.filter(desc => desc && desc.trim());
+          submitData.append(key, JSON.stringify(filteredDescriptions));
         } else if (Array.isArray(value)) {
-          // Handle arrays
+          // Handle other arrays
           submitData.append(key, JSON.stringify(value));
         } else {
           // Handle regular fields with API field name mapping
@@ -157,7 +167,13 @@ export default function MaterialsProvisionPage() {
       }
       
       await clientApi.submitMaterials(params.id as string, submitData);
-      
+
+      // 제출 성공 시 목록 페이지 새로고침을 위한 플래그 설정
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('materials_submitted', 'true');
+        localStorage.setItem('submitted_post_id', params.id as string);
+      }
+
       alert('자료가 성공적으로 제출되었습니다!');
       router.push('/client/posts');
     } catch (error) {
@@ -168,14 +184,50 @@ export default function MaterialsProvisionPage() {
     }
   };
 
-  const handleImageUpload = (type: 'before' | 'process' | 'after', files: FileList | null) => {
-    if (!files) return;
-    
-    const fileArray = Array.from(files).slice(0, 5); // Max 5 images
-    setFormData(prev => ({
-      ...prev,
-      [`${type}_images`]: fileArray
-    }));
+  const handleImageUpload = (type: 'before' | 'process' | 'after', index: number, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0]; // 각 슬롯당 1개 파일만
+    setFormData(prev => {
+      const currentImages = [...prev[`${type}_images` as keyof typeof prev] as File[]];
+      currentImages[index] = file;
+
+      // 빈 슬롯들 제거 (연속된 파일들만 유지)
+      const filteredImages = currentImages.filter(img => img !== undefined);
+
+      return {
+        ...prev,
+        [`${type}_images`]: filteredImages
+      };
+    });
+  };
+
+  const handleImageDescriptionChange = (type: 'before' | 'process' | 'after', index: number, description: string) => {
+    setFormData(prev => {
+      const currentDescriptions = [...prev[`${type}_image_descriptions` as keyof typeof prev] as string[]];
+      currentDescriptions[index] = description;
+
+      return {
+        ...prev,
+        [`${type}_image_descriptions`]: currentDescriptions
+      };
+    });
+  };
+
+  const removeImage = (type: 'before' | 'process' | 'after', index: number) => {
+    setFormData(prev => {
+      const currentImages = [...prev[`${type}_images` as keyof typeof prev] as File[]];
+      const currentDescriptions = [...prev[`${type}_image_descriptions` as keyof typeof prev] as string[]];
+
+      currentImages.splice(index, 1);
+      currentDescriptions.splice(index, 1);
+
+      return {
+        ...prev,
+        [`${type}_images`]: currentImages,
+        [`${type}_image_descriptions`]: currentDescriptions
+      };
+    });
   };
 
   // EMR 환자 검색
@@ -1443,85 +1495,163 @@ export default function MaterialsProvisionPage() {
                   이미지 업로드
                 </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-8">
+            {/* 치료 전 이미지 */}
             <div>
-                    <h3 className="text-sm font-bold text-gray-700 mb-4">치료 전 이미지</h3>
-                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 hover:border-blue-400 transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload('before', e.target.files)}
-                  className="hidden"
-                  id="before-images"
-                />
-                <label htmlFor="before-images" className="cursor-pointer text-center block">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <div className="text-sm font-medium text-gray-600 mb-1">치료 전 이미지</div>
-                        <div className="text-xs text-gray-500">최대 5장 • 클릭하여 업로드</div>
-                </label>
-                {formData.before_images.length > 0 && (
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-green-600 font-medium">
-                            {formData.before_images.length}개 선택됨
-                          </span>
+              <h3 className="text-sm font-bold text-gray-700 mb-4">치료 전 이미지 (최대 5장)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div key={`before-${index}`} className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-blue-400 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload('before', index, e.target.files)}
+                      className="hidden"
+                      id={`before-image-${index}`}
+                    />
+                    {formData.before_images[index] ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <img
+                            src={URL.createObjectURL(formData.before_images[index])}
+                            alt={`치료 전 ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => removeImage('before', index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            이미지 설명
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.before_image_descriptions[index] || ''}
+                            onChange={(e) => handleImageDescriptionChange('before', index, e.target.value)}
+                            placeholder="이미지에 대한 설명을 입력하세요"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-blue-500 focus:ring-0"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <label htmlFor={`before-image-${index}`} className="cursor-pointer block text-center">
+                        <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                        <div className="text-xs font-medium text-gray-600 mb-1">이미지 {index + 1}</div>
+                        <div className="text-xs text-gray-500">클릭하여 업로드</div>
+                      </label>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             </div>
 
+            {/* 치료 과정 이미지 */}
             <div>
-                    <h3 className="text-sm font-bold text-gray-700 mb-4">치료 과정 이미지</h3>
-                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 hover:border-blue-400 transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload('process', e.target.files)}
-                  className="hidden"
-                  id="process-images"
-                />
-                <label htmlFor="process-images" className="cursor-pointer text-center block">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <div className="text-sm font-medium text-gray-600 mb-1">치료 과정 이미지</div>
-                        <div className="text-xs text-gray-500">최대 5장 • 클릭하여 업로드</div>
-                </label>
-                {formData.process_images.length > 0 && (
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-green-600 font-medium">
-                            {formData.process_images.length}개 선택됨
-                          </span>
+              <h3 className="text-sm font-bold text-gray-700 mb-4">치료 과정 이미지 (최대 5장)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div key={`process-${index}`} className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-blue-400 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload('process', index, e.target.files)}
+                      className="hidden"
+                      id={`process-image-${index}`}
+                    />
+                    {formData.process_images[index] ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <img
+                            src={URL.createObjectURL(formData.process_images[index])}
+                            alt={`치료 과정 ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => removeImage('process', index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            이미지 설명
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.process_image_descriptions[index] || ''}
+                            onChange={(e) => handleImageDescriptionChange('process', index, e.target.value)}
+                            placeholder="이미지에 대한 설명을 입력하세요"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-blue-500 focus:ring-0"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <label htmlFor={`process-image-${index}`} className="cursor-pointer block text-center">
+                        <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                        <div className="text-xs font-medium text-gray-600 mb-1">이미지 {index + 1}</div>
+                        <div className="text-xs text-gray-500">클릭하여 업로드</div>
+                      </label>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             </div>
 
+            {/* 치료 후 이미지 */}
             <div>
-                    <h3 className="text-sm font-bold text-gray-700 mb-4">치료 후 이미지</h3>
-                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 hover:border-blue-400 transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload('after', e.target.files)}
-                  className="hidden"
-                  id="after-images"
-                />
-                <label htmlFor="after-images" className="cursor-pointer text-center block">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <div className="text-sm font-medium text-gray-600 mb-1">치료 후 이미지</div>
-                        <div className="text-xs text-gray-500">최대 5장 • 클릭하여 업로드</div>
-                </label>
-                {formData.after_images.length > 0 && (
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-green-600 font-medium">
-                            {formData.after_images.length}개 선택됨
-                          </span>
+              <h3 className="text-sm font-bold text-gray-700 mb-4">치료 후 이미지 (최대 5장)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div key={`after-${index}`} className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-blue-400 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload('after', index, e.target.files)}
+                      className="hidden"
+                      id={`after-image-${index}`}
+                    />
+                    {formData.after_images[index] ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <img
+                            src={URL.createObjectURL(formData.after_images[index])}
+                            alt={`치료 후 ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => removeImage('after', index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            이미지 설명
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.after_image_descriptions[index] || ''}
+                            onChange={(e) => handleImageDescriptionChange('after', index, e.target.value)}
+                            placeholder="이미지에 대한 설명을 입력하세요"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-blue-500 focus:ring-0"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <label htmlFor={`after-image-${index}`} className="cursor-pointer block text-center">
+                        <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                        <div className="text-xs font-medium text-gray-600 mb-1">이미지 {index + 1}</div>
+                        <div className="text-xs text-gray-500">클릭하여 업로드</div>
+                      </label>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>

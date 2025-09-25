@@ -88,6 +88,37 @@ export default function ClientPostsPage() {
     initializeData();
   }, []);
 
+  // 자료 제출 후 상태 동기화를 위한 useEffect
+  useEffect(() => {
+    const checkForUpdates = () => {
+      if (typeof window !== 'undefined') {
+        const materialsSubmitted = localStorage.getItem('materials_submitted');
+
+        if (materialsSubmitted === 'true') {
+          console.log('📝 자료 제출 감지됨, 목록 새로고침');
+          // 플래그 제거
+          localStorage.removeItem('materials_submitted');
+          localStorage.removeItem('submitted_post_id');
+          // 데이터 다시 로드
+          if (selectedCampaignId) {
+            loadPosts(selectedCampaignId);
+          }
+        }
+      }
+    };
+
+    // 컴포넌트 마운트 시 체크
+    checkForUpdates();
+
+    // 포커스 이벤트로도 체크 (브라우저 탭 전환 시)
+    const handleFocus = () => checkForUpdates();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [selectedCampaignId]);
+
   // 탭 변경 시 포스트 재로딩
   useEffect(() => {
     if (!loading && selectedCampaignId) {
@@ -109,7 +140,7 @@ export default function ClientPostsPage() {
       ['initial', 'hospital_processing'].includes(p.status)
     ).length;
     const ai_processing = posts.filter(p =>
-      ['material_completed', 'agent_processing', 'generation_completed', 'admin_review'].includes(p.status)
+      ['hospital_completed', 'material_completed', 'agent_processing', 'generation_completed', 'admin_review'].includes(p.status)
     ).length;
     const awaiting_review = posts.filter(p => p.status === 'client_review').length;
     const approved = posts.filter(p =>
@@ -128,6 +159,7 @@ export default function ClientPostsPage() {
       'initial': 'bg-red-50 border-red-200 text-red-700',
       'hospital_processing': 'bg-red-50 border-red-200 text-red-700',
       // AI 처리 중
+      'hospital_completed': 'bg-blue-50 border-blue-200 text-blue-700',
       'material_completed': 'bg-blue-50 border-blue-200 text-blue-700',
       'agent_processing': 'bg-blue-50 border-blue-200 text-blue-700',
       'generation_completed': 'bg-blue-50 border-blue-200 text-blue-700',
@@ -150,6 +182,7 @@ export default function ClientPostsPage() {
     const texts = {
       'initial': '자료 제공 필요',
       'hospital_processing': '자료 처리 중',
+      'hospital_completed': 'AI 콘텐츠 생성 중',
       'material_completed': 'AI 콘텐츠 생성 중',
       'agent_processing': 'AI 콘텐츠 생성 중',
       'generation_completed': '어드민 검토 중',

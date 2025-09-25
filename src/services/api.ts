@@ -1127,7 +1127,9 @@ export class ClientApiService {
 
   // 포스트 관리 API
   async getPosts(filters?: any): Promise<Post[]> {
-    const response = await api.get('/api/v1/client/posts', { params: filters });
+    // user_id를 기본적으로 추가 (실제로는 인증된 사용자 ID를 사용해야 함)
+    const params = { ...filters, user_id: 13 };
+    const response = await api.get('/api/v1/client/posts', { params });
     return response.data;
   }
 
