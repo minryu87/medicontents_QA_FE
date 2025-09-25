@@ -170,7 +170,7 @@ export default function AdminDashboard() {
       if (results.activitiesRes?.status === 'fulfilled') {
         // API 응답에서 실제 데이터만 추출하여 저장
         const activitiesData = results.activitiesRes.value?.data || [];
-        setRecentActivities(activitiesData);
+      setRecentActivities(activitiesData);
       } else {
         console.warn('❌ 개별 activities API 실패:', results.activitiesRes?.reason);
       }
@@ -413,24 +413,24 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm text-neutral-900">긴급 처리 필요</h2>
                 <span className="text-xs text-neutral-500">실시간</span>
-              </div>
+          </div>
               <div className="space-y-2">
                 {/* a: 시스템 에러 (최우선 - 빨간색) */}
                 {systemErrors && systemErrors.length > 0 && (
                   <div className="flex items-start space-x-2">
                     <div className="w-4 h-4 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <i className="fa-solid fa-exclamation-triangle text-red-600 text-xs"></i>
-                    </div>
+            </div>
                     <div className="flex-1">
                       <p className="text-xs text-neutral-800">시스템 에러</p>
                       <p className="text-xs text-neutral-500 mt-1">
                         {systemErrors.length}건 - {systemErrors[0]?.message?.substring(0, 30)}...
                       </p>
-                    </div>
+          </div>
                     <button className="px-2 py-1 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700">
                       즉시 확인
                     </button>
-                  </div>
+        </div>
                 )}
 
                 {/* b: 에이전트 실패한 작업 (중간 - 노란색) */}
@@ -438,7 +438,7 @@ export default function AdminDashboard() {
                   <div className="flex items-start space-x-2">
                     <div className="w-4 h-4 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <i className="fa-solid fa-robot text-yellow-600 text-xs"></i>
-                    </div>
+      </div>
                     <div className="flex-1">
                       <p className="text-xs text-neutral-800">에이전트 실패 작업</p>
                       <p className="text-xs text-neutral-500 mt-1">
@@ -480,10 +480,10 @@ export default function AdminDashboard() {
                 {(!systemErrors?.length && !failedAgentJobs?.length && !delayedScheduleJobs?.length) && (
                   <div className="text-center py-4">
                     <p className="text-xs text-neutral-500">현재 긴급한 이슈가 없습니다</p>
-                  </div>
+                    </div>
                 )}
-              </div>
-            </div>
+                  </div>
+                  </div>
 
             {/* 현황 모니터 */}
             <div className="bg-white rounded-xl shadow-lg p-3">
@@ -497,7 +497,7 @@ export default function AdminDashboard() {
                     'bg-green-600'
                   }`}>
                     <i className="fa-solid fa-bullhorn text-white text-xs"></i>
-                  </div>
+                    </div>
                   <h3 className="text-xs text-neutral-800">캠페인 운영</h3>
                   <p className="text-xs text-neutral-600">
                     {statusMonitor?.campaign_operation?.active_campaigns || 0}개 활성
@@ -505,7 +505,7 @@ export default function AdminDashboard() {
                   <p className="text-xs text-neutral-500">
                     총 {statusMonitor?.campaign_operation?.total_campaigns || 0}개
                   </p>
-                </div>
+                  </div>
 
                 <div className="text-center p-2 bg-neutral-50 rounded-lg">
                   <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
@@ -533,7 +533,7 @@ export default function AdminDashboard() {
                     'bg-green-600'
                   }`}>
                     <i className="fa-solid fa-paper-plane text-white text-xs"></i>
-                  </div>
+                    </div>
                   <h3 className="text-xs text-neutral-800">포스팅 게시</h3>
                   <p className="text-xs text-neutral-600">
                     오늘 {statusMonitor?.posting_publish?.published_today || 0}개
@@ -541,7 +541,7 @@ export default function AdminDashboard() {
                   <p className="text-xs text-neutral-500">
                     이번주 {statusMonitor?.posting_publish?.published_this_week || 0}개
                   </p>
-                </div>
+                  </div>
 
                 <div className="text-center p-2 bg-neutral-50 rounded-lg">
                   <div className={`w-4 h-4 rounded-full mx-auto mb-1 flex items-center justify-center ${
@@ -568,7 +568,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm text-neutral-900">최근 활동</h2>
                 <button className="text-neutral-600 hover:text-neutral-700 text-xs">전체보기</button>
-              </div>
+                    </div>
               <div className="space-y-2">
                 {recentActivities && recentActivities.length > 0 ? (
                   recentActivities.slice(0, 3).map((activity: any, index: number) => {
@@ -615,7 +615,7 @@ export default function AdminDashboard() {
                       <div key={activity.id || index} className="flex items-start space-x-2">
                         <div className={`w-4 h-4 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
                           <i className={`fa-solid fa-${icon} text-neutral-600 text-xs`}></i>
-                        </div>
+                  </div>
                         <div className="flex-1">
                           <p className="text-xs text-neutral-800">{activity.description}</p>
                           <div className="flex items-center justify-between mt-1">
@@ -630,7 +630,7 @@ export default function AdminDashboard() {
                                 {activity.hospital_name}
                               </span>
                             )}
-                          </div>
+                  </div>
                         </div>
                       </div>
                     );
@@ -638,12 +638,12 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-xs text-neutral-500">최근 활동이 없습니다</p>
-                  </div>
-                )}
-              </div>
             </div>
+          )}
+                    </div>
+                    </div>
           </div>
-        </div>
+                  </div>
 
         {/* 7일 이내 처리 예정 작업 섹션 */}
         <div className="px-6">
@@ -674,14 +674,14 @@ export default function AdminDashboard() {
                           <span className="text-xs text-red-600 font-semibold">
                             {post.urgent_reason || '기한 초과'}
                           </span>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     ))
                   ) : (
                     <p className="text-xs text-neutral-500 text-center py-2">긴급 작업 없음</p>
                   )}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
               {/* 검토 필요 칸반 */}
               <div className="bg-white rounded-lg p-3 min-w-48 flex-shrink-0 border-l-4 border-sky-600 shadow-sm">
@@ -705,8 +705,8 @@ export default function AdminDashboard() {
                             {post.hospital_name || '병원 미정'}
                           </span>
                           <span className="text-xs text-neutral-500">D-3</span>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     ))
                   ) : (
                     <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
@@ -767,13 +767,13 @@ export default function AdminDashboard() {
                             {post.hospital_name || '병원 미정'}
                           </span>
                           <span className="text-xs text-neutral-500">D-7</span>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     ))
                   ) : (
                     <p className="text-xs text-neutral-500 text-center py-2">작업 없음</p>
                   )}
-                </div>
+              </div>
               </div>
 
               {/* 이슈 모니터링 칸반 */}
@@ -798,7 +798,7 @@ export default function AdminDashboard() {
                             {post.hospital_name || '병원 미정'}
                           </span>
                           <span className="text-xs text-neutral-500">게시됨</span>
-                        </div>
+                      </div>
                       </div>
                     ))
                   ) : (
@@ -808,7 +808,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-        </div>
+                    </div>
 
         {/* 병원별 진행 현황 */}
         <div className="px-6">
@@ -816,7 +816,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg text-neutral-900">병원별 진행 현황</h2>
               <span className="text-neutral-600 hover:text-neutral-700 text-xs cursor-pointer">전체보기 →</span>
-            </div>
+                      </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {hospitals && hospitals.length > 0 ? (
                 hospitals.slice(0, 6).map((hospital: any) => {
@@ -839,7 +839,7 @@ export default function AdminDashboard() {
                       {/* 병원명 */}
                       <div className="text-center">
                         <h3 className="text-neutral-900 font-medium text-sm mb-1">{hospital.name}</h3>
-                      </div>
+                    </div>
 
                       {/* 진행 중 캠페인 정보 */}
                       <div className="flex-1 flex flex-col justify-center text-center">
@@ -852,11 +852,11 @@ export default function AdminDashboard() {
                                 '기간 미정'
                               }
                             </p>
-                          </div>
+                      </div>
                         ) : (
                           <p className="text-xs text-neutral-500">진행 중 캠페인 없음</p>
                         )}
-                      </div>
+                    </div>
 
                       {/* 진행률 */}
                       <div className="space-y-1">
@@ -867,7 +867,7 @@ export default function AdminDashboard() {
                                 className="bg-sky-500 h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${currentCampaign.progress_percentage}%` }}
                               ></div>
-                            </div>
+                      </div>
                             <p className="text-xs text-neutral-600 text-center">
                               {currentCampaign.completed_post_count}/{currentCampaign.target_post_count} ({Math.round(currentCampaign.progress_percentage)}%)
                             </p>
@@ -875,8 +875,8 @@ export default function AdminDashboard() {
                         ) : (
                           <p className="text-xs text-neutral-500 text-center">진행률 정보 없음</p>
                         )}
-                      </div>
                     </div>
+                  </div>
                   );
                 })
               ) : (
@@ -903,7 +903,7 @@ export default function AdminDashboard() {
                     'N/A'
                   }
                 </span>
-              </div>
+                      </div>
               <div className="w-full bg-sky-100 rounded-full h-2">
                 <div
                   className="bg-sky-500 h-2 rounded-full transition-all duration-300"
@@ -914,7 +914,7 @@ export default function AdminDashboard() {
                   }}
                 ></div>
               </div>
-            </div>
+                    </div>
 
             {/* 파이프라인 단계들 */}
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
@@ -950,7 +950,7 @@ export default function AdminDashboard() {
                           status === 'error' ? 'text-red-600' : 'text-neutral-500'
                         }`}>
                           {agent.success_rate}%
-                        </div>
+                      </div>
                         <div className={`text-xs px-2 py-1 rounded-full inline-block ${
                           status === 'normal' ? 'bg-sky-100 text-sky-700' :
                           status === 'processing' ? 'bg-blue-100 text-blue-700' :
@@ -974,7 +974,7 @@ export default function AdminDashboard() {
                   <p className="text-neutral-500 text-sm">AI 에이전트 정보 로딩 중...</p>
                 </div>
               )}
-            </div>
+                    </div>
 
             {/* 최근 로그 요약 */}
             {recentAgentLogs && recentAgentLogs.length > 0 && (
@@ -984,18 +984,18 @@ export default function AdminDashboard() {
                   <span className="text-xs text-neutral-500">
                     {recentAgentLogs.filter((log: any) => log.execution_status === 'completed').length}건 성공
                   </span>
-                </div>
+                    </div>
                 <div className="text-xs text-neutral-500">
                   최근 1시간: {recentAgentLogs.length}건 실행
-                </div>
-              </div>
-            )}
+                  </div>
+            </div>
+          )}
           </div>
         </div>
 
         {/* 시스템 성능 모니터 & 캘린더 */}
         <div className="px-6 py-4">
-          <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
             {/* 시스템 성능 모니터 */}
             <div className="bg-white rounded-xl shadow-lg p-4">
               <h2 className="text-lg text-neutral-900 mb-3">시스템 성능 모니터</h2>
@@ -1011,9 +1011,9 @@ export default function AdminDashboard() {
                     }`}>
                       {systemStatus?.database === 'healthy' ? '정상' :
                        systemStatus?.database === 'warning' ? '주의' : '오류'}
-                    </div>
-                  </div>
-                </div>
+                        </div>
+                        </div>
+                      </div>
 
                 <div className="bg-white border border-sky-200 rounded-lg p-3">
                   <div className="text-center">
@@ -1024,8 +1024,8 @@ export default function AdminDashboard() {
                     }`}>
                       {systemStatus?.redis === 'healthy' ? '정상' :
                        systemStatus?.redis === 'warning' ? '주의' : '오류'}
-                    </div>
-                  </div>
+                        </div>
+                        </div>
                 </div>
 
                 <div className="bg-white border border-sky-200 rounded-lg p-3">
@@ -1038,8 +1038,8 @@ export default function AdminDashboard() {
                       {systemStatus?.api === 'healthy' ? '정상' :
                        systemStatus?.api === 'warning' ? '주의' : '오류'}
                     </div>
-                  </div>
-                </div>
+                        </div>
+                      </div>
 
                 <div className="bg-white border border-sky-200 rounded-lg p-3">
                   <div className="text-center">
@@ -1052,9 +1052,9 @@ export default function AdminDashboard() {
                       {systemStatus?.system_load === 'low' ? '낮음' :
                        systemStatus?.system_load === 'medium' ? '보통' :
                        systemStatus?.system_load === 'high' ? '높음' : '알 수 없음'}
+                      </div>
                     </div>
-                  </div>
-                </div>
+            </div>
               </div>
 
               {/* 시스템 메트릭 */}
@@ -1070,7 +1070,7 @@ export default function AdminDashboard() {
                      systemStatus?.memory_usage === 'medium' ? '보통' :
                      systemStatus?.memory_usage === 'high' ? '높음' : '알 수 없음'}
                   </span>
-                </div>
+                      </div>
 
                 <div className="flex justify-between items-center py-2 border-b border-sky-100">
                   <span className="text-sm text-neutral-700">응답 시간</span>
@@ -1093,10 +1093,10 @@ export default function AdminDashboard() {
                       new Date(systemStatus.lastBackup).toLocaleString('ko-KR') :
                       '정보 없음'
                     }
-                  </span>
-                </div>
-              </div>
-            </div>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
             {/* 캘린더 */}
             <div className="bg-white rounded-xl shadow-lg p-4">
@@ -1186,16 +1186,16 @@ export default function AdminDashboard() {
                               {hasScheduled && <div className="w-1 h-1 bg-sky-400 rounded-full"></div>}
                               {hasPublished && <div className="w-1 h-1 bg-green-400 rounded-full"></div>}
                               {hasFailed && <div className="w-1 h-1 bg-red-400 rounded-full"></div>}
-                            </div>
-                          )}
-                        </div>
+                  </div>
+                )}
+              </div>
                       </div>
                     );
                   });
 
                   return [...emptyCells, ...dateCells];
                 })()}
-              </div>
+                  </div>
 
               {/* 범례 */}
               <div className="mt-4 pt-3 border-t border-neutral-200">
@@ -1216,8 +1216,8 @@ export default function AdminDashboard() {
                     <div className="w-2 h-2 bg-sky-600 rounded-full mr-2"></div>
                     <span className="text-neutral-600">오늘</span>
                   </div>
-                </div>
-              </div>
+                    </div>
+                  </div>
 
               {/* 선택된 날짜 상세 정보 모달 */}
               {selectedDateInfo && (
@@ -1243,7 +1243,7 @@ export default function AdminDashboard() {
                       <div className="flex justify-between text-sm">
                         <span className="text-neutral-600">게시 예정:</span>
                         <span className="font-medium">{selectedDateInfo.scheduled_count}건</span>
-                      </div>
+                  </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-neutral-600">게시 완료:</span>
                         <span className="font-medium text-green-600">{selectedDateInfo.published_count}건</span>
@@ -1251,7 +1251,7 @@ export default function AdminDashboard() {
                       <div className="flex justify-between text-sm">
                         <span className="text-neutral-600">실패:</span>
                         <span className="font-medium text-red-600">{selectedDateInfo.failed_count}건</span>
-                      </div>
+                </div>
 
                       {selectedDateInfo.posts && selectedDateInfo.posts.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-neutral-200">
@@ -1262,8 +1262,8 @@ export default function AdminDashboard() {
                                 <div className="font-medium text-neutral-800 truncate">{post.title}</div>
                                 <div className="text-neutral-600 mt-1">
                                   {post.hospital_name} • {post.status === 'published' ? '게시완료' : '게시예정'}
-                                </div>
-                              </div>
+                  </div>
+                </div>
                             ))}
                           </div>
                         </div>

@@ -253,7 +253,7 @@ export default function ClientPostsPage() {
 
           <div className="flex gap-2">
             {isCaseStudy && (post.status === 'initial' || post.status === 'hospital_processing') && (
-              <Link href={`/client/posts/${post.post_id}/materials`}>
+              <Link href={`/client/materials/${post.post_id}`}>
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium">
                   {getActionText(post)}
                 </Button>

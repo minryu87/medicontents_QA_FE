@@ -340,10 +340,6 @@ export class AdminApiService {
     return response.data;
   }
 
-  async getMedicalServices(): Promise<any[]> {
-    const response = await api.get('/api/v1/medical-services/');
-    return response.data.items || [];
-  }
 
   async getHospitalMedicalServices(hospitalId: number): Promise<any[]> {
     const response = await api.get(`/api/v1/user/hospital-services/hospitals/${hospitalId}/medical-services`);
@@ -1132,6 +1128,60 @@ export class ClientApiService {
   // 포스트 관리 API
   async getPosts(filters?: any): Promise<Post[]> {
     const response = await api.get('/api/v1/client/posts', { params: filters });
+    return response.data;
+  }
+
+          async getSPTKeywords(postId: string): Promise<{
+            post_id: string;
+            medical_service_id: number;
+            treatments: string[];
+            symptoms: string[];
+            procedures: string[];
+          }> {
+            const response = await api.get('/api/v1/client/posts/spt', {
+              params: { post_id: postId }
+            });
+            return response.data;
+          }
+
+          async submitSPTInfo(postId: string, sptData: {
+            selected_treatment: string;
+            selected_symptom: string;
+            selected_procedure: string;
+          }): Promise<any> {
+            const formData = new FormData();
+            formData.append('selected_treatment', sptData.selected_treatment);
+            formData.append('selected_symptom', sptData.selected_symptom);
+            formData.append('selected_procedure', sptData.selected_procedure);
+
+            const response = await api.post(`/api/v1/client/posts/${postId}/spt`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+            return response.data;
+          }
+
+  // EMR 관련 API
+  async searchEMRPatients(query: string, searchType: 'name' | 'id' | 'phone' = 'name'): Promise<any[]> {
+    const response = await api.get('/api/v1/client/emr/patients/search', {
+      params: { q: query, search_type: searchType }
+    });
+    return response.data;
+  }
+
+  async getEMRPatientDetail(patientId: string): Promise<any> {
+    const response = await api.get(`/api/v1/client/emr/patients/${patientId}`);
+    return response.data;
+  }
+
+  async getEMRPatientTreatments(patientId: string): Promise<any[]> {
+    const response = await api.get(`/api/v1/client/emr/patients/${patientId}/treatments`);
+    return response.data;
+  }
+
+  async getEMRTreatmentImages(treatmentId: number): Promise<any[]> {
+    const response = await api.get(`/api/v1/client/emr/treatments/${treatmentId}/images`);
     return response.data;
   }
 
