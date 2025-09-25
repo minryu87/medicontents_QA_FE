@@ -315,7 +315,7 @@ export class AdminApiService {
   }
 
   async getCampaign(campaignId: number): Promise<Campaign> {
-    const response = await api.get(`/api/v1/admin/campaigns/${campaignId}`);
+    const response = await api.get(`/api/v1/campaigns/${campaignId}`);
     return response.data;
   }
 
@@ -918,6 +918,80 @@ export class AdminApiService {
     const response = await api.get(`/api/v1/admin/posts/${postId}/generation-results`);
     return response.data;
   }
+
+  // 플랫폼 관리 API 메소드들
+  async getPlatformTypes(): Promise<any> {
+    const response = await api.get('/api/v1/admin/platforms/types');
+    return response.data;
+  }
+
+  async getPlatforms(params?: {
+    hospital_id?: number;
+    platform_type?: string;
+    is_active?: boolean;
+    skip?: number;
+    limit?: number;
+  }): Promise<any> {
+    const response = await api.get('/api/v1/admin/platforms/', { params });
+    return response.data;
+  }
+
+  async createPlatform(platformData: any): Promise<any> {
+    const response = await api.post('/api/v1/admin/platforms/', platformData);
+    return response.data;
+  }
+
+  async updatePlatform(platformId: number, platformData: any): Promise<any> {
+    const response = await api.put(`/api/v1/admin/platforms/${platformId}`, platformData);
+    return response.data;
+  }
+
+  async deletePlatform(platformId: number): Promise<void> {
+    await api.delete(`/api/v1/admin/platforms/${platformId}`);
+  }
+
+  // 포스트 플랫폼 매핑 API 메소드들
+  async getPostPlatforms(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/platforms`);
+    return response.data;
+  }
+
+  async assignPlatformToPost(postId: string, platformData: any): Promise<any> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/platforms`, platformData);
+    return response.data;
+  }
+
+  async bulkAssignPlatformsToPost(postId: string, platformIds: number[]): Promise<any> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/platforms/bulk`, {
+      post_id: postId,
+      platform_ids: platformIds
+    });
+    return response.data;
+  }
+
+  async updatePostPlatformStatus(
+    postId: string,
+    platformId: number,
+    statusData: any
+  ): Promise<any> {
+    const response = await api.put(`/api/v1/admin/posts/${postId}/platforms/${platformId}/status`, statusData);
+    return response.data;
+  }
+
+  async removePlatformFromPost(postId: string, platformId: number): Promise<void> {
+    await api.delete(`/api/v1/admin/posts/${postId}/platforms/${platformId}`);
+  }
+
+  // 병원 관리 API 메소드들
+  async updateHospital(hospitalId: number, hospitalData: any): Promise<any> {
+    const response = await api.put(`/api/v1/admin/hospitals/${hospitalId}`, hospitalData);
+    return response.data;
+  }
+
+  async getHospitalDetail(hospitalId: number): Promise<any> {
+    const response = await api.get(`/api/v1/admin/hospitals/${hospitalId}`);
+    return response.data;
+  }
 }
 
 export class ClientApiService {
@@ -1270,64 +1344,4 @@ if (typeof window !== 'undefined') {
 }
 export const clientApi = new ClientApiService();
 
-// 긴급 처리 필요 메소드들은 클래스 메서드로 추가됨
-
-// Pipeline Result 대시보드 API 메소드들
-const getLatestPipelineResultFn = async (postId: string) => {
-  console.log('getLatestPipelineResult 호출:', postId);
-
-  // config를 사용해서 환경에 맞는 URL 구성
-  const baseUrl = config.apiUrl;
-  const fullUrl = `${baseUrl}/api/v1/admin/posts/${postId}/latest-pipeline-result`;
-  console.log('환경 기반 URL:', fullUrl);
-
-  const response = await fetch(fullUrl, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  return await response.json();
-};
-
-Object.defineProperty(adminApi, 'getLatestPipelineResult', {
-  value: getLatestPipelineResultFn,
-  writable: false,
-  enumerable: true,
-  configurable: true
-});
-
-const getEvaluationResultsDashboardFn = async (postId: string) => {
-  console.log('getEvaluationResultsDashboard 호출:', postId);
-
-  // config를 사용해서 환경에 맞는 URL 구성
-  const baseUrl = config.apiUrl;
-  const fullUrl = `${baseUrl}/api/v1/admin/posts/${postId}/evaluation-results-dashboard`;
-  console.log('환경 기반 URL:', fullUrl);
-
-  const response = await fetch(fullUrl, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  return await response.json();
-};
-
-Object.defineProperty(adminApi, 'getEvaluationResultsDashboard', {
-  value: getEvaluationResultsDashboardFn,
-  writable: false,
-  enumerable: true,
-  configurable: true
-});
 

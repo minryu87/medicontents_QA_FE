@@ -37,6 +37,7 @@ export interface Campaign {
   name: string;
   description?: string;
   hospital_id: number;
+  hospital?: Hospital; // 백엔드에서 함께 반환되는 병원 정보
   medical_service_id?: number; // 선택적 속성으로 변경
   start_date: string;
   end_date: string;
@@ -44,6 +45,7 @@ export interface Campaign {
   completed_post_count: number; // 필수 속성으로 변경 (기본값 0)
   published_post_count?: number; // 선택적 속성으로 변경
   status: 'draft' | 'ready' | 'active' | 'paused' | 'completed' | 'aborted';
+  selected_platform_ids?: number[]; // 선택된 플랫폼 ID 목록
   created_by?: number; // 선택적 속성으로 변경
   created_at: string;
   updated_at: string;

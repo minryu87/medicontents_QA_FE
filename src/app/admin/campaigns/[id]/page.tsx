@@ -42,6 +42,16 @@ interface PostGenerationItem {
   title: string;
   postType: 'informational' | 'case_study';
   publishDate: string;
+  platformIds?: number[]; // 선택된 플랫폼 ID들
+}
+
+interface Platform {
+  id: number;
+  platform_name: string;
+  platform_type: string;
+  platform_url?: string;
+  is_public: boolean;
+  primary_traffic_source: string;
 }
 
 export default function AdminCampaignDetail() {
@@ -60,7 +70,44 @@ export default function AdminCampaignDetail() {
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
 
+  // 플랫폼 관련 상태
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [platformsLoading, setPlatformsLoading] = useState(false);
 
+
+
+  // 플랫폼 데이터 로드
+  const loadPlatforms = async (campaignData?: Campaign) => {
+    const currentCampaign = campaignData || campaign;
+    if (!currentCampaign) {
+      return;
+    }
+
+    try {
+      setPlatformsLoading(true);
+      const hospitalId = currentCampaign.hospital?.id || currentCampaign.hospital_id;
+
+      // 캠페인에 선택된 플랫폼이 있는 경우 해당 플랫폼만 로드
+      if (currentCampaign.selected_platform_ids && currentCampaign.selected_platform_ids.length > 0) {
+        const response = await adminApi.getPlatforms({ hospital_id: hospitalId });
+        const allPlatforms = response.items || [];
+
+        // 선택된 플랫폼만 필터링
+        const selectedPlatforms = allPlatforms.filter((platform: Platform) =>
+          currentCampaign.selected_platform_ids!.includes(platform.id)
+        );
+        setPlatforms(selectedPlatforms);
+      } else {
+        // 선택된 플랫폼이 없는 경우 병원의 모든 플랫폼 로드
+        const response = await adminApi.getPlatforms({ hospital_id: hospitalId });
+        setPlatforms(response.items || []);
+      }
+    } catch (error) {
+      console.error('플랫폼 로드 실패:', error);
+    } finally {
+      setPlatformsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -76,6 +123,9 @@ export default function AdminCampaignDetail() {
 
         setCampaign(campaignWithHospital);
         setPosts(postsData || []);
+
+        // campaign state가 업데이트된 후 플랫폼 로드
+        loadPlatforms(campaignWithHospital);
 
         // 메트릭 계산
         const calculatedMetrics = calculateMetrics(campaignWithHospital, postsData || []);
@@ -150,7 +200,8 @@ export default function AdminCampaignDetail() {
           sequence: item.sequence,
           title: item.title,
           post_type: item.postType,
-          publish_date: item.publishDate
+          publish_date: item.publishDate,
+          platform_ids: item.platformIds || [] // 플랫폼 정보 추가
         })),
         created_by: 1 // 임시 어드민 ID
       };
@@ -158,6 +209,21 @@ export default function AdminCampaignDetail() {
       const result = await adminApi.generatePosts(campaign.id, postData);
 
       setGenerationProgress(100);
+
+      // 포스트 생성 후 플랫폼 매핑 생성
+      if (result.created_posts && result.created_posts.length > 0) {
+        for (const createdPost of result.created_posts) {
+          const originalItem = generationItems.find(item => item.sequence === createdPost.sequence);
+          if (originalItem?.platformIds && originalItem.platformIds.length > 0) {
+            try {
+              await adminApi.bulkAssignPlatformsToPost(createdPost.post_id, originalItem.platformIds);
+            } catch (error) {
+              console.error(`포스트 ${createdPost.post_id} 플랫폼 매핑 실패:`, error);
+              // 플랫폼 매핑 실패해도 포스트 생성은 성공으로 처리
+            }
+          }
+        }
+      }
 
       // 성공 시 포스트 목록 새로고침
       const updatedPosts = await adminApi.getCampaignPosts(campaign.id);
@@ -358,7 +424,8 @@ export default function AdminCampaignDetail() {
           </Card>
         </div>
 
-        {/* 포스트 생성 테이블 */}
+
+                        {/* 포스트 생성 테이블 */}
         {posts.length === 0 && generationItems.length > 0 && (
           <Card>
             <CardHeader>
@@ -377,6 +444,7 @@ export default function AdminCampaignDetail() {
                       <th className="text-left p-3 font-medium">제목</th>
                       <th className="text-left p-3 font-medium">타입</th>
                       <th className="text-left p-3 font-medium">게시일</th>
+                      <th className="text-left p-3 font-medium">게시 플랫폼</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -410,6 +478,32 @@ export default function AdminCampaignDetail() {
                             onChange={(e) => handlePostItemChange(item.sequence, 'publishDate', e.target.value)}
                             className="px-3 py-2 border rounded-md text-sm"
                           />
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {platforms.map((platform) => (
+                              <label key={platform.id} className="flex items-center space-x-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={item.platformIds?.includes(platform.id) || false}
+                                  onChange={(e) => {
+                                    const currentIds = item.platformIds || [];
+                                    const newIds = e.target.checked
+                                      ? [...currentIds, platform.id]
+                                      : currentIds.filter(id => id !== platform.id);
+                                    handlePostItemChange(item.sequence, 'platformIds', newIds as any);
+                                  }}
+                                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-xs text-gray-700 truncate max-w-20" title={platform.platform_name}>
+                                  {platform.platform_name}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          {platforms.length === 0 && (
+                            <span className="text-xs text-gray-400">플랫폼 없음</span>
+                          )}
                         </td>
                       </tr>
                     ))}

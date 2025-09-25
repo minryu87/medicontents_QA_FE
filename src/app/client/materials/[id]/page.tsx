@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { clientApi } from '@/services/api';
+import { clientApi, adminApi } from '@/services/api';
 import { Card } from '@/components/shared/Card';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
@@ -75,7 +75,7 @@ export default function MaterialsProvisionPage() {
     try {
       const [postData, servicesData, personasData] = await Promise.all([
         clientApi.getPost(postId),
-        clientApi.getMedicalServices(),
+        adminApi.getMedicalServices(),
         clientApi.getPersonaStyles()
       ]);
       

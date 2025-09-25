@@ -16,6 +16,17 @@ interface CampaignFormData {
   start_date: string;
   end_date: string;
   target_post_count: number;
+  selected_platforms?: number[]; // 선택된 플랫폼 ID들
+}
+
+interface Platform {
+  id: number;
+  platform_name: string;
+  platform_type: string;
+  platform_url?: string;
+  is_public: boolean;
+  primary_traffic_source: string;
+  is_active: boolean;
 }
 
 interface MedicalService {
@@ -47,9 +58,11 @@ export default function CreateCampaign() {
     start_date: '',
     end_date: '',
     target_post_count: 10,
+    selected_platforms: [],
   });
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [medicalServices, setMedicalServices] = useState<MedicalService[]>([]);
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -71,20 +84,29 @@ export default function CreateCampaign() {
     loadFormData();
   }, []);
 
-  const handleInputChange = async (field: keyof CampaignFormData, value: string | number) => {
+  const handleInputChange = async (field: keyof CampaignFormData, value: string | number | number[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
-    // 병원이 선택되면 해당 병원의 진료 서비스 로드
+    // 병원이 선택되면 해당 병원의 진료 서비스와 플랫폼 로드
     if (field === 'hospital_id' && value) {
       try {
         setDataLoading(true);
-        const servicesData = await adminApi.getHospitalMedicalServices(parseInt(value.toString()));
+        const [servicesData, platformsData] = await Promise.all([
+          adminApi.getHospitalMedicalServices(parseInt(value.toString())),
+          adminApi.getPlatforms({ hospital_id: parseInt(value.toString()) })
+        ]);
         setMedicalServices(servicesData || []);
-        // 진료 서비스 선택 초기화
-        setFormData(prev => ({ ...prev, medical_service_id: '' }));
+        setPlatforms(platformsData.items || []);
+        // 선택 초기화
+        setFormData(prev => ({
+          ...prev,
+          medical_service_id: '',
+          selected_platforms: []
+        }));
       } catch (error) {
-        console.error('진료 서비스 로드 실패:', error);
+        console.error('데이터 로드 실패:', error);
         setMedicalServices([]);
+        setPlatforms([]);
       } finally {
         setDataLoading(false);
       }
@@ -100,6 +122,7 @@ export default function CreateCampaign() {
         ...formData,
         hospital_id: parseInt(formData.hospital_id),
         medical_service_id: parseInt(formData.medical_service_id),
+        selected_platforms: formData.selected_platforms,
         completed_post_count: 0,
         published_post_count: 0,
         status: 'draft',
@@ -301,6 +324,83 @@ export default function CreateCampaign() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 게시 플랫폼 설정 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>게시 플랫폼 설정</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {formData.hospital_id ? (
+              platforms.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {platforms.map((platform) => (
+                    <div key={platform.id} className="border rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          id={`platform-${platform.id}`}
+                          checked={formData.selected_platforms?.includes(platform.id) || false}
+                          onChange={(e) => {
+                            const currentIds = formData.selected_platforms || [];
+                            const newIds = e.target.checked
+                              ? [...currentIds, platform.id]
+                              : currentIds.filter(id => id !== platform.id);
+                            handleInputChange('selected_platforms' as any, newIds);
+                          }}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor={`platform-${platform.id}`}
+                            className="text-sm font-medium text-gray-900 cursor-pointer"
+                          >
+                            {platform.platform_name}
+                          </label>
+                          <div className="mt-1 space-y-1">
+                            <p className="text-xs text-gray-500">
+                              {platform.platform_type === 'naver_blog' && '네이버 블로그'}
+                              {platform.platform_type === 'tistory' && '티스토리'}
+                              {platform.platform_type === 'homepage_public' && '홈페이지 공개'}
+                              {platform.platform_type === 'homepage_private' && '홈페이지 비공개'}
+                            </p>
+                            <div className="flex items-center space-x-2">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                platform.primary_traffic_source === 'google'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {platform.primary_traffic_source === 'google' ? '구글' : '네이버'}
+                              </span>
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                platform.is_public
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {platform.is_public ? '공개' : '비공개'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>등록된 플랫폼이 없습니다.</p>
+                  <p className="text-sm mt-1">
+                    플랫폼 관리를 통해 게시 채널을 먼저 등록해주세요.
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                병원을 먼저 선택해주세요.
+              </div>
+            )}
           </CardContent>
         </Card>
 

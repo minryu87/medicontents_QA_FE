@@ -10,6 +10,7 @@ const adminNavigation = [
   { name: '병원별 작업 관리', href: '/admin/hospital-work', icon: '🏥' },
   { name: '포스트 관리', href: '/admin/posts', icon: '📝' },
   { name: '캠페인 관리', href: '/admin/campaigns', icon: '📋' },
+  { name: '플랫폼 관리', href: '/admin/platforms', icon: '🌐' },
   { name: '병원 관리', href: '/admin/hospitals', icon: '🏥' },
   {
     name: 'AI 에이전트',

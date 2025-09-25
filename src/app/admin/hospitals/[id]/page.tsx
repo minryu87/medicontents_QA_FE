@@ -170,7 +170,7 @@ export default function AdminHospitalDetail() {
             <Button variant="outline" onClick={() => router.back()}>
               목록으로
             </Button>
-            <Button>
+            <Button onClick={() => router.push(`/admin/hospitals/${hospitalId}/edit`)}>
               병원 정보 수정
             </Button>
           </div>
