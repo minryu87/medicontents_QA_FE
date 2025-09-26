@@ -67,6 +67,48 @@ export default function PostingWorkTab({
     { id: 'publish-ready', label: '게시 대기', icon: '🚀' }
   ];
 
+  // Status에 따른 활성화 가능한 step들 결정
+  const getAvailableSteps = (status: string): string[] => {
+    switch (status) {
+      case 'initial':
+        return []; // 아무것도 활성화되지 않음
+
+      case 'hospital_completed':
+        return ['material-review']; // 자료 검토만 가능
+
+      case 'material_review_completed':
+        return ['material-review', 'admin-guide']; // 자료 검토, 가이드 제공
+
+      case 'guide_input_completed':
+        return ['material-review', 'admin-guide', 'ai-agent']; // 자료 검토, 가이드 제공, AI 생성
+
+      case 'generation_started':
+      case 'generation_partial':
+      case 'generation_failed':
+        return ['material-review', 'admin-guide', 'ai-agent']; // AI 생성 진행 중
+
+      case 'generation_completed':
+        return ['material-review', 'admin-guide', 'ai-agent', 'result-review']; // 결과 검토 추가
+
+      case 'admin_approved':
+        return ['material-review', 'admin-guide', 'ai-agent', 'result-review', 'client-review']; // 클라이언트 검토 추가
+
+      case 'client_approved':
+        return ['material-review', 'admin-guide', 'ai-agent', 'result-review', 'client-review', 'publish-ready']; // 게시 대기 추가
+
+      case 'final_approved':
+      case 'publish_scheduled':
+      case 'published':
+        return ['material-review', 'admin-guide', 'ai-agent', 'result-review', 'client-review', 'publish-ready']; // 모두 활성화
+
+      default:
+        return ['material-review']; // 기본적으로 자료 검토만
+    }
+  };
+
+  // 현재 포스트의 활성화된 step들
+  const availableSteps = selectedPost ? getAvailableSteps(selectedPost.status) : [];
+
   // 선택된 포스트가 변경될 때 데이터 로드
   useEffect(() => {
     if (selectedPost?.post_id) {
@@ -413,20 +455,26 @@ export default function PostingWorkTab({
 
               {/* 작업 단계 네비게이션 */}
               <div className="flex justify-between border-b border-neutral-200 pb-4">
-                {steps.map((step) => (
-                  <button
-                    key={step.id}
-                    onClick={() => setActiveStep(step.id)}
-                    className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-                      activeStep === step.id
-                        ? 'bg-neutral-100 text-neutral-800'
-                        : 'text-neutral-500 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <span className="text-xl mb-1">{step.icon}</span>
-                    <span className="text-xs font-medium">{step.label}</span>
-                  </button>
-                ))}
+                {steps.map((step) => {
+                  const isAvailable = availableSteps.includes(step.id);
+                  return (
+                    <button
+                      key={step.id}
+                      onClick={() => isAvailable && setActiveStep(step.id)}
+                      disabled={!isAvailable}
+                      className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
+                        activeStep === step.id
+                          ? 'bg-neutral-100 text-neutral-800'
+                          : isAvailable
+                          ? 'text-neutral-500 hover:bg-neutral-50'
+                          : 'text-neutral-300 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <span className="text-xl mb-1">{step.icon}</span>
+                      <span className="text-xs font-medium">{step.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* 단계별 작업 콘텐츠 */}

@@ -759,7 +759,9 @@ export class AdminApiService {
 
   // 가이드 제공 관련 API
   async updateKeywordsGuide(postId: string, keywordsGuide: any) {
+    console.log('API 호출: updateKeywordsGuide', { postId, keywordsGuide });
     const response = await api.put(`/api/v1/admin/posts/${postId}/keywords-guide`, keywordsGuide);
+    console.log('API 응답:', response.data);
     return response.data;
   }
 

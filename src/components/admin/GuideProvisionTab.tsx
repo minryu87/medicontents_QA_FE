@@ -158,6 +158,9 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
     try {
       setSaving(true);
 
+      // 현재 keywordsForm 상태 확인
+      console.log('키워드 저장 시작 - 현재 keywordsForm:', keywordsForm);
+
       // 프론트엔드 필드 이름을 백엔드 필드 이름으로 변환
       const transformedData = {
         region_keywords_guide: keywordsForm.region_keywords,
@@ -170,6 +173,8 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
         emoji_level_value: keywordsForm.emoji_level_value,
         is_completed: false
       };
+
+      console.log('변환된 데이터:', transformedData);
 
       await adminApi.updateKeywordsGuide(postId, transformedData);
       setEditingKeywords(false);
