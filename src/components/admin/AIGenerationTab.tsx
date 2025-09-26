@@ -188,36 +188,6 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
         } else if (pipelineStatus.is_completed || postStatusState === 'generation_completed') {
           // 완료된 경우
           setCurrentState('completed');
-
-          // 완료된 결과 로드 후 해당 파이프라인의 터미널 로그 조회
-          try {
-            const resultData = await adminApi.getGenerationResults(postId);
-            if (resultData.pipeline_id) {
-              const logsResponse = await adminApi.getPipelineTerminalLogs(postId, resultData.pipeline_id);
-              if (logsResponse.logs && logsResponse.logs.length > 0) {
-                // 과거 로그들을 현재 로그 형식으로 변환
-                const formattedLogs = logsResponse.logs.map(log => ({
-                  id: log.id,
-                  timestamp: log.timestamp,
-                  level: log.level,
-                  logger: log.logger,
-                  message: log.message,
-                  elapsed_seconds: log.elapsed_seconds,
-                  module: log.module,
-                  function: log.function,
-                  line: log.line,
-                  agent_type: log.agent_type,
-                  execution_id: log.execution_id,
-                  log_metadata: log.log_metadata
-                }));
-                setTerminalLogs(formattedLogs);
-              }
-            }
-          } catch (error) {
-            console.error('완료된 파이프라인 결과 및 로그 조회 실패:', error);
-            // API 타임아웃 문제로 결과 조회 생략하고 WebSocket 모니터링에 의존
-            console.log('⚠️ API 타임아웃으로 결과 조회 생략, WebSocket 모니터링에 의존');
-          }
         } else {
           // 미실행 상태
           setCurrentState('idle');
@@ -239,12 +209,34 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
     initializeState();
   }, [postId, postStatusState]);
 
-  // 완료 상태일 때 결과 데이터 로드
-  useEffect(() => {
-    if (currentState === 'completed' && postId) {
-      loadGenerationResult();
+  // 완료 상태일 때 결과 데이터 로드 (버튼 클릭 시에만 호출)
+
+  // 마지막 실행 정보 보기 핸들러
+  const handleViewLastExecution = async (lastExecution: any) => {
+    if (!lastExecution) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // generation-results API 호출
+      console.log('🔍 마지막 실행 결과 조회:', lastExecution.pipeline_id);
+      const resultData = await adminApi.getGenerationResults(postId);
+      setResult(resultData);
+
+      // currentState를 completed로 설정하여 결과 화면 표시
+      setCurrentState('completed');
+
+      // 터미널 로그도 함께 표시하기 위해 WebSocket 연결
+      setupTerminalLogsWebSocket();
+
+    } catch (err: any) {
+      console.error('마지막 실행 결과 조회 실패:', err);
+      setError('마지막 실행 결과를 불러올 수 없습니다.');
+    } finally {
+      setLoading(false);
     }
-  }, [currentState, postId]);
+  };
 
   // 생성 전 데이터 로드
   useEffect(() => {
@@ -343,10 +335,19 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
       setProgress(null); // 초기 progress 초기화
       setTerminalLogs([]); // 터미널 로그 초기화
 
-      // 터미널 로그 WebSocket 연결 먼저
+      // 1. 파이프라인 시작 API 호출
+      console.log('🚀 파이프라인 시작 API 호출...');
+      const startResult = await adminApi.controlGeneration(postId, 'start');
+      console.log('✅ 파이프라인 시작 결과:', startResult);
+
+      if (!startResult.success) {
+        throw new Error(startResult.message || '파이프라인 시작 실패');
+      }
+
+      // 2. 터미널 로그 WebSocket 연결
       setupTerminalLogsWebSocket();
 
-      // 파이프라인 모니터링 WebSocket 연결 (연결 즉시 메시지 전송)
+      // 3. 파이프라인 모니터링 WebSocket 연결 (연결 즉시 메시지 전송)
       setupWebSocket(false); // 실행 모드
 
       // WebSocket 연결 실패 시를 위한 타임아웃 폴백
@@ -554,27 +555,6 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
             // 파이프라인 완료
             console.log('파이프라인 완료:', data.data);
 
-            // 생성 결과 가져오기 (비동기 함수로 분리)
-            const loadResult = async () => {
-              try {
-                const result = await adminApi.getGenerationResults(postId);
-                setResult(result);
-              } catch (error) {
-                console.error('결과 조회 실패:', error);
-                // WebSocket 데이터에서 기본 결과 생성
-                setResult({
-                  post_id: postId,
-                  overall_status: 'completed',
-                  total_duration: data.data.total_duration || 0,
-                  successful_agents: 6,
-                  total_agents: 6,
-                  agent_results: data.data.results || {},
-                  created_at: new Date().toISOString()
-                });
-              }
-            };
-
-            loadResult();
             setCurrentState('completed');
             setLoading(false); // 파이프라인 완료 시 로딩 상태 해제
           } else if (data.type === 'pipeline_result') {
@@ -843,6 +823,7 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
           showAgentConfigs={showAgentConfigs}
           onToggleAgentConfigs={() => setShowAgentConfigs(!showAgentConfigs)}
           postStatusState={postStatusState}
+          onViewLastExecution={handleViewLastExecution}
         />
       )}
 
@@ -1362,7 +1343,8 @@ function PreGenerationView({
   onPromptClick,
   showAgentConfigs,
   onToggleAgentConfigs,
-  postStatusState
+  postStatusState,
+  onViewLastExecution
 }: {
   data: PreGenerationView;
   onStart: () => void;
@@ -1373,6 +1355,7 @@ function PreGenerationView({
   showAgentConfigs: boolean;
   onToggleAgentConfigs: () => void;
   postStatusState: string;
+  onViewLastExecution?: (lastExecution: any) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -1430,6 +1413,21 @@ function PreGenerationView({
               <div className="text-sm text-gray-500">실행 이력 없음</div>
             )}
           </div>
+        </div>
+
+        {/* 마지막 실행 정보 보기 버튼 */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => onViewLastExecution?.(data.pipeline_execution_info?.last_execution)}
+            disabled={!data.pipeline_execution_info?.last_execution}
+            className={`w-full px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              data.pipeline_execution_info?.last_execution
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            마지막 실행 정보 보기
+          </button>
         </div>
       </div>
 

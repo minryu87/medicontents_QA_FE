@@ -499,6 +499,20 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 파이프라인 생성 제어 API (시작/중단/재시작)
+  async controlGeneration(postId: string, action: 'start' | 'stop' | 'restart' | 'regenerate', parameters?: any): Promise<{
+    success: boolean;
+    message: string;
+    pipeline_id?: string;
+    status?: string;
+  }> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/generation-control`, {
+      action,
+      parameters: parameters || {}
+    });
+    return response.data;
+  }
+
   // 파이프라인 터미널 로그 조회 API
   async getPipelineTerminalLogs(postId: string, pipelineId: string): Promise<{
     post_id: string;
@@ -902,18 +916,6 @@ export class AdminApiService {
     return response.data;
   }
 
-  async controlGeneration(postId: string, request: {
-    action: string;
-    parameters?: Record<string, any>;
-  }): Promise<{
-    success: boolean;
-    message: string;
-    pipeline_id?: string;
-    status: string;
-  }> {
-    const response = await api.post(`/api/v1/admin/posts/${postId}/control`, request);
-    return response.data;
-  }
 
   async getGenerationResults(postId: string): Promise<{
     post_id: string;
