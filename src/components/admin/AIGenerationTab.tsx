@@ -4,6 +4,14 @@ import config from '@/lib/config';
 
 interface PreGenerationView {
   post_id: string;
+  pipeline_execution_info?: {
+    total_executions: number;
+    last_execution: {
+      pipeline_id: string;
+      execution_result: string;
+      execution_time: string;
+    } | null;
+  };
   input_data_summary: {
     has_hospital_info: boolean;
     has_treatment_info: boolean;
@@ -257,6 +265,23 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
       const dataPromise = adminApi.getGenerationPreview(postId);
 
       const data = await Promise.race([dataPromise, timeoutPromise]) as any;
+
+      // 파이프라인 실행 정보 추가
+      try {
+        const pipelineInfo = await adminApi.getPipelineExecutionInfo(postId);
+        data.pipeline_execution_info = {
+          total_executions: pipelineInfo.total_executions,
+          last_execution: pipelineInfo.last_execution
+        };
+      } catch (pipelineErr) {
+        console.warn('파이프라인 실행 정보 로드 실패:', pipelineErr);
+        // 파이프라인 정보가 없어도 기본 데이터는 표시
+        data.pipeline_execution_info = {
+          total_executions: 0,
+          last_execution: null
+        };
+      }
+
       setPreGenerationData(data);
     } catch (err: any) {
       if (err.message === 'TIMEOUT') {
@@ -1351,6 +1376,63 @@ function PreGenerationView({
 }) {
   return (
     <div className="space-y-6">
+      {/* 파이프라인 실행 정보 */}
+      <div
+        className="bg-white border rounded-lg p-6"
+        style={{borderColor: 'rgba(74, 124, 158, 0.3)'}}
+      >
+        <div className="mb-4">
+          <h3 className="text-lg font-medium" style={{color: '#2A485E'}}>파이프라인 실행 정보</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 총 실행 횟수 */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium" style={{color: '#4A7C9E'}}>총 실행 횟수</div>
+            <div className="text-2xl font-bold" style={{color: '#2A485E'}}>
+              {data.pipeline_execution_info?.total_executions || 0}회
+            </div>
+          </div>
+
+          {/* 마지막 실행 정보 */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium" style={{color: '#4A7C9E'}}>마지막 실행 정보</div>
+            {data.pipeline_execution_info?.last_execution ? (
+              <div className="space-y-1">
+                <div className="text-sm">
+                  <span className="font-medium">Pipeline ID:</span>{' '}
+                  <span className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">
+                    {data.pipeline_execution_info.last_execution.pipeline_id}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">실행 결과:</span>{' '}
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    data.pipeline_execution_info.last_execution.execution_result === '성공'
+                      ? 'bg-green-100 text-green-800'
+                      : data.pipeline_execution_info.last_execution.execution_result === '실행 중'
+                      ? 'bg-blue-100 text-blue-800'
+                      : data.pipeline_execution_info.last_execution.execution_result === '실패'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {data.pipeline_execution_info.last_execution.execution_result}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">실행 시각:</span>{' '}
+                  <span className="text-gray-600">
+                    {new Date(data.pipeline_execution_info.last_execution.execution_time).toLocaleString('ko-KR')}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">실행 이력 없음</div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 활용 데이터 */}
       <div
         className="bg-white border rounded-lg p-6"

@@ -485,6 +485,20 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 파이프라인 실행 정보 조회 API
+  async getPipelineExecutionInfo(postId: string): Promise<{
+    post_id: string;
+    total_executions: number;
+    last_execution: {
+      pipeline_id: string;
+      execution_result: string;
+      execution_time: string;
+    } | null;
+  }> {
+    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-execution-info`);
+    return response.data;
+  }
+
   // 파이프라인 터미널 로그 조회 API
   async getPipelineTerminalLogs(postId: string, pipelineId: string): Promise<{
     post_id: string;
