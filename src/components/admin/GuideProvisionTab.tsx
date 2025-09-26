@@ -73,6 +73,24 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus }: Gu
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [currentPostStatus, setCurrentPostStatus] = useState<string>(postStatus || 'unknown');
+
+  // 포스트 상태 실시간 조회
+  useEffect(() => {
+    const fetchPostStatus = async () => {
+      if (!postId) return;
+
+      try {
+        const workflowData = await adminApi.getCompletePostingWorkflow(postId);
+        setCurrentPostStatus(workflowData.basic_info?.status || 'unknown');
+      } catch (error) {
+        console.error('포스트 상태 조회 실패:', error);
+        setCurrentPostStatus('unknown');
+      }
+    };
+
+    fetchPostStatus();
+  }, [postId]);
 
   // 편집 모드 상태들
   const [editingPersona, setEditingPersona] = useState(false);
@@ -291,16 +309,19 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus }: Gu
     }
   };
 
-  // 키워드 가이드가 입력되었는지 확인
+  // 키워드 가이드가 입력되었는지 확인 (API 데이터 기반)
   const isKeywordsGuideCompleted = () => {
+    if (!data?.guide_input?.keywords_guide) return false;
+
+    const keywords = data.guide_input.keywords_guide;
     return (
-      keywordsForm.region_keywords.length > 0 ||
-      keywordsForm.hospital_keywords.length > 0 ||
-      keywordsForm.symptom_keywords.length > 0 ||
-      keywordsForm.procedure_keywords.length > 0 ||
-      keywordsForm.treatment_keywords.length > 0 ||
-      keywordsForm.target_keywords.length > 0 ||
-      keywordsForm.writing_guide.trim() !== ''
+      (keywords.region_keywords && keywords.region_keywords.length > 0) &&
+      (keywords.hospital_keywords && keywords.hospital_keywords.length > 0) &&
+      (keywords.symptom_keywords && keywords.symptom_keywords.length > 0) &&
+      (keywords.procedure_keywords && keywords.procedure_keywords.length > 0) &&
+      (keywords.treatment_keywords && keywords.treatment_keywords.length > 0) &&
+      (keywords.target_keywords && keywords.target_keywords.length > 0) &&
+      (keywords.writing_guide && keywords.writing_guide.trim() !== '')
     );
   };
 
@@ -308,11 +329,28 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus }: Gu
   const completeGuideProvision = async () => {
     try {
       setSaving(true);
-      await adminApi.updatePostStatus(postId, 'guide_input_completed', '가이드 제공 완료');
-      alert('가이드 제공이 완료되었습니다.');
 
-      // 부모 컴포넌트에 상태 변경 알림 (필요시)
-      window.location.reload(); // 임시로 페이지 리로드
+      // 키워드 가이드 저장 (is_completed: true로)
+      const completedKeywordsData = {
+        region_keywords_guide: keywordsForm.region_keywords,
+        hospital_keywords_guide: keywordsForm.hospital_keywords,
+        symptom_keywords_guide: keywordsForm.symptom_keywords,
+        procedure_keywords_guide: keywordsForm.procedure_keywords,
+        treatment_keywords_guide: keywordsForm.treatment_keywords,
+        target_keywords_guide: keywordsForm.target_keywords,
+        writing_guide: keywordsForm.writing_guide,
+        emoji_level_value: keywordsForm.emoji_level_value,
+        is_completed: true  // 완료 상태로 설정
+      };
+
+      await adminApi.updateKeywordsGuide(postId, completedKeywordsData);
+
+      // 포스트 상태 업데이트
+      await adminApi.updatePostStatus(postId, 'guide_input_completed', '가이드 제공 완료');
+
+      alert('가이드 제공이 완료되었습니다.\nAI 생성 탭으로 이동하여 콘텐츠 생성을 진행해주세요.');
+
+      // 페이지 리로드 없이 상태만 업데이트 (실시간 반영을 위해)
     } catch (error) {
       console.error('가이드 제공 완료 실패:', error);
       alert('가이드 제공 완료 처리 중 오류가 발생했습니다.');
@@ -825,7 +863,7 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus }: Gu
           </div>
 
           {/* 가이드 제공 완료하기 버튼 */}
-          {postStatus === 'material_review_completed' && (
+          {currentPostStatus !== 'guide_input_completed' && (
             <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between">
                 <div>

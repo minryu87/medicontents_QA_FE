@@ -923,13 +923,14 @@ export default function HospitalWorkPage() {
 
              {activeTab === 'posting-work' && (
                selectedHospital ? (
-                 <PostingWorkTab
-                   posts={postingWorkPosts}
-                   isLoading={postingWorkPostsLoading}
-                   selectedHospitalId={selectedHospital.id}
-                   onPostSelect={setSelectedPostForWork}
-                   selectedPost={selectedPostForWork}
-                 />
+                <PostingWorkTab
+                  posts={postingWorkPosts}
+                  isLoading={postingWorkPostsLoading}
+                  selectedHospitalId={selectedHospital.id}
+                  onPostSelect={setSelectedPostForWork}
+                  onPostUpdate={setSelectedPostForWork}
+                  selectedPost={selectedPostForWork}
+                />
                ) : (
                  <EmptyState
                    icon="fa-tools"

@@ -25,6 +25,7 @@ interface PostingWorkTabProps {
   isLoading?: boolean;
   selectedHospitalId?: number;
   onPostSelect?: (post: Post | null) => void;
+  onPostUpdate?: (updatedPost: Post) => void;
   selectedPost?: Post | null;
 }
 
@@ -33,6 +34,7 @@ export default function PostingWorkTab({
   isLoading = false,
   selectedHospitalId,
   onPostSelect,
+  onPostUpdate,
   selectedPost
 }: PostingWorkTabProps) {
   const [activeStep, setActiveStep] = useState<string>('material-review');
@@ -231,6 +233,12 @@ export default function PostingWorkTab({
       alert('자료가 승인되었습니다.');
       setActiveStep('admin-guide');
       await loadWorkflowData(selectedPost.post_id);
+
+      // 포스트 상태가 업데이트되었으므로 부모 컴포넌트에 알림
+      if (onPostUpdate && selectedPost) {
+        const updatedPost = { ...selectedPost, status: 'material_review_completed' };
+        onPostUpdate(updatedPost);
+      }
     } catch (error) {
       console.error('자료 승인 실패:', error);
       alert('자료 승인에 실패했습니다.');

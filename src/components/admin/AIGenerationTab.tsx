@@ -110,7 +110,8 @@ interface AIGenerationTabProps {
   postStatus?: string;
 }
 
-export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabProps) {
+const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus }) => {
+  const [postStatusState, setPostStatusState] = useState<string>('unknown');
   const [currentState, setCurrentState] = useState<'idle' | 'running' | 'completed'>('idle');
   const [preGenerationData, setPreGenerationData] = useState<PreGenerationView | null>(null);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
@@ -137,6 +138,24 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
   const [terminalLogs, setTerminalLogs] = useState<any[]>([]);
   const [logsWebsocket, setLogsWebsocket] = useState<WebSocket | null>(null);
 
+  // 포스트 상태 실시간 조회
+  useEffect(() => {
+    const fetchPostStatus = async () => {
+      if (!postId) return;
+
+      try {
+        // complete-workflow API에서 최신 포스트 상태 조회
+        const workflowData = await adminApi.getCompletePostingWorkflow(postId);
+        setPostStatusState(workflowData.basic_info?.status || 'unknown');
+      } catch (error) {
+        console.error('포스트 상태 조회 실패:', error);
+        setPostStatusState('unknown');
+      }
+    };
+
+    fetchPostStatus();
+  }, [postId]);
+
   // 에이전트 결과 팝업
   const [showAgentResultPopup, setShowAgentResultPopup] = useState(false);
   const [selectedAgentResult, setSelectedAgentResult] = useState<any>(null);
@@ -158,7 +177,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
             setupWebSocket(true); // 모니터링 모드로 연결
             setupTerminalLogsWebSocket(); // 터미널 로그도 모니터링
           }, 100);
-        } else if (pipelineStatus.is_completed || postStatus === 'generation_completed') {
+        } else if (pipelineStatus.is_completed || postStatusState === 'generation_completed') {
           // 완료된 경우
           setCurrentState('completed');
 
@@ -198,9 +217,9 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
       } catch (error) {
         console.error('파이프라인 상태 조회 실패:', error);
         // 폴백: 기존 postStatus 기반 로직
-        if (postStatus === 'generation_completed') {
+        if (postStatusState === 'generation_completed') {
           setCurrentState('completed');
-        } else if (postStatus === 'material_completed' || postStatus === 'initial') {
+        } else if (postStatusState === 'material_completed' || postStatusState === 'initial') {
           // 자료 완료 상태 또는 초기 상태에서는 AI 생성 준비 화면 표시
           setCurrentState('idle');
         } else {
@@ -210,7 +229,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
     };
 
     initializeState();
-  }, [postId, postStatus]);
+  }, [postId, postStatusState]);
 
   // 완료 상태일 때 결과 데이터 로드
   useEffect(() => {
@@ -798,6 +817,7 @@ export default function AIGenerationTab({ postId, postStatus }: AIGenerationTabP
           onPromptClick={handlePromptClick}
           showAgentConfigs={showAgentConfigs}
           onToggleAgentConfigs={() => setShowAgentConfigs(!showAgentConfigs)}
+          postStatusState={postStatusState}
         />
       )}
 
@@ -1316,7 +1336,8 @@ function PreGenerationView({
   onChecklistClick,
   onPromptClick,
   showAgentConfigs,
-  onToggleAgentConfigs
+  onToggleAgentConfigs,
+  postStatusState
 }: {
   data: PreGenerationView;
   onStart: () => void;
@@ -1326,6 +1347,7 @@ function PreGenerationView({
   onPromptClick: (key: string, data: any) => void;
   showAgentConfigs: boolean;
   onToggleAgentConfigs: () => void;
+  postStatusState: string;
 }) {
   return (
     <div className="space-y-6">
@@ -1665,19 +1687,9 @@ function PreGenerationView({
 
       {/* 실행 버튼 */}
       <div className="flex flex-col items-center space-y-2">
-        {postStatus !== 'guide_input_completed' && (
-          <div className="text-sm text-orange-600 bg-orange-50 px-4 py-2 rounded-md border border-orange-200">
-            {postStatus === 'material_review_completed'
-              ? '가이드 제공이 완료되지 않았습니다. 가이드 제공 단계에서 키워드 가이드를 입력하고 완료해주세요.'
-              : postStatus === 'hospital_completed'
-              ? '자료 검토가 완료되지 않았습니다. 자료 검토 단계부터 진행해주세요.'
-              : 'AI 생성을 진행할 수 있는 상태가 아닙니다.'
-            }
-          </div>
-        )}
         <button
           onClick={onStart}
-          disabled={loading || postStatus !== 'guide_input_completed'}
+          disabled={loading}
           className="px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: '#4A7C9E',
@@ -2084,26 +2096,36 @@ function AgentResultPopup({ agentResult, onClose }: { agentResult: any; onClose:
               <div>
                 <h3 className="text-lg font-medium mb-3" style={{color: '#2A485E'}}>콘텐츠 계획</h3>
                 <div className="space-y-3">
-                  {agentResult.result.sections && Array.isArray(agentResult.result.sections) && (
+                  {agentResult.result.sections_summary && Array.isArray(agentResult.result.sections_summary) && (
                     <div>
                       <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>섹션 구성</h4>
                       <ul className="list-disc list-inside space-y-1 text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>
-                        {agentResult.result.sections.map((section: any, idx: number) => (
-                          <li key={idx}>{section.title || section}</li>
+                        {agentResult.result.sections_summary.map((section: any, idx: number) => (
+                          <li key={idx}>{section.title || section.id}</li>
                         ))}
                       </ul>
                     </div>
                   )}
-                  {agentResult.result.outline && (
+                  {agentResult.result.title_plan && (
                     <div>
-                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>전체 개요</h4>
-                      <p className="text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>{agentResult.result.outline}</p>
+                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>제목 계획</h4>
+                      <p className="text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>
+                        {agentResult.result.title_plan.guidance || '제목 생성 가이드라인 정보가 없습니다.'}
+                      </p>
                     </div>
                   )}
-                  {agentResult.result.target_audience && (
-                    <div>
-                      <h4 className="font-medium mb-2" style={{color: '#4A7C9E'}}>대상 독자</h4>
-                      <p className="text-sm" style={{color: 'rgba(42, 72, 94, 0.8)'}}>{agentResult.result.target_audience}</p>
+                  {agentResult.result.sections_count && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="text-sm font-medium" style={{color: '#2A485E'}}>섹션 수</div>
+                        <div className="text-lg font-bold" style={{color: '#4A7C9E'}}>{agentResult.result.sections_count}</div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="text-sm font-medium" style={{color: '#2A485E'}}>계획 전략</div>
+                        <div className="text-sm font-medium" style={{color: '#4A9E8C'}}>
+                          {agentResult.result.planning_strategy || '기본 전략'}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2245,3 +2267,4 @@ function AgentResultPopup({ agentResult, onClose }: { agentResult: any; onClose:
     </div>
   );
 }
+export default AIGenerationTab;
