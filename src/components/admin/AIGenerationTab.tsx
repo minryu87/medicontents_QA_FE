@@ -1664,10 +1664,20 @@ function PreGenerationView({
       </div>
 
       {/* 실행 버튼 */}
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center space-y-2">
+        {postStatus !== 'guide_input_completed' && (
+          <div className="text-sm text-orange-600 bg-orange-50 px-4 py-2 rounded-md border border-orange-200">
+            {postStatus === 'material_review_completed'
+              ? '가이드 제공이 완료되지 않았습니다. 가이드 제공 단계에서 키워드 가이드를 입력하고 완료해주세요.'
+              : postStatus === 'hospital_completed'
+              ? '자료 검토가 완료되지 않았습니다. 자료 검토 단계부터 진행해주세요.'
+              : 'AI 생성을 진행할 수 있는 상태가 아닙니다.'
+            }
+          </div>
+        )}
         <button
           onClick={onStart}
-          disabled={loading}
+          disabled={loading || postStatus !== 'guide_input_completed'}
           className="px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: '#4A7C9E',

@@ -227,8 +227,7 @@ export default function PostingWorkTab({
     if (!selectedPost) return;
     setIsWorking(true);
     try {
-      await adminApi.updatePostMaterialsStatus(selectedPost.post_id, 'completed');
-      await adminApi.updatePostStatus(selectedPost.post_id, 'material_completed', '자료 검토 승인');
+      await adminApi.updatePostStatus(selectedPost.post_id, 'material_review_completed', '자료 검토 승인');
       alert('자료가 승인되었습니다.');
       setActiveStep('admin-guide');
       await loadWorkflowData(selectedPost.post_id);
@@ -718,6 +717,7 @@ export default function PostingWorkTab({
                       <GuideProvisionTab
                         postId={selectedPost.post_id}
                         hospitalId={parseInt(selectedPost.id)}
+                        postStatus={selectedPost.status}
                       />
                     )}
 

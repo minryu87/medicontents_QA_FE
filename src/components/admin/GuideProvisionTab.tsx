@@ -6,6 +6,7 @@ import { adminApi } from '@/services/api';
 interface GuideProvisionTabProps {
   postId: string;
   hospitalId: number;
+  postStatus?: string;
 }
 
 interface GuideProvisionData {
@@ -66,8 +67,8 @@ interface KeywordsFormData {
 
 type KeywordField = keyof Pick<KeywordsFormData, 'region_keywords' | 'hospital_keywords' | 'symptom_keywords' | 'procedure_keywords' | 'treatment_keywords' | 'target_keywords'>;
 
-export default function GuideProvisionTab({ postId, hospitalId }: GuideProvisionTabProps) {
-  console.log('GuideProvisionTab props:', { postId, hospitalId });
+export default function GuideProvisionTab({ postId, hospitalId, postStatus }: GuideProvisionTabProps) {
+  console.log('GuideProvisionTab props:', { postId, hospitalId, postStatus });
   const [data, setData] = useState<GuideProvisionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +101,23 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
     emoji_level_value: 2
   });
 
+  console.log('GuideProvisionTab 렌더링 - keywordsForm:', keywordsForm);
+
+  // 키워드 입력 필드 상태
+  const [keywordInputs, setKeywordInputs] = useState<Record<KeywordField, string>>({
+    region_keywords: '',
+    hospital_keywords: '',
+    symptom_keywords: '',
+    procedure_keywords: '',
+    treatment_keywords: '',
+    target_keywords: ''
+  });
+
+  // keywordsForm 변경 감지 (디버깅용)
+  useEffect(() => {
+    console.log('keywordsForm 변경됨:', keywordsForm);
+  }, [keywordsForm]);
+
 
   // 데이터 로드
   useEffect(() => {
@@ -130,6 +148,9 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
         });
         setPersonaOptions(guideInputResponse.persona_options || []);
 
+        console.log('가이드 입력 데이터 로드:', guideInputResponse);
+        console.log('키워드 가이드 데이터:', guideInputResponse.keywords_guide);
+
         setKeywordsForm({
           region_keywords: guideInputResponse.keywords_guide.region_keywords || [],
           hospital_keywords: guideInputResponse.keywords_guide.hospital_keywords || [],
@@ -140,6 +161,8 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
           writing_guide: guideInputResponse.keywords_guide.writing_guide || '',
           emoji_level_value: guideInputResponse.keywords_guide.emoji_level_value || 2
         });
+
+        console.log('keywordsForm 설정 후:', keywordsForm);
       }
       } catch (error) {
         console.error('가이드 제공 데이터 로드 실패:', error);
@@ -160,6 +183,14 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
 
       // 현재 keywordsForm 상태 확인
       console.log('키워드 저장 시작 - 현재 keywordsForm:', keywordsForm);
+      console.log('각 키워드 배열 길이:', {
+        region_keywords: keywordsForm.region_keywords.length,
+        hospital_keywords: keywordsForm.hospital_keywords.length,
+        symptom_keywords: keywordsForm.symptom_keywords.length,
+        procedure_keywords: keywordsForm.procedure_keywords.length,
+        treatment_keywords: keywordsForm.treatment_keywords.length,
+        target_keywords: keywordsForm.target_keywords.length
+      });
 
       // 프론트엔드 필드 이름을 백엔드 필드 이름으로 변환
       const transformedData = {
@@ -228,11 +259,20 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
 
   // 키워드 배열 관리 헬퍼 함수들
   const addKeyword = (field: KeywordField, keyword: string) => {
+    console.log(`키워드 추가 시도: ${field} = "${keyword}"`);
     if (keyword.trim() && !keywordsForm[field].includes(keyword.trim())) {
       setKeywordsForm(prev => ({
         ...prev,
         [field]: [...prev[field], keyword.trim()]
       }));
+      // 입력 필드 초기화
+      setKeywordInputs(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+      console.log(`키워드 추가됨: ${field}에 "${keyword.trim()}" 추가`);
+    } else {
+      console.log(`키워드 추가 실패: 이미 존재하거나 빈 문자열 - "${keyword}"`);
     }
   };
 
@@ -248,6 +288,36 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
       const keywords = value.split(',').map(k => k.trim()).filter(k => k);
       keywords.forEach(keyword => addKeyword(field, keyword));
       // 입력 필드 초기화 (실제로는 ref나 다른 방식으로 처리)
+    }
+  };
+
+  // 키워드 가이드가 입력되었는지 확인
+  const isKeywordsGuideCompleted = () => {
+    return (
+      keywordsForm.region_keywords.length > 0 ||
+      keywordsForm.hospital_keywords.length > 0 ||
+      keywordsForm.symptom_keywords.length > 0 ||
+      keywordsForm.procedure_keywords.length > 0 ||
+      keywordsForm.treatment_keywords.length > 0 ||
+      keywordsForm.target_keywords.length > 0 ||
+      keywordsForm.writing_guide.trim() !== ''
+    );
+  };
+
+  // 가이드 제공 완료하기
+  const completeGuideProvision = async () => {
+    try {
+      setSaving(true);
+      await adminApi.updatePostStatus(postId, 'guide_input_completed', '가이드 제공 완료');
+      alert('가이드 제공이 완료되었습니다.');
+
+      // 부모 컴포넌트에 상태 변경 알림 (필요시)
+      window.location.reload(); // 임시로 페이지 리로드
+    } catch (error) {
+      console.error('가이드 제공 완료 실패:', error);
+      alert('가이드 제공 완료 처리 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -609,14 +679,28 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
                       <input
                         type="text"
                         placeholder={placeholder}
+                        value={keywordInputs[key]}
+                        onChange={(e) => {
+                          setKeywordInputs(prev => ({
+                            ...prev,
+                            [key]: e.target.value
+                          }));
+                        }}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ',') {
+                          if (e.key === 'Enter') {
                             e.preventDefault();
-                            const value = (e.target as HTMLInputElement).value.trim();
+                            const value = keywordInputs[key].trim();
+                            console.log(`키워드 입력 시도: ${key} = "${value}" (from state)`);
                             if (value) {
                               addKeyword(key, value);
-                              (e.target as HTMLInputElement).value = '';
                             }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value.trim();
+                          if (value && !keywordsForm[key].includes(value)) {
+                            console.log(`키워드 blur 추가: ${key} = "${value}"`);
+                            addKeyword(key, value);
                           }
                         }}
                         className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -739,6 +823,36 @@ export default function GuideProvisionTab({ postId, hospitalId }: GuideProvision
               )}
             </div>
           </div>
+
+          {/* 가이드 제공 완료하기 버튼 */}
+          {postStatus === 'material_review_completed' && (
+            <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-green-800">가이드 제공 완료</h4>
+                  <p className="text-xs text-green-600 mt-1">
+                    키워드 가이드를 입력한 후 완료 버튼을 클릭하세요
+                  </p>
+                </div>
+                <button
+                  onClick={completeGuideProvision}
+                  disabled={saving || !isKeywordsGuideCompleted()}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    saving || !isKeywordsGuideCompleted()
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {saving ? '처리중...' : '가이드 제공 완료하기'}
+                </button>
+              </div>
+              {!isKeywordsGuideCompleted() && (
+                <p className="text-xs text-orange-600 mt-2">
+                  ⚠️ 키워드 가이드가 입력되지 않았습니다. 최소 하나의 키워드나 작성 가이드를 입력해주세요.
+                </p>
+              )}
+            </div>
+          )}
           </div>
         </div>
       </div>
