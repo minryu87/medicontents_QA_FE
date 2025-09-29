@@ -146,6 +146,10 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
   const [terminalLogs, setTerminalLogs] = useState<any[]>([]);
   const [logsWebsocket, setLogsWebsocket] = useState<WebSocket | null>(null);
 
+  // 모달 상태 관리
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [progressModalType, setProgressModalType] = useState<'current' | 'new' | 'last'>('current');
+
   // 포스트 상태 실시간 조회
   useEffect(() => {
     const fetchPostStatus = async () => {
@@ -215,26 +219,36 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
   const handleViewLastExecution = async (lastExecution: any) => {
     if (!lastExecution) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+    // 모달 타입 설정 및 모달 열기
+    setProgressModalType('last');
+    setShowProgressModal(true);
 
-      // generation-results API 호출
-      console.log('🔍 마지막 실행 결과 조회:', lastExecution.pipeline_id);
-      const resultData = await adminApi.getGenerationResults(postId);
-      setResult(resultData);
+    // 현재 실행 중인 경우 모니터링 모드로 WebSocket 연결
+    if (currentState === 'running') {
+      setTimeout(() => {
+        setupWebSocket(true); // 모니터링 모드로 연결
+        setupTerminalLogsWebSocket();
+      }, 100);
+    } else {
+      // 완료된 경우 결과 데이터 로드
+      try {
+        setLoading(true);
+        setError(null);
 
-      // currentState를 completed로 설정하여 결과 화면 표시
-      setCurrentState('completed');
+        // generation-results API 호출
+        console.log('🔍 마지막 실행 결과 조회:', lastExecution.pipeline_id);
+        const resultData = await adminApi.getGenerationResults(postId);
+        setResult(resultData);
 
-      // 터미널 로그도 함께 표시하기 위해 WebSocket 연결
-      setupTerminalLogsWebSocket();
+        // 터미널 로그 연결
+        setupTerminalLogsWebSocket();
 
-    } catch (err: any) {
-      console.error('마지막 실행 결과 조회 실패:', err);
-      setError('마지막 실행 결과를 불러올 수 없습니다.');
-    } finally {
-      setLoading(false);
+      } catch (err: any) {
+        console.error('마지막 실행 결과 조회 실패:', err);
+        setError('마지막 실행 결과를 불러올 수 없습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -249,9 +263,9 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
     try {
       setLoading(true);
 
-      // Promise.race로 10초 타임아웃 구현
+      // Promise.race로 2분 타임아웃 구현 (API 레벨과 동일)
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('TIMEOUT')), 10000);
+        setTimeout(() => reject(new Error('TIMEOUT')), 120000);
       });
 
       const dataPromise = adminApi.getGenerationPreview(postId);
@@ -334,6 +348,10 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
       setCurrentState('running');
       setProgress(null); // 초기 progress 초기화
       setTerminalLogs([]); // 터미널 로그 초기화
+
+      // 모달 열기 (신규 파이프라인 모니터링)
+      setProgressModalType('new');
+      setShowProgressModal(true);
 
       // 1. 파이프라인 시작 API 호출
       console.log('🚀 파이프라인 시작 API 호출...');
@@ -811,8 +829,8 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
         </div>
       </div>
 
-      {/* 상태별 콘텐츠 */}
-      {currentState === 'idle' && preGenerationData && (
+      {/* 통일된 UI 레이아웃 */}
+      {preGenerationData && (
         <PreGenerationView
           data={preGenerationData}
           onStart={startGeneration}
@@ -824,55 +842,8 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
           onToggleAgentConfigs={() => setShowAgentConfigs(!showAgentConfigs)}
           postStatusState={postStatusState}
           onViewLastExecution={handleViewLastExecution}
-        />
-      )}
-
-      {currentState === 'running' && (
-        <GenerationProgressView
-          progress={progress}
-          onStop={handleStopGeneration}
-          onViewAgentResult={handleViewAgentResult}
-        />
-      )}
-
-      {/* 터미널 로그 실시간 모니터링 */}
-      {(currentState === 'running' || currentState === 'completed') && (
-        <div className="bg-white border rounded-lg p-6" style={{borderColor: 'rgba(74, 124, 158, 0.3)'}}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium" style={{color: '#2A485E'}}>실시간 터미널 로그</h3>
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${logsWebsocket ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-xs" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
-                {logsWebsocket ? '연결됨' : '연결 해제'}
-              </span>
-            </div>
-          </div>
-          <div className="bg-gray-900 text-green-400 rounded-lg p-4 max-h-64 overflow-y-auto font-mono text-sm">
-            {terminalLogs.length === 0 ? (
-              <div className="text-gray-500 italic">로그 대기 중...</div>
-            ) : (
-              terminalLogs.map((log, index) => (
-                <div key={index} className="mb-1">
-                  <span className="text-blue-400">[{log.level}]</span>
-                  <span className="text-yellow-400 ml-2">{log.logger}</span>
-                  <span className="ml-2">{log.message}</span>
-                  {log.agent_type && (
-                    <span className="text-purple-400 ml-2">({log.agent_type})</span>
-                  )}
-                  {log.elapsed_seconds && (
-                    <span className="text-gray-500 ml-2">+{log.elapsed_seconds.toFixed(1)}s</span>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {currentState === 'completed' && result && (
-        <GenerationResultView
-          result={result}
-          onRestart={startGeneration}
+          currentState={currentState}
+          hasExecutionHistory={pipelineStatus && (pipelineStatus.is_completed || pipelineStatus.is_running)}
         />
       )}
 
@@ -914,6 +885,82 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
           agentResult={selectedAgentResult}
           onClose={closePopups}
         />
+      )}
+
+      {/* 진행 모니터링 모달 */}
+      {showProgressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden mx-4">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-medium" style={{color: '#2A485E'}}>
+                {progressModalType === 'new' && 'AI 생성 진행 중'}
+                {progressModalType === 'last' && '마지막 실행 정보'}
+                {progressModalType === 'current' && '현재 실행 모니터링'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowProgressModal(false);
+                  setProgressModalType('current');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 max-h-[calc(90vh-120px)] overflow-y-auto">
+              {/* 진행 상황 표시 */}
+              {currentState === 'running' && (
+                <GenerationProgressView
+                  progress={progress}
+                  onStop={handleStopGeneration}
+                  onViewAgentResult={handleViewAgentResult}
+                />
+              )}
+
+              {/* 터미널 로그 */}
+              {(currentState === 'running' || currentState === 'completed') && (
+                <div className="bg-white border rounded-lg p-6 mt-4" style={{borderColor: 'rgba(74, 124, 158, 0.3)'}}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium" style={{color: '#2A485E'}}>실시간 터미널 로그</h3>
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${logsWebsocket ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className="text-xs" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
+                        {logsWebsocket ? '연결됨' : '연결 해제'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-900 text-green-400 rounded-lg p-4 max-h-64 overflow-y-auto font-mono text-sm">
+                    {terminalLogs.length === 0 ? (
+                      <div className="text-gray-500 italic">로그 대기 중...</div>
+                    ) : (
+                      terminalLogs.map((log, index) => (
+                        <div key={index} className="mb-1">
+                          <span className="text-blue-400">[{log.level}]</span>
+                          <span className="text-yellow-400 ml-2">{log.logger}</span>
+                          <span className="ml-2">{log.message}</span>
+                          {log.agent_type && (
+                            <span className="text-purple-400 ml-2">({log.agent_type})</span>
+                          )}
+                          {log.elapsed_seconds && (
+                            <span className="text-gray-500 ml-2">+{log.elapsed_seconds.toFixed(1)}s</span>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 완료된 경우 결과 표시 */}
+              {currentState === 'completed' && result && (
+                <GenerationResultView
+                  result={result}
+                  onRestart={startGeneration}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1344,7 +1391,9 @@ function PreGenerationView({
   showAgentConfigs,
   onToggleAgentConfigs,
   postStatusState,
-  onViewLastExecution
+  onViewLastExecution,
+  currentState,
+  hasExecutionHistory
 }: {
   data: PreGenerationView;
   onStart: () => void;
@@ -1356,6 +1405,8 @@ function PreGenerationView({
   onToggleAgentConfigs: () => void;
   postStatusState: string;
   onViewLastExecution?: (lastExecution: any) => void;
+  currentState: string;
+  hasExecutionHistory: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -1419,9 +1470,9 @@ function PreGenerationView({
         <div className="mt-4 pt-4 border-t border-gray-200">
           <button
             onClick={() => onViewLastExecution?.(data.pipeline_execution_info?.last_execution)}
-            disabled={!data.pipeline_execution_info?.last_execution}
+            disabled={!hasExecutionHistory}
             className={`w-full px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              data.pipeline_execution_info?.last_execution
+              hasExecutionHistory
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}

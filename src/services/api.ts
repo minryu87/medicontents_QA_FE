@@ -481,7 +481,9 @@ export class AdminApiService {
     }>;
     total_executions: number;
   }> {
-    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-status`);
+    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-status`, {
+      timeout: 120000 // 2분 타임아웃 (대량 데이터 처리용)
+    });
     return response.data;
   }
 
@@ -495,7 +497,9 @@ export class AdminApiService {
       execution_time: string;
     } | null;
   }> {
-    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-execution-info`);
+    const response = await api.get(`/api/v1/blog-posts/${postId}/pipeline-execution-info`, {
+      timeout: 120000 // 2분 타임아웃 (대량 데이터 처리용)
+    });
     return response.data;
   }
 
@@ -749,7 +753,9 @@ export class AdminApiService {
 
   // 통합 포스팅 작업 워크플로우 데이터 조회
   async getCompletePostingWorkflow(postId: string): Promise<CompletePostingWorkflow> {
-    const response = await api.get(`/api/v1/admin/posts/${postId}/complete-workflow`);
+    const response = await api.get(`/api/v1/admin/posts/${postId}/complete-workflow`, {
+      timeout: 120000 // 2분 타임아웃 (대량 데이터 처리용)
+    });
     return response.data;
   }
 
@@ -781,7 +787,9 @@ export class AdminApiService {
       emoji_level_value: number;
     };
   }> {
-    const response = await api.get(`/api/v1/admin/posts/${postId}/guide-input`);
+    const response = await api.get(`/api/v1/admin/posts/${postId}/guide-input`, {
+      timeout: 120000 // 2분 타임아웃 (대량 데이터 처리용)
+    });
     return response.data; // 백엔드에서 이미 camelCase로 반환됨
   }
 
@@ -867,7 +875,9 @@ export class AdminApiService {
     };
     estimated_duration: number;
   }> {
-    const response = await api.get(`/api/v1/admin/posts/${postId}/generation-preview`);
+    const response = await api.get(`/api/v1/admin/posts/${postId}/generation-preview`, {
+      timeout: 120000 // 2분 타임아웃 (대량 데이터 처리용)
+    });
     return response.data;
   }
 
@@ -945,7 +955,9 @@ export class AdminApiService {
     };
     created_at: string;
   }> {
-    const response = await api.get(`/api/v1/admin/posts/${postId}/generation-results`);
+    const response = await api.get(`/api/v1/admin/posts/${postId}/generation-results`, {
+      timeout: 120000 // 2분 타임아웃 (대량 데이터 처리용)
+    });
     return response.data;
   }
 

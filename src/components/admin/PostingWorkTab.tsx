@@ -726,6 +726,7 @@ export default function PostingWorkTab({
                         postId={selectedPost.post_id}
                         hospitalId={parseInt(selectedPost.id)}
                         postStatus={selectedPost.status}
+                        workflowData={workflowData}
                       />
                     )}
 

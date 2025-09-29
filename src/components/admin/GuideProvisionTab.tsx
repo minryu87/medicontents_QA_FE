@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/services/api';
+import type { CompletePostingWorkflow } from '@/types/common';
 
 interface GuideProvisionTabProps {
   postId: string;
   hospitalId: number;
   postStatus?: string;
+  workflowData: CompletePostingWorkflow | null;
 }
 
 interface GuideProvisionData {
@@ -67,30 +69,22 @@ interface KeywordsFormData {
 
 type KeywordField = keyof Pick<KeywordsFormData, 'region_keywords' | 'hospital_keywords' | 'symptom_keywords' | 'procedure_keywords' | 'treatment_keywords' | 'target_keywords'>;
 
-export default function GuideProvisionTab({ postId, hospitalId, postStatus }: GuideProvisionTabProps) {
-  console.log('GuideProvisionTab props:', { postId, hospitalId, postStatus });
+export default function GuideProvisionTab({ postId, hospitalId, postStatus, workflowData }: GuideProvisionTabProps) {
+  console.log('GuideProvisionTab props:', { postId, hospitalId, postStatus, workflowData });
   const [data, setData] = useState<GuideProvisionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [currentPostStatus, setCurrentPostStatus] = useState<string>(postStatus || 'unknown');
 
-  // 포스트 상태 실시간 조회
+  // 포스트 상태 설정 (props에서 가져옴)
   useEffect(() => {
-    const fetchPostStatus = async () => {
-      if (!postId) return;
-
-      try {
-        const workflowData = await adminApi.getCompletePostingWorkflow(postId);
-        setCurrentPostStatus(workflowData.basic_info?.status || 'unknown');
-      } catch (error) {
-        console.error('포스트 상태 조회 실패:', error);
-        setCurrentPostStatus('unknown');
-      }
-    };
-
-    fetchPostStatus();
-  }, [postId]);
+    if (workflowData?.basic_info?.status) {
+      setCurrentPostStatus(workflowData.basic_info.status);
+    } else {
+      setCurrentPostStatus(postStatus || 'unknown');
+    }
+  }, [workflowData, postStatus]);
 
   // 편집 모드 상태들
   const [editingPersona, setEditingPersona] = useState(false);
@@ -140,18 +134,20 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus }: Gu
   // 데이터 로드
   useEffect(() => {
     const loadData = async () => {
+      if (!workflowData) return;
+
       try {
         setLoading(true);
 
-        // 좌측 패널 데이터 (읽기전용)
-        const workflowResponse = await adminApi.getCompletePostingWorkflow(postId);
+        // 좌측 패널 데이터 (props에서 가져옴)
+        const guideProvisionInfo = workflowData.guide_provision_info;
 
         // 우측 패널 데이터 (편집가능)
         const guideInputResponse = await adminApi.getGuideInput(postId);
 
         // 데이터를 조합
         const guideData: GuideProvisionData = {
-          guide_provision_info: workflowResponse.guide_provision_info || null,
+          guide_provision_info: guideProvisionInfo || null,
           guide_input: guideInputResponse
         };
 
@@ -190,8 +186,10 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus }: Gu
       }
     };
 
-    loadData();
-  }, [postId]);
+    if (workflowData) {
+      loadData();
+    }
+  }, [workflowData]);
 
 
   // 키워드 저장
