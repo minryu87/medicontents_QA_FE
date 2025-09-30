@@ -329,6 +329,18 @@ export class AdminApiService {
     return response.data;
   }
 
+  async updateCampaignStatus(campaignId: number, status: string): Promise<any> {
+    const response = await api.put(`/api/v1/admin/campaigns/${campaignId}/status`, {
+      status
+    });
+    return response.data;
+  }
+
+  async deleteCampaign(campaignId: number): Promise<any> {
+    const response = await api.delete(`/api/v1/admin/campaigns/${campaignId}`);
+    return response.data;
+  }
+
   async createCampaign(campaignData: any): Promise<Campaign> {
     const response = await api.post('/api/v1/campaigns/', campaignData);
     return response.data;

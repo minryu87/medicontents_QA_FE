@@ -10,6 +10,57 @@ import { formatDate } from '@/lib/utils';
 import { adminApi } from '@/services/api';
 import type { Campaign, Hospital } from '@/types/common';
 
+// 삭제 확인 모달 컴포넌트
+function DeleteConfirmationModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  campaignName,
+  isDeleting
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  campaignName: string;
+  isDeleting: boolean;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          캠페인 삭제 확인
+        </h3>
+        <p className="text-gray-600 mb-6">
+          <strong>"{campaignName}"</strong> 캠페인을 정말 삭제하시겠습니까?<br/>
+          <span className="text-red-600 text-sm">
+            이 작업은 되돌릴 수 없으며, 캠페인과 관련된 모든 포스트 및 데이터가 삭제됩니다.
+          </span>
+        </p>
+        <div className="flex space-x-3">
+          <Button
+            onClick={onClose}
+            variant="outline"
+            disabled={isDeleting}
+            className="flex-1"
+          >
+            취소
+          </Button>
+          <Button
+            onClick={onConfirm}
+            variant="danger"
+            disabled={isDeleting}
+            className="flex-1"
+          >
+            {isDeleting ? '삭제 중...' : '삭제'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface CampaignFilters {
   status: string;
   hospital: string;
@@ -25,6 +76,13 @@ export default function AdminCampaigns() {
     search: '',
   });
   const [loading, setLoading] = useState(true);
+
+  // 삭제 관련 상태
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    campaign: Campaign | null;
+  }>({ isOpen: false, campaign: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const loadCampaignsData = async () => {
@@ -80,13 +138,79 @@ export default function AdminCampaigns() {
   };
 
   const getStatusText = (status: string) => {
-    const statusMap: Record<string, string> = {
-      'active': '진행 중',
-      'paused': '일시 중단',
-      'completed': '완료',
-      'aborted': '중단',
-    };
-    return statusMap[status] || status;
+    return status; // DB 상태 텍스트를 그대로 표시
+  };
+
+  // 캠페인 상태 토글 함수
+  const toggleCampaignStatus = async (campaignId: number, currentStatus: string) => {
+    try {
+      let newStatus: 'active' | 'paused';
+
+      if (currentStatus === 'ready') {
+        newStatus = 'active'; // ready -> active
+      } else if (currentStatus === 'active') {
+        newStatus = 'paused'; // active -> paused
+      } else {
+        return; // 다른 상태에서는 토글하지 않음
+      }
+
+      // API 호출로 상태 업데이트
+      await adminApi.updateCampaignStatus(campaignId, newStatus);
+
+      // 로컬 상태 업데이트
+      setCampaigns(prev => prev.map(campaign =>
+        campaign.id === campaignId
+          ? { ...campaign, status: newStatus }
+          : campaign
+      ));
+
+      console.log(`캠페인 ${campaignId} 상태: ${currentStatus} → ${newStatus}`);
+    } catch (error) {
+      console.error('캠페인 상태 업데이트 실패:', error);
+      alert('상태 업데이트에 실패했습니다.');
+    }
+  };
+
+  // 스위치 표시 여부 결정
+  const shouldShowToggle = (status: string) => {
+    return status === 'ready' || status === 'active';
+  };
+
+  // 스위치 상태 결정 (ready=off, active=on)
+  const getSwitchState = (status: string) => {
+    return status === 'active';
+  };
+
+  // 캠페인 삭제 함수
+  const deleteCampaign = async (campaignId: number) => {
+    setIsDeleting(true);
+    try {
+      // 백엔드 API 호출 (아직 구현되지 않음 - 백엔드에서 구현 필요)
+      await adminApi.deleteCampaign(campaignId);
+
+      // 로컬 상태 업데이트 - 삭제된 캠페인 제거
+      setCampaigns(prev => prev.filter(campaign => campaign.id !== campaignId));
+
+      // 모달 닫기
+      setDeleteModal({ isOpen: false, campaign: null });
+
+      console.log(`캠페인 ${campaignId} 삭제 완료`);
+    } catch (error) {
+      console.error('캠페인 삭제 실패:', error);
+      alert('캠페인 삭제에 실패했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // 삭제 모달 열기
+  const openDeleteModal = (campaign: Campaign) => {
+    setDeleteModal({ isOpen: true, campaign });
+  };
+
+  // 삭제 모달 닫기
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, campaign: null });
   };
 
   if (loading) {
@@ -166,11 +290,25 @@ export default function AdminCampaigns() {
           return (
             <Card key={campaign.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                  <Badge variant={getStatusVariant(campaign.status)}>
-                    {getStatusText(campaign.status)}
-                  </Badge>
+                  <div className="flex flex-col items-end space-y-1">
+                    <Badge variant={getStatusVariant(campaign.status)}>
+                      {getStatusText(campaign.status)}
+                    </Badge>
+                    {/* 상태 토글 스위치 */}
+                    {shouldShowToggle(campaign.status) && (
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={getSwitchState(campaign.status)}
+                          onChange={() => toggleCampaignStatus(campaign.id, campaign.status)}
+                        />
+                        <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    )}
+                  </div>
                 </div>
                 {campaign.description && (
                   <p className="text-sm text-gray-600">{campaign.description}</p>
@@ -236,6 +374,14 @@ export default function AdminCampaigns() {
                     <Button size="sm" variant="ghost" asChild>
                       <Link href={`/admin/campaigns/${campaign.id}/edit`}>수정</Link>
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => openDeleteModal(campaign)}
+                      disabled={isDeleting}
+                    >
+                      삭제
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -251,6 +397,15 @@ export default function AdminCampaigns() {
           </CardContent>
         </Card>
       )}
+
+      {/* 삭제 확인 모달 */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={() => deleteModal.campaign && deleteCampaign(deleteModal.campaign.id)}
+        campaignName={deleteModal.campaign?.name || ''}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

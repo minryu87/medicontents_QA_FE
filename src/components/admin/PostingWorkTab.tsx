@@ -114,6 +114,7 @@ export default function PostingWorkTab({
         return ['material-review', 'admin-guide']; // 자료 검토, 가이드 제공
 
       case 'guide_input_completed':
+      case 'guide_completed':
         return ['material-review', 'admin-guide', 'ai-agent']; // 자료 검토, 가이드 제공, AI 생성
 
       case 'generation_started':
