@@ -513,6 +513,8 @@ export class AdminApiService {
     const response = await api.post(`/api/v1/admin/posts/${postId}/generation-control`, {
       action,
       parameters: parameters || {}
+    }, {
+      timeout: 120000 // 2분 타임아웃 (파이프라인 초기화용)
     });
     return response.data;
   }
@@ -1360,15 +1362,6 @@ export class ClientApiService {
     await api.put('/api/v1/client/posts/profile', profileData);
   }
 
-  // 알림 API
-  async getNotifications(): Promise<Notification[]> {
-    const response = await api.get('/api/v1/client/notifications');
-    return response.data;
-  }
-
-  async markNotificationAsRead(notificationId: number): Promise<void> {
-    await api.put(`/api/v1/client/notifications/${notificationId}/read`);
-  }
 
   // 일정 관리 API
   async planCampaignSchedule(campaignId: number, settings?: any): Promise<any> {
@@ -1456,6 +1449,40 @@ export class ClientApiService {
     console.log('getDelayedScheduleJobs 응답:', response.data);
     return response.data;
   }
+
+  // 알림 관리 API
+  async createNotification(data: {
+    user_id?: number;
+    post_id?: string;
+    notification_type: string;
+    message: string;
+    is_read?: boolean;
+  }): Promise<any> {
+    const response = await api.post('/api/v1/admin/notifications/', data);
+    return response.data;
+  }
+
+  async getNotifications(params?: {
+    skip?: number;
+    limit?: number;
+    is_read?: boolean;
+    user_id?: number;
+    post_id?: string;
+    notification_type?: string;
+  }): Promise<any> {
+    const response = await api.get('/api/v1/admin/notifications/', { params });
+    return response.data;
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<any> {
+    const response = await api.put(`/api/v1/admin/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  async getUnreadCount(): Promise<{ unread_count: number }> {
+    const response = await api.get('/api/v1/admin/notifications/unread-count');
+    return response.data;
+  }
 }
 
 // 긴급 처리 필요 API 함수들은 AdminApiService 클래스에 통합됨
@@ -1463,10 +1490,47 @@ export class ClientApiService {
 // 싱글톤 인스턴스
 export const adminApi: AdminApiService = new AdminApiService();
 
+// 인스턴스에 직접 메소드 추가
+(adminApi as any).createNotification = async function(data: {
+  user_id?: number;
+  post_id?: string;
+  notification_type: string;
+  message: string;
+  is_read?: boolean;
+}): Promise<any> {
+  const response = await api.post('/api/v1/admin/notifications/', data);
+  return response.data;
+};
+
+(adminApi as any).getNotifications = async function(params?: {
+  skip?: number;
+  limit?: number;
+  is_read?: boolean;
+  user_id?: number;
+  post_id?: string;
+  notification_type?: string;
+}): Promise<any> {
+  const response = await api.get('/api/v1/admin/notifications/', { params });
+  return response.data;
+};
+
+(adminApi as any).markNotificationAsRead = async function(notificationId: number): Promise<any> {
+  const response = await api.put(`/api/v1/admin/notifications/${notificationId}/read`);
+  return response.data;
+};
+
+(adminApi as any).getUnreadCount = async function(): Promise<{ unread_count: number }> {
+  const response = await api.get('/api/v1/admin/notifications/unread-count');
+  return response.data;
+};
+
 // 디버깅: adminApi에 새로운 메소드가 제대로 추가되었는지 확인
 if (typeof window !== 'undefined') {
   console.log('adminApi 메소드들:', Object.getOwnPropertyNames(adminApi));
   console.log('getLatestPipelineResult 존재:', adminApi.hasOwnProperty('getLatestPipelineResult'));
+  console.log('createNotification 존재:', adminApi.hasOwnProperty('createNotification'));
+  console.log('getNotifications 존재:', adminApi.hasOwnProperty('getNotifications'));
+  console.log('markNotificationAsRead 존재:', adminApi.hasOwnProperty('markNotificationAsRead'));
 }
 export const clientApi = new ClientApiService();
 

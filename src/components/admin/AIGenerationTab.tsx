@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { adminApi } from '@/services/api';
 import config from '@/lib/config';
+import { useCompletionNotification } from '@/contexts/CompletionNotificationContext';
 
 interface PreGenerationView {
   post_id: string;
@@ -69,7 +70,7 @@ interface GenerationProgress {
   completed_steps?: number;
   steps?: Record<string, {
     status: string;
-    duration?: number;
+    duration?: string;
     step_name?: string;
     error?: string;
   }>;
@@ -118,7 +119,14 @@ interface AIGenerationTabProps {
   postStatus?: string;
 }
 
+
 const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus }) => {
+  // 글로벌 진행/완료 알림 Context 사용 (다중 카드 지원)
+  const { addProgressNotification, updateProgressToCompleted } = useCompletionNotification();
+
+  console.log('🔔 AIGenerationTab 렌더링');
+  console.log('🔍 Admin layout이 적용되었는지 확인');
+
   const [postStatusState, setPostStatusState] = useState<string>('unknown');
   const [currentState, setCurrentState] = useState<'idle' | 'running' | 'completed'>('idle');
   const [preGenerationData, setPreGenerationData] = useState<PreGenerationView | null>(null);
@@ -167,6 +175,25 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
 
     fetchPostStatus();
   }, [postId]);
+
+  // 컴포넌트 마운트 시 초기 progress 설정 (모든 에이전트 pending 상태)
+  useEffect(() => {
+    setProgress({
+      current_step: '준비 중',
+      progress_percent: 0,
+      total_steps: 7,
+      completed_steps: 0,
+      steps: {
+        'data_aggregation': { status: 'pending', step_name: '데이터 집계' },
+        'input': { status: 'pending', step_name: '데이터 입력' },
+        'plan': { status: 'pending', step_name: '콘텐츠 계획' },
+        'title': { status: 'pending', step_name: '제목 생성' },
+        'content': { status: 'pending', step_name: '본문 생성' },
+        'evaluation': { status: 'pending', step_name: '품질 평가' },
+        'edit': { status: 'pending', step_name: '콘텐츠 편집' }
+      }
+    });
+  }, []); // 빈 의존성 배열로 마운트 시 1회만 실행
 
   // 에이전트 결과 팝업
   const [showAgentResultPopup, setShowAgentResultPopup] = useState(false);
@@ -343,17 +370,27 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
 
   const startGeneration = async () => {
     try {
+      // 사용자에게 완료 알림 메시지 표시
+      alert('AI 생성이 시작되었습니다. 완료 후 알림을 보내드리겠습니다.');
+
+      // AI 생성 시작 토스트 표시 (우측 상단)
+      if (typeof window !== 'undefined' && window.addToast) {
+        window.addToast({
+          type: 'info',
+          title: 'AI 생성 시작',
+          message: '콘텐츠 생성을 시작합니다...',
+          duration: 3000 // 3초 후 자동 사라짐
+        });
+      }
+
+      // 진행 중 알림 카드 표시 (지속 유지)
+      addProgressNotification(postId);
+
       setLoading(true);
       setError(null);
       setCurrentState('running');
-      setProgress(null); // 초기 progress 초기화
-      setTerminalLogs([]); // 터미널 로그 초기화
 
-      // 모달 열기 (신규 파이프라인 모니터링)
-      setProgressModalType('new');
-      setShowProgressModal(true);
-
-      // 1. 파이프라인 시작 API 호출
+      // 1. 파이프라인 시작 API 호출 (백그라운드 실행)
       console.log('🚀 파이프라인 시작 API 호출...');
       const startResult = await adminApi.controlGeneration(postId, 'start');
       console.log('✅ 파이프라인 시작 결과:', startResult);
@@ -362,54 +399,80 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
         throw new Error(startResult.message || '파이프라인 시작 실패');
       }
 
-      // 2. 터미널 로그 WebSocket 연결
-      setupTerminalLogsWebSocket();
+           // 백그라운드 실행 완료 감지를 위해 polling 시작 (15초 간격)
+           startCompletionPolling();
 
-      // 3. 파이프라인 모니터링 WebSocket 연결 (연결 즉시 메시지 전송)
-      setupWebSocket(false); // 실행 모드
-
-      // WebSocket 연결 실패 시를 위한 타임아웃 폴백
-      setTimeout(() => {
-        if (!websocketRef.current || websocketRef.current.readyState !== WebSocket.OPEN) {
-          console.error('❌ WebSocket 연결 타임아웃, 파이프라인 상태 확인');
-          // WebSocket 연결 실패 시 실제 파이프라인 실행 상태 확인
-          checkPipelineStatus();
-        } else {
-          console.log('✅ WebSocket 연결 확인됨, 타임아웃 체크 통과');
-        }
-      }, 5000); // 5초 타임아웃 (늘림)
-
-      // 파이프라인 상태 확인 함수 - 간단 버전
-      const checkPipelineStatus = async () => {
-        try {
-          console.log('🔍 파이프라인 상태 확인 시도...');
-
-          // WebSocket이 연결되어 있다면 모니터링 모드로 전환
-          if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-            console.log('✅ WebSocket 연결됨, 모니터링 모드로 전환');
-            setTimeout(() => setupWebSocket(true), 1000);
-            return;
-          }
-
-          // WebSocket 연결이 안 되어 있다면 일단 모니터링 모드로 시도
-          console.log('⚠️ WebSocket 연결 상태 불명확, 모니터링 모드로 시도');
-          setTimeout(() => setupWebSocket(true), 1000);
-
-        } catch (err) {
-          console.error('파이프라인 상태 확인 실패:', err);
-          // 에러가 발생해도 일단 모니터링 모드로 시도
-          console.log('⚠️ 상태 확인 실패, 모니터링 모드로 시도');
-          setTimeout(() => setupWebSocket(true), 1000);
-        }
-      };
-
-    } catch (err) {
-      setError('생성 시작 실패');
+    } catch (error) {
+      console.error('❌ 파이프라인 시작 실패:', error);
+      setError('AI 생성 시작에 실패했습니다. 다시 시도해주세요.');
       setCurrentState('idle');
-      console.error(err);
       setLoading(false);
     }
   };
+
+
+  // 파이프라인 완료 처리 함수
+  const handlePipelineCompleted = (data: any) => {
+    console.log('🎉 파이프라인 완료 처리 시작');
+
+    // 상태 업데이트
+    setCurrentState('completed');
+    setLoading(false);
+
+    // 진행 중 카드를 완료 상태로 변경
+    updateProgressToCompleted(postId);
+  };
+
+  // 완료 감지를 위한 polling 시작
+  const startCompletionPolling = () => {
+    console.log('🔄 완료 감지 polling 시작');
+
+    let errorCount = 0;
+    const maxErrors = 3; // 최대 3번 연속 에러 허용
+
+    const pollInterval = setInterval(async () => {
+      try {
+        // api.ts에서 이미 2분 타임아웃이 설정되어 있음
+        const status = await adminApi.getPipelineStatus(postId);
+
+        if (status.is_completed) {
+          console.log('🎉 Polling으로 완료 감지!');
+          clearInterval(pollInterval);
+          handlePipelineCompleted({ data: status });
+        } else {
+          // 아직 완료되지 않음
+          console.log('⏳ 파이프라인 진행 중...');
+        }
+
+        // 성공 시 에러 카운트 리셋
+        errorCount = 0;
+
+      } catch (error) {
+        errorCount++;
+        console.error(`Polling 중 에러 (${errorCount}/${maxErrors}):`, error);
+
+        // 연속 에러가 maxErrors번 이상이면 polling 중단
+        if (errorCount >= maxErrors) {
+          console.error('Polling 연속 에러로 중단');
+          clearInterval(pollInterval);
+          setError('파이프라인 상태 확인에 실패했습니다. 페이지를 새로고침해주세요.');
+          setCurrentState('idle');
+        }
+      }
+    }, 15000); // 15초마다 확인 (부하 감소)
+
+    // 최대 20분 후 polling 중단 (안전장치)
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      console.log('⏰ 완료 감지 polling 시간 초과');
+      if (currentState === 'running') {
+        setError('파이프라인이 너무 오래 걸리고 있습니다. 잠시 후 다시 시도해주세요.');
+        setCurrentState('idle');
+      }
+    }, 1200000); // 20분
+  };
+
+  // 완료 알림 표시 함수
 
   // 환경에 맞는 WebSocket URL 생성 헬퍼 함수
   const createWebSocketUrl = (path: string) => {
@@ -444,8 +507,8 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
           if (data.type === 'terminal_log') {
             setTerminalLogs(prev => {
               const newLogs = [...prev, data.data];
-              // 최근 100개만 유지
-              return newLogs.slice(-100);
+              // 모든 로그 유지 (최대 1000개로 제한하여 메모리 관리)
+              return newLogs.slice(-1000);
             });
           } else if (data.type === 'connection_established') {
             console.log('터미널 로그 모니터링 연결됨:', data.message);
@@ -516,29 +579,21 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
             console.log('✅ 파이프라인 모니터링 WebSocket 연결됨 (실행 모드)');
             setTerminalLogs([]); // 터미널 로그 초기화
           } else if (data.type === 'pipeline_status') {
-            setPipelineStatus(data.data);
+            // pipeline_status는 progress 업데이트만 하고, pipelineStatus는 initializeState에서 이미 설정됨
+            // setPipelineStatus(data.data); // 주석 처리하여 initializeState 값 유지
             updateProgressFromPipelineStatus(data.data);
           } else if (data.type === 'pipeline_started') {
-            // 파이프라인이 실제로 시작되었을 때 (새 실행의 경우에만 초기화)
-            console.log('🎯 파이프라인 시작됨, progress 초기화');
+            // 파이프라인이 실제로 시작되었을 때
+            console.log('🎯 파이프라인 시작됨');
 
             // 로딩 상태 해제 (파이프라인이 실제로 시작됨)
             setLoading(false);
-            setProgress({
-              current_step: 'data_aggregation',
-              progress_percent: 0,
-              total_steps: 6,
-              completed_steps: 0,
-              steps: {
-                'data_aggregation': { status: 'pending', step_name: '데이터 집계' },
-                'input': { status: 'pending', step_name: '데이터 입력' },
-                'plan': { status: 'pending', step_name: '콘텐츠 계획' },
-                'title': { status: 'pending', step_name: '제목 생성' },
-                'content': { status: 'pending', step_name: '본문 생성' },
-                'evaluation': { status: 'pending', step_name: '품질 평가' },
-                'edit': { status: 'pending', step_name: '콘텐츠 편집' }
-              }
-            });
+
+            // 진행 상태를 유지하면서 current_step만 업데이트
+            setProgress(prev => ({
+              ...prev,
+              current_step: 'data_aggregation'
+            }));
           } else if (data.type === 'agent_started') {
             // 에이전트 시작 알림
             console.log(`🚀 에이전트 시작: ${data.data.agent_name} (${data.data.agent_type})`);
@@ -546,7 +601,7 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
           } else if (data.type === 'agent_completed') {
             // 에이전트 완료 알림
             console.log(`✅ 에이전트 완료: ${data.data.agent_name} (${data.data.agent_type}) - ${data.data.success ? '성공' : '실패'}`);
-            updateStepStatus(data.data.agent_type, 'completed', data.data.agent_name);
+            updateStepStatus(data.data.agent_type, 'completed', data.data.agent_name, undefined, undefined, data.data.iteration);
           } else if (data.type === 'agent_failed') {
             // 에이전트 실패 알림
             console.log(`${data.data.agent_name} 실패: ${data.data.error}`);
@@ -570,11 +625,30 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
             setError('파이프라인이 중단되었습니다.');
             setLoading(false); // 취소 시 로딩 상태 해제
           } else if (data.type === 'pipeline_completed') {
-            // 파이프라인 완료
-            console.log('파이프라인 완료:', data.data);
+            // 파이프라인 완료 - WebSocket에서는 상태 업데이트만, 알림은 polling에서 처리
+            console.log('🎉 파이프라인 실행 완료 (WebSocket):', data.data);
 
             setCurrentState('completed');
             setLoading(false); // 파이프라인 완료 시 로딩 상태 해제
+
+            // 진행률을 100%로 설정
+            setProgress(prev => ({
+              ...prev,
+              current_step: '완료됨',
+              progress_percent: 100,
+              completed_steps: 7
+            }));
+
+            // 모달이 열려있다면 완료 메시지 표시 또는 닫기
+            if (showProgressModal) {
+              // 모달 내에서 완료 상태 표시를 위해 약간의 지연 후 업데이트
+              setTimeout(() => {
+                console.log('모달 내 진행 상태 완료로 업데이트');
+              }, 500);
+            }
+
+            // 중요: WebSocket에서는 알림 생성하지 않음 (중복 방지)
+            // 알림은 polling에서만 처리
           } else if (data.type === 'pipeline_result') {
             setCurrentState('completed');
             setResult(data.data);
@@ -612,7 +686,7 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
     if (!pipelineData || !pipelineData.steps) return;
 
     const steps = pipelineData.steps;
-    const totalSteps = Object.keys(steps).length;
+    const FIXED_TOTAL_STEPS = 7;  // 고정된 총 단계 수
     let completedSteps = 0;
     let currentStep = '';
 
@@ -625,31 +699,48 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
       }
     });
 
-    const progressPercent = Math.round((completedSteps / totalSteps) * 100);
+    // 고정된 총 단계 수로 진행률 계산
+    const progressPercent = Math.round((completedSteps / FIXED_TOTAL_STEPS) * 100);
 
     setProgress({
       current_step: currentStep || '진행 중',
       progress_percent: progressPercent,
-      total_steps: totalSteps,
+      total_steps: FIXED_TOTAL_STEPS,  // 고정값 사용
       completed_steps: completedSteps,
       steps: steps
     });
   };
 
-  const updateStepStatus = (step: string, status: string, stepName?: string, duration?: number, error?: string) => {
+  // 시간 포맷팅 헬퍼 함수
+  const formatDuration = (duration: number | undefined): string => {
+    if (!duration || duration <= 0) return '--';
+
+    // ms를 초로 변환 (duration이 이미 초 단위일 수 있음)
+    const seconds = duration > 1000 ? duration / 1000 : duration;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+
+    return `${minutes.toString().padStart(2, '0')}분 ${remainingSeconds.toString().padStart(2, '0')}초`;
+  };
+
+  const updateStepStatus = (step: string, status: string, stepName?: string, duration?: number, error?: string, iteration?: number) => {
+    // 품질 평가와 콘텐츠 편집의 경우 회차 표시 추가
+    const displayStepName = (step === 'evaluation' || step === 'edit') && iteration && iteration > 1
+      ? `${stepName} (${iteration}회차)`
+      : stepName;
     setProgress(prevProgress => {
       if (!prevProgress) {
         // 초기 progress 객체가 없을 때
         return {
           current_step: step,
           progress_percent: 0,
-          total_steps: 6,
+          total_steps: 7,
           completed_steps: status === 'completed' ? 1 : 0,
           steps: {
             [step]: {
               status,
-              duration,
-              step_name: stepName,
+              duration: formatDuration(duration),
+              step_name: displayStepName,
               error: error
             }
           }
@@ -659,8 +750,8 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
       const updatedSteps = { ...prevProgress.steps };
       updatedSteps[step] = {
         status,
-        duration,
-        step_name: stepName,
+        duration: formatDuration(duration),
+        step_name: displayStepName,
         error: error
       };
 
@@ -826,6 +917,46 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
         <h2 className="text-xl font-semibold" style={{color: '#2A485E'}}>AI 콘텐츠 생성</h2>
         <div className="text-sm" style={{color: 'rgba(42, 72, 94, 0.7)'}}>
           Post ID: {postId}
+        </div>
+      </div>
+
+      {/* 테스트용 알림 버튼들 */}
+      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => addProgressNotification(postId)}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
+          >
+            🔔 진행 알림 카드 추가
+          </button>
+          <button
+            onClick={() => {
+              console.log('🔥 시작 토스트 표시 버튼 클릭됨');
+              console.log('🚀 토스트 호출 시작...');
+
+              try {
+                if (typeof window !== 'undefined' && window.addToast) {
+                  window.addToast({
+                    type: 'info',
+                    title: '테스트 토스트',
+                    message: 'AI 생성 시작 토스트입니다.',
+                    duration: 3000
+                  });
+                  console.log('✅ window.addToast 호출 완료');
+                } else {
+                  console.error('❌ window.addToast가 정의되지 않음');
+                }
+              } catch (error) {
+                console.error('❌ addToast 호출 실패:', error);
+              }
+            }}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+          >
+            🍞 시작 토스트 표시
+          </button>
+        </div>
+        <div className="text-sm text-gray-600">
+          다중 카드 및 토스트 시스템 테스트
         </div>
       </div>
 
@@ -2395,6 +2526,7 @@ function AgentResultPopup({ agentResult, onClose }: { agentResult: any; onClose:
           </div>
         </div>
       </div>
+
     </div>
   );
 }

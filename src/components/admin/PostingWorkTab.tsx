@@ -43,6 +43,38 @@ export default function PostingWorkTab({
   const [publishDate, setPublishDate] = useState('');
   const [publishTime, setPublishTime] = useState('');
 
+  // 포스트 필터링 상태
+  const [postFilter, setPostFilter] = useState<string>('전체');
+
+  // 필터 그룹 정의
+  const filterGroups: Record<string, string[]> = {
+    '전체': [],
+    '가이드': ['병원 자료 입력 중', '병원 자료 제공 완료'],
+    'AI 생성': ['자료 검토 완료', '어드민 가이드 완료'],
+    '생성 검토': ['AI 생성 중', 'AI 생성 완료-성공', 'AI 생성 완료-실패'],
+    '최종 승인': ['어드민 검토 완료', '클라이언트 승인 완료'],
+    '게시': ['최종 승인', '게시 대기', '게시 완료'],
+    '기타': ['중단/취소']
+  };
+
+  // 포스트 필터링 및 정렬 함수
+  const getFilteredAndSortedPosts = () => {
+    let filteredPosts = posts;
+
+    // 필터 적용
+    if (postFilter !== '전체') {
+      const targetStatuses = filterGroups[postFilter as keyof typeof filterGroups];
+      filteredPosts = posts.filter(post => targetStatuses.includes(getStatusLabel(post.status)));
+    }
+
+    // D-day 오름차순 정렬 (마감일 가까운 순서)
+    return filteredPosts.sort((a, b) => {
+      const aPublishDate = a.publish_date ? new Date(a.publish_date).getTime() : Infinity;
+      const bPublishDate = b.publish_date ? new Date(b.publish_date).getTime() : Infinity;
+      return aPublishDate - bPublishDate;
+    });
+  };
+
   // 통합 워크플로우 데이터
   const [workflowData, setWorkflowData] = useState<CompletePostingWorkflow | null>(null);
   const [workflowLoading, setWorkflowLoading] = useState(false);
@@ -371,19 +403,62 @@ export default function PostingWorkTab({
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      // 초기
       case 'initial': return '초기';
-      case 'hospital_completed': return '병원 자료 완료';
-      case 'material_completed': return '자료 완료';
-      case 'guide_completed': return '가이드 완료';
-      case 'generation_completed': return 'AI 생성 완료';
-      case 'agent_processing': return 'AI 처리중';
-      case 'agent_completed': return 'AI 완료';
-      case 'admin_review': return '어드민 검토';
-      case 'admin_approved': return '어드민 승인';
-      case 'client_review': return '클라이언트 검토';
-      case 'client_approved': return '클라이언트 승인';
-      case 'final_revision': return '최종 수정';
+
+      // 병원 자료 입력 중
+      case 'material_started':
+      case 'material_draft': return '병원 자료 입력 중';
+
+      // 병원 자료 제공 완료
+      case 'material_completed':
+      case 'hospital_completed': return '병원 자료 제공 완료';
+
+      // 자료 검토 완료
+      case 'material_review_completed': return '자료 검토 완료';
+
+      // 어드민 가이드 완료
+      case 'guide_input_completed': return '어드민 가이드 완료';
+
+      // AI 생성 중
+      case 'generation_started':
+      case 'ai_processing':
+      case 'agent_processing': return 'AI 생성 중';
+
+      // AI 생성 완료-성공
+      case 'generation_completed':
+      case 'ai_completed':
+      case 'agent_completed': return 'AI 생성 완료-성공';
+
+      // AI 생성 완료-실패
+      case 'generation_partial':
+      case 'generation_failed': return 'AI 생성 완료-실패';
+
+      // 어드민 검토 완료
+      case 'admin_review':
+      case 'admin_approved':
+      case 'admin_revision_requested': return '어드민 검토 완료';
+
+      // 클라이언트 승인 완료
+      case 'client_review':
+      case 'client_approved':
+      case 'client_revision_requested': return '클라이언트 승인 완료';
+
+      // 최종 승인
+      case 'final_approved':
+      case 'final_revision': return '최종 승인';
+
+      // 게시 대기
       case 'publish_scheduled': return '게시 대기';
+
+      // 게시 완료
+      case 'publishing':
+      case 'published': return '게시 완료';
+
+      // 중단/취소
+      case 'paused':
+      case 'aborted': return '중단/취소';
+
       default: return '알 수 없음';
     }
   };
@@ -406,21 +481,47 @@ export default function PostingWorkTab({
         {/* 왼쪽 패널: 작업 대상 포스트 목록 */}
         <div className="w-1/5 bg-white rounded-xl shadow-lg p-4 flex flex-col" style={{ height: '1250px' }}>
           <h3 className="text-lg font-medium text-neutral-900 mb-4">작업 대상 포스트</h3>
+
+          {/* 필터 버튼들 */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {Object.keys(filterGroups).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setPostFilter(filter)}
+                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                  postFilter === filter
+                    ? 'bg-neutral-600 text-white'
+                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                }`}
+              >
+                {filter}
+                {filter !== '전체' && (
+                  <span className="ml-1 text-xs opacity-75">
+                    ({posts.filter(post =>
+                      filterGroups[filter as keyof typeof filterGroups].includes(getStatusLabel(post.status))
+                    ).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
               <span className="ml-2 text-neutral-600">포스트 로딩 중...</span>
             </div>
-          ) : posts.length === 0 ? (
+          ) : getFilteredAndSortedPosts().length === 0 ? (
             <div className="text-center py-8">
               <div className="text-neutral-400 mb-2">
                 <i className="fa-solid fa-folder-open text-2xl"></i>
               </div>
-              <p className="text-sm text-neutral-500">캠페인을 선택해주세요</p>
+              <p className="text-sm text-neutral-500">
+                {postFilter === '전체' ? '캠페인을 선택해주세요' : `'${postFilter}' 조건에 맞는 포스트가 없습니다`}
+              </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[1200px] overflow-y-auto">
-              {posts.map((post) => (
+            <div className="space-y-3 max-h-[1150px] overflow-y-auto">
+              {getFilteredAndSortedPosts().map((post) => (
                 <div
                   key={post.id}
                   onClick={() => {

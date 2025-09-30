@@ -15,15 +15,7 @@ const WebSocketStatusIndicator = dynamic(
   { ssr: false }
 );
 
-const NotificationProvider = dynamic(
-  () => import('@/components/shared/NotificationProvider').then(mod => ({ default: mod.NotificationProvider })),
-  { ssr: false }
-);
-
-const NotificationTester = dynamic(
-  () => import('@/components/shared/NotificationProvider').then(mod => ({ default: mod.NotificationTester })),
-  { ssr: false }
-);
+// NotificationProvider는 Admin layout에서만 사용하도록 제거
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -43,14 +35,11 @@ export default function RootLayout({
     <html lang="ko">
       <body className={inter.className}>
         <WebSocketProvider autoConnect={true}>
-          <NotificationProvider>
-            <div className="min-h-screen bg-gray-50">
-              {children}
-              <DebugInfo />
-              <WebSocketStatusIndicator />
-              <NotificationTester />
-            </div>
-          </NotificationProvider>
+          <div className="min-h-screen bg-gray-50">
+            {children}
+            <DebugInfo />
+            <WebSocketStatusIndicator />
+          </div>
         </WebSocketProvider>
       </body>
     </html>

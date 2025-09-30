@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { CompletionNotificationProvider, CompletionNotificationCard } from '@/contexts/CompletionNotificationContext';
+import { NotificationProvider } from '@/components/shared/NotificationProvider';
 
 const adminNavigation = [
   { name: '대시보드', href: '/admin', icon: '🏠' },
@@ -38,6 +40,28 @@ const adminNavigation = [
 ];
 
 export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  console.log('🏗️ AdminLayout 렌더링 시작');
+
+  return (
+    <NotificationProvider>
+      <CompletionNotificationProvider>
+        <div className="min-h-screen bg-gray-50">
+          {/* 기존 layout 내용 */}
+          <AdminLayoutContent>{children}</AdminLayoutContent>
+
+          {/* 글로벌 완료 알림 카드 */}
+          <CompletionNotificationCard />
+        </div>
+      </CompletionNotificationProvider>
+    </NotificationProvider>
+  );
+}
+
+function AdminLayoutContent({
   children,
 }: {
   children: React.ReactNode;

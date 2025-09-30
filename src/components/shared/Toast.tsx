@@ -192,13 +192,18 @@ interface ToastContainerProps {
 }
 
 export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
+  console.log('🍞 ToastContainer 렌더링:', { toasts, onRemove });
+
   return (
     <div className="fixed top-0 right-0 z-50 p-4 space-y-4 pointer-events-none">
-      {toasts.map(toast => (
-        <div key={toast.id} className="pointer-events-auto">
-          <Toast {...toast} onClose={onRemove} />
-        </div>
-      ))}
+      {toasts.map(toast => {
+        console.log('🍞 개별 토스트 렌더링:', toast);
+        return (
+          <div key={toast.id} className="pointer-events-auto">
+            <Toast {...toast} onClose={onRemove} />
+          </div>
+        );
+      })}
     </div>
   );
 }
