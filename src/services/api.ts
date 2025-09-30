@@ -67,6 +67,16 @@ export class AdminApiService {
     return response.data;
   }
 
+  async getLatestPipelineResult(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/latest-pipeline-result`);
+    return response.data;
+  }
+
+  async getEvaluationResultsDashboard(postId: string): Promise<any> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/evaluation-results-dashboard`);
+    return response.data;
+  }
+
   async getFailedAgentJobs(hospitalId?: number): Promise<{
     success: boolean;
     data: Array<{
@@ -1521,6 +1531,16 @@ export const adminApi: AdminApiService = new AdminApiService();
 
 (adminApi as any).getUnreadCount = async function(): Promise<{ unread_count: number }> {
   const response = await api.get('/api/v1/admin/notifications/unread-count');
+  return response.data;
+};
+
+
+(adminApi as any).getLatestPipelineStatus = async function(postId: string): Promise<{
+  pipeline_id: string | null;
+  status: 'running' | 'completed' | null;
+  created_at: string | null;
+}> {
+  const response = await api.get(`/api/v1/admin/posts/${postId}/latest-pipeline-status`);
   return response.data;
 };
 

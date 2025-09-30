@@ -66,6 +66,10 @@ export default function AdminPostReviewPage() {
   const router = useRouter();
   const postId = params.id as string;
 
+  // 테스트: 페이지 로드 확인
+  console.log('🚀 결과 검토 페이지 렌더링 시작, postId:', postId);
+  console.log('📋 params:', params);
+
   const [postData, setPostData] = useState<PostData | null>(null);
   const [contentData, setContentData] = useState<ContentData | null>(null);
   const [evaluationData, setEvaluationData] = useState<EvaluationData | null>(null);
@@ -77,17 +81,67 @@ export default function AdminPostReviewPage() {
   const [revisionInstructions, setRevisionInstructions] = useState('');
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
 
+  // 파이프라인 상태 관련 상태
+  const [pipelineStatus, setPipelineStatus] = useState<'running' | 'completed' | 'none' | null>(null);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [noPipeline, setNoPipeline] = useState(false);
+
   useEffect(() => {
-    loadPostData();
+    console.log('📋 결과 검토 페이지 마운트, postId:', postId);
+    loadPipelineData();
   }, [postId]);
 
-  const loadPostData = async () => {
+  // 파이프라인 상태 체크 및 데이터 로드
+  const loadPipelineData = async () => {
     try {
+      console.log('🚀 loadPipelineData 시작');
       setLoading(true);
 
-      // 포스트 기본 정보
+      // 1. 가장 최근 파이프라인 상태 확인
+      console.log('🔍 파이프라인 상태 확인:', postId);
+      console.log('🔧 adminApi.getLatestPipelineStatus 존재:', typeof (adminApi as any).getLatestPipelineStatus);
+
+      const pipelineResponse = await (adminApi as any).getLatestPipelineStatus(postId);
+      console.log('📊 파이프라인 상태 응답:', pipelineResponse);
+
+      const status = pipelineResponse.status;
+      setPipelineStatus(status);
+
+      if (status === 'completed') {
+        console.log('✅ 파이프라인이 완료됨 - 데이터 로드 시작');
+        // 완료된 파이프라인이 있으면 기존 로직으로 데이터 로드
+        await loadPostData();
+        console.log('✅ 데이터 로드 완료');
+      } else if (status === 'running') {
+        // 진행 중인 파이프라인이 있으면 진행 중 메시지 표시
+        setPipelineRunning(true);
+        // 기본 포스트 정보만 로드
+        await loadBasicPostData();
+      } else {
+        // 파이프라인이 없으면 아직 생성되지 않음 메시지 표시
+        setNoPipeline(true);
+        // 기본 포스트 정보만 로드
+        await loadBasicPostData();
+      }
+
+    } catch (error) {
+      console.error('Failed to load pipeline data:', error);
+      // 에러 시에도 기본 포스트 정보는 표시
+      try {
+        await loadBasicPostData();
+      } catch (basicError) {
+        console.error('Failed to load basic post data:', basicError);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 기본 포스트 정보만 로드 (파이프라인 상태와 무관)
+  const loadBasicPostData = async () => {
+    try {
       const postsResponse = await adminApi.getPosts({ search: postId });
-      const post = postsResponse.posts.find((p: any) => p.id.toString() === postId);
+      const post = postsResponse.posts.find((p: any) => p.id.toString() === postId || p.post_id === postId);
       if (post) {
         setPostData({
           id: post.id,
@@ -99,13 +153,24 @@ export default function AdminPostReviewPage() {
           medicalService: '진료과목' // TODO: 실제 진료과목 조회
         });
       }
+    } catch (error) {
+      console.error('Failed to load basic post data:', error);
+    }
+  };
 
+  // 완료된 파이프라인의 전체 데이터 로드
+  const loadPostData = async () => {
+    console.log('📥 loadPostData 시작');
+    try {
       // 콘텐츠 데이터
       try {
+        console.log('🔄 clientApi.getPostMaterials 호출:', postId);
         const contentResponse = await clientApi.getPostMaterials(postId);
+        console.log('📄 콘텐츠 데이터 응답:', contentResponse);
         setContentData(contentResponse);
+        console.log('✅ 콘텐츠 데이터 설정 완료');
       } catch (error) {
-        console.warn('Content not available:', error);
+        console.warn('❌ Content not available:', error);
       }
 
       // 평가 데이터 (임시로 주석 처리)
@@ -116,10 +181,9 @@ export default function AdminPostReviewPage() {
       //   console.warn('Evaluation not available:', error);
       // }
 
+      console.log('✅ loadPostData 완료');
     } catch (error) {
-      console.error('Failed to load post data:', error);
-    } finally {
-      setLoading(false);
+      console.error('❌ Failed to load post data:', error);
     }
   };
 
@@ -172,10 +236,16 @@ export default function AdminPostReviewPage() {
     }
   };
 
+  // 테스트: 로딩 상태에서도 메시지 표시
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">결과 검토 페이지 로딩 중...</h2>
+          <p className="text-gray-600">Post ID: {postId}</p>
+          <p className="text-sm text-gray-500 mt-4">페이지가 정상적으로 로드되었습니다!</p>
+        </div>
       </div>
     );
   }
@@ -192,6 +262,145 @@ export default function AdminPostReviewPage() {
     );
   }
 
+  // 파이프라인 상태별 UI 표시
+  console.log('🎨 UI 렌더링 - pipelineStatus:', pipelineStatus, 'pipelineRunning:', pipelineRunning, 'noPipeline:', noPipeline, 'contentData:', !!contentData);
+
+  if (pipelineRunning) {
+    console.log('🔄 진행 중 UI 표시');
+    return (
+      <div className="container mx-auto px-4 py-8">
+        {/* 헤더 */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">포스트 검토</h1>
+              <p className="text-gray-600">포스트 ID: {postData.postId}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 포스트 정보 */}
+        <Card className="p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">포스트 정보</h2>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(postData.status)}`}>
+              {getStatusText(postData.status)}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center">
+              <User className="w-5 h-5 text-gray-400 mr-2" />
+              <span className="text-gray-600">병원:</span>
+              <span className="ml-2 font-medium">{postData.hospitalName}</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="w-5 h-5 text-gray-400 mr-2" />
+              <span className="text-gray-600">생성일:</span>
+              <span className="ml-2 font-medium">
+                {new Date(postData.createdAt).toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        {/* 진행 중 메시지 */}
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <Clock className="w-20 h-20 text-blue-500 mx-auto mb-6 animate-spin" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">생성이 진행 중입니다</h2>
+            <p className="text-lg text-gray-600 mb-6">
+              AI가 콘텐츠를 생성하고 있습니다. 잠시 후 다시 확인해주세요.
+            </p>
+            <div className="flex justify-center space-x-4">
+              <Button
+                variant="secondary"
+                onClick={() => router.push(`/admin/posts/${postId}`)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                포스트 상세보기
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => window.location.reload()}
+              >
+                새로고침
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (noPipeline) {
+    console.log('❌ 파이프라인 없음 UI 표시');
+    return (
+      <div className="container mx-auto px-4 py-8">
+        {/* 헤더 */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">포스트 검토</h1>
+              <p className="text-gray-600">포스트 ID: {postData.postId}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 포스트 정보 */}
+        <Card className="p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">포스트 정보</h2>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(postData.status)}`}>
+              {getStatusText(postData.status)}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center">
+              <User className="w-5 h-5 text-gray-400 mr-2" />
+              <span className="text-gray-600">병원:</span>
+              <span className="ml-2 font-medium">{postData.hospitalName}</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="w-5 h-5 text-gray-400 mr-2" />
+              <span className="text-gray-600">생성일:</span>
+              <span className="ml-2 font-medium">
+                {new Date(postData.createdAt).toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        {/* 아직 생성되지 않음 메시지 */}
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <FileText className="w-20 h-20 text-gray-400 mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">아직 AI 생성이 진행되지 않았습니다</h2>
+            <p className="text-lg text-gray-600 mb-6">
+              AI 생성 탭에서 콘텐츠를 생성한 후 결과를 검토할 수 있습니다.
+            </p>
+            <div className="flex justify-center space-x-4">
+              <Button
+                variant="secondary"
+                onClick={() => router.push(`/admin/posts/${postId}`)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                포스트 상세보기
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => router.push(`/admin/hospital-work`)}
+              >
+                <Target className="w-4 h-4 mr-2" />
+                AI 생성하기
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('📋 기본 콘텐츠 UI 표시');
   return (
     <div className="container mx-auto px-4 py-8">
       {/* 헤더 */}

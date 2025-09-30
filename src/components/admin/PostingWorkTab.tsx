@@ -145,6 +145,10 @@ export default function PostingWorkTab({
 
   // 선택된 포스트가 변경될 때 데이터 로드
   useEffect(() => {
+    console.log('🔄 PostingWorkTab useEffect 실행 - selectedPost:', selectedPost);
+    console.log('📋 selectedPost?.post_id:', selectedPost?.post_id);
+    console.log('🎯 activeStep:', activeStep);
+
     if (selectedPost?.post_id) {
       loadWorkflowData(selectedPost.post_id);
     } else {
@@ -181,38 +185,61 @@ export default function PostingWorkTab({
 
       // 새로운 대시보드 데이터 로드 (병렬 처리)
       try {
-        console.log('API 호출 시작:', postId);
-        console.log('adminApi:', adminApi);
-        console.log('adminApi type:', typeof adminApi);
-        console.log('getLatestPipelineResult 존재:', typeof (adminApi as any).getLatestPipelineResult);
-        console.log('getLatestPipelineResult 함수:', (adminApi as any).getLatestPipelineResult);
+        console.log('🚀 대시보드 데이터 로드 시작 - postId:', postId);
+        console.log('📡 adminApi 객체:', adminApi);
+        console.log('🔧 getLatestPipelineResult 함수 존재:', typeof adminApi.getLatestPipelineResult);
+        console.log('🔧 getEvaluationResultsDashboard 함수 존재:', typeof adminApi.getEvaluationResultsDashboard);
 
         // 함수 존재 여부 확인
-        if (typeof (adminApi as any).getLatestPipelineResult !== 'function') {
-          console.error('getLatestPipelineResult 함수가 존재하지 않습니다!');
+        if (typeof adminApi.getLatestPipelineResult !== 'function') {
+          console.error('❌ getLatestPipelineResult 함수가 존재하지 않습니다!');
           throw new Error('API 함수가 로드되지 않았습니다');
         }
 
+        if (typeof adminApi.getEvaluationResultsDashboard !== 'function') {
+          console.error('❌ getEvaluationResultsDashboard 함수가 존재하지 않습니다!');
+          throw new Error('API 함수가 로드되지 않았습니다');
+        }
+
+        console.log('🔄 API 호출 실행 중...');
+
         const [pipelineResultData, evaluationResultData] = await Promise.allSettled([
-          (adminApi as any).getLatestPipelineResult(postId),
-          (adminApi as any).getEvaluationResultsDashboard(postId)
+          adminApi.getLatestPipelineResult(postId),
+          adminApi.getEvaluationResultsDashboard(postId)
         ]);
 
+        console.log('📊 PipelineResult 결과:', pipelineResultData);
+        console.log('📊 PipelineResult status:', pipelineResultData.status);
         if (pipelineResultData.status === 'fulfilled') {
+          console.log('📊 PipelineResult value:', pipelineResultData.value);
+        } else {
+          console.log('📊 PipelineResult reason:', pipelineResultData.reason);
+        }
+        console.log('📊 EvaluationResult 결과:', evaluationResultData);
+        console.log('📊 EvaluationResult status:', evaluationResultData.status);
+        if (evaluationResultData.status === 'fulfilled') {
+          console.log('📊 EvaluationResult value:', evaluationResultData.value);
+        } else {
+          console.log('📊 EvaluationResult reason:', evaluationResultData.reason);
+        }
+
+        if (pipelineResultData.status === 'fulfilled') {
+          console.log('✅ PipelineResult 로드 성공:', pipelineResultData.value);
           setPipelineResult(pipelineResultData.value);
         } else {
-          console.warn('PipelineResult 로드 실패:', pipelineResultData.reason);
+          console.warn('❌ PipelineResult 로드 실패:', pipelineResultData.reason);
           setPipelineResult(null);
         }
 
         if (evaluationResultData.status === 'fulfilled') {
+          console.log('✅ EvaluationResults 로드 성공:', evaluationResultData.value);
           setEvaluationData(evaluationResultData.value);
         } else {
-          console.warn('EvaluationResults 로드 실패:', evaluationResultData.reason);
+          console.warn('❌ EvaluationResults 로드 실패:', evaluationResultData.reason);
           setEvaluationData(null);
         }
       } catch (dashboardError) {
-        console.error('대시보드 데이터 로드 실패:', dashboardError);
+        console.error('💥 대시보드 데이터 로드 실패:', dashboardError);
         setPipelineResult(null);
         setEvaluationData(null);
       }
@@ -840,6 +867,18 @@ export default function PostingWorkTab({
 
                     {activeStep === 'result-review' && (
                       <div className="space-y-6">
+                        {/* 디버깅 정보 */}
+                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                          <h4 className="font-semibold text-yellow-800 mb-2">🔍 디버깅 정보</h4>
+                          <div className="text-sm text-yellow-700 space-y-1">
+                            <p>Post ID: {selectedPost?.post_id}</p>
+                            <p>Post Status: {selectedPost?.status}</p>
+                            <p>Pipeline Result: {pipelineResult ? '있음' : '없음'}</p>
+                            <p>Evaluation Data: {evaluationData ? '있음' : '없음'}</p>
+                            <p>Loading: {dashboardLoading ? '로딩중' : '완료'}</p>
+                          </div>
+                        </div>
+
                         {/* PipelineResult 헤더 */}
                         <PipelineResultHeader
                           pipelineResult={pipelineResult}
