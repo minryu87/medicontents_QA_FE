@@ -66,10 +66,6 @@ export default function AdminPostReviewPage() {
   const router = useRouter();
   const postId = params.id as string;
 
-  // 테스트: 페이지 로드 확인
-  console.log('🚀 결과 검토 페이지 렌더링 시작, postId:', postId);
-  console.log('📋 params:', params);
-
   const [postData, setPostData] = useState<PostData | null>(null);
   const [contentData, setContentData] = useState<ContentData | null>(null);
   const [evaluationData, setEvaluationData] = useState<EvaluationData | null>(null);
@@ -236,16 +232,10 @@ export default function AdminPostReviewPage() {
     }
   };
 
-  // 테스트: 로딩 상태에서도 메시지 표시
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">결과 검토 페이지 로딩 중...</h2>
-          <p className="text-gray-600">Post ID: {postId}</p>
-          <p className="text-sm text-gray-500 mt-4">페이지가 정상적으로 로드되었습니다!</p>
-        </div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
       </div>
     );
   }

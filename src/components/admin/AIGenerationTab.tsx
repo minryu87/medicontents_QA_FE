@@ -920,45 +920,6 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
         </div>
       </div>
 
-      {/* 테스트용 알림 버튼들 */}
-      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => addProgressNotification(postId)}
-            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
-          >
-            🔔 진행 알림 카드 추가
-          </button>
-          <button
-            onClick={() => {
-              console.log('🔥 시작 토스트 표시 버튼 클릭됨');
-              console.log('🚀 토스트 호출 시작...');
-
-              try {
-                if (typeof window !== 'undefined' && window.addToast) {
-                  window.addToast({
-                    type: 'info',
-                    title: '테스트 토스트',
-                    message: 'AI 생성 시작 토스트입니다.',
-                    duration: 3000
-                  });
-                  console.log('✅ window.addToast 호출 완료');
-                } else {
-                  console.error('❌ window.addToast가 정의되지 않음');
-                }
-              } catch (error) {
-                console.error('❌ addToast 호출 실패:', error);
-              }
-            }}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
-          >
-            🍞 시작 토스트 표시
-          </button>
-        </div>
-        <div className="text-sm text-gray-600">
-          다중 카드 및 토스트 시스템 테스트
-        </div>
-      </div>
 
       {/* 통일된 UI 레이아웃 */}
       {preGenerationData && (
