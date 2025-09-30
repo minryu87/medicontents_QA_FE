@@ -1505,6 +1505,24 @@ export class ClientApiService {
     const response = await api.get('/api/v1/admin/notifications/unread-count');
     return response.data;
   }
+
+  // 샘플 페이지 API
+  async getSamplePosts(params?: { skip?: number; limit?: number }): Promise<Array<{
+    id: number;
+    post_id: string;
+    title: string | null;
+    recent_pipeline_id: string | null;
+  }>> {
+    const response = await api.get('/api/v1/client/sample/posts', { params });
+    return response.data;
+  }
+
+  async getSampleHtmlContent(pipelineId: string): Promise<{
+    final_html_content: string | null;
+  }> {
+    const response = await api.get(`/api/v1/client/sample/html/${pipelineId}`);
+    return response.data;
+  }
 }
 
 // 긴급 처리 필요 API 함수들은 AdminApiService 클래스에 통합됨
