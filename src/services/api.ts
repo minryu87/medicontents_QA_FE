@@ -1513,14 +1513,21 @@ export class ClientApiService {
     title: string | null;
     recent_pipeline_id: string | null;
   }>> {
-    const response = await api.get('/api/v1/client/sample/posts', { params });
+    const response = await api.get<Array<{
+      id: number;
+      post_id: string;
+      title: string | null;
+      recent_pipeline_id: string | null;
+    }>>('/api/v1/client/sample/posts', { params });
     return response.data;
   }
 
   async getSampleHtmlContent(pipelineId: string): Promise<{
     final_html_content: string | null;
   }> {
-    const response = await api.get(`/api/v1/client/sample/html/${pipelineId}`);
+    const response = await api.get<{
+      final_html_content: string | null;
+    }>(`/api/v1/client/sample/html/${pipelineId}`);
     return response.data;
   }
 }

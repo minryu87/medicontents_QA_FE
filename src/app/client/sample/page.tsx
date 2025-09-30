@@ -9,7 +9,7 @@ import { clientApi } from '@/services/api';
 interface BlogPost {
   id: number;
   post_id: string;
-  title: string;
+  title: string | null;
   recent_pipeline_id: string | null;
 }
 
