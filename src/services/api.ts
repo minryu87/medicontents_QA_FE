@@ -1549,6 +1549,63 @@ export const adminApi: AdminApiService = new AdminApiService();
   return response.data;
 };
 
+// 파이프라인 큐 관리 API
+(adminApi as any).getPipelineQueueStatus = async function(): Promise<{
+  success: boolean;
+  data: any;
+}> {
+  const response = await api.get('/api/v1/admin/pipeline/queue/status');
+  return response.data;
+};
+
+(adminApi as any).getPipelineQueueMetrics = async function(): Promise<{
+  success: boolean;
+  data: any;
+}> {
+  const response = await api.get('/api/v1/admin/pipeline/queue/metrics');
+  return response.data;
+};
+
+(adminApi as any).updatePipelineQueueConfig = async function(maxConcurrentPipelines: number): Promise<{
+  success: boolean;
+  message: string;
+  data: any;
+}> {
+  const response = await api.put('/api/v1/admin/pipeline/queue/config', null, {
+    params: { max_concurrent_pipelines: maxConcurrentPipelines }
+  });
+  return response.data;
+};
+
+        (adminApi as any).getPipelineQueueDashboard = async function(): Promise<{
+          success: boolean;
+          data: {
+            status: any;
+            metrics: any;
+          };
+        }> {
+          const response = await api.get('/api/v1/admin/pipeline/queue/dashboard');
+          return response.data;
+        };
+
+        (adminApi as any).getPipelineQueueDetailedStatus = async function(): Promise<{
+          success: boolean;
+          data: Array<{
+            post_id: string;
+            pipeline_id: string;
+            elapsed_seconds: number;
+            current_stage: string;
+            current_action: string;
+            loop_info: { current: number; max: number } | null;
+            completed_stages: string[];
+            progress_percentage: number;
+            started_at: string;
+          }>;
+        }> {
+          const response = await api.get('/api/v1/admin/pipeline/queue/status/detailed');
+          return response.data;
+        };
+
 (adminApi as any).getNotifications = async function(params?: {
   skip?: number;
   limit?: number;

@@ -25,6 +25,7 @@ const adminNavigation = [
       { name: '체크리스트', href: '/admin/agents/checklists' },
     ]
   },
+  { name: '파이프라인 관리', href: '/admin/pipeline-management', icon: '⚡' },
   { name: '데이터베이스 관리', href: '/admin/database', icon: '🗄️' },
   {
     name: '시스템 관리',
