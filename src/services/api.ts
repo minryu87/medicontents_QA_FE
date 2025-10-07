@@ -1606,6 +1606,22 @@ export const adminApi: AdminApiService = new AdminApiService();
           return response.data;
         };
 
+        (adminApi as any).getPipelineLogs = async function(pipelineId: string, limit: number = 50): Promise<{
+          success: boolean;
+          data: {
+            pipeline_id: string;
+            logs: Array<{
+              agent_type: string;
+              message: string;
+              timestamp: string;
+            }>;
+            total: number;
+          };
+        }> {
+          const response = await api.get(`/api/v1/admin/pipeline/queue/logs/${pipelineId}?limit=${limit}`);
+          return response.data;
+        };
+
 (adminApi as any).getNotifications = async function(params?: {
   skip?: number;
   limit?: number;

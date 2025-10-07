@@ -72,6 +72,12 @@ export default function PipelineManagementPage() {
   const [maxConcurrent, setMaxConcurrent] = useState(3);
   const [isUpdating, setIsUpdating] = useState(false);
   const [lanes, setLanes] = useState<PipelineLane[]>([]);
+  
+  // 로그 모달 상태
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
+  const [logs, setLogs] = useState<Array<{agent_type: string; message: string; timestamp: string}>>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   // 파이프라인 레인 생성
   const createLanes = (maxConcurrent: number, runningJobs: RunningJob[]): PipelineLane[] => {
@@ -94,6 +100,24 @@ export default function PipelineManagementPage() {
     if (!avgDurationSeconds || avgDurationSeconds === 0) return 0;
     const progress = (elapsedSeconds / avgDurationSeconds) * 100;
     return Math.min(Math.max(progress, 0), 100);
+  };
+
+  // 로그 조회
+  const handleViewLogs = async (pipelineId: string) => {
+    setSelectedPipelineId(pipelineId);
+    setLogModalOpen(true);
+    setLoadingLogs(true);
+    
+    try {
+      const response = await (adminApi as any).getPipelineLogs(pipelineId, 100);
+      if (response.success) {
+        setLogs(response.data.logs);
+      }
+    } catch (error) {
+      console.error('로그 조회 실패:', error);
+    } finally {
+      setLoadingLogs(false);
+    }
   };
 
   // 데이터 로드
@@ -373,6 +397,12 @@ export default function PipelineManagementPage() {
                         {lane.job.pipeline_id}
                       </p>
                     </div>
+                    <button
+                      onClick={() => handleViewLogs(lane.job!.pipeline_id)}
+                      className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-white border border-blue-300 rounded-md hover:bg-blue-50 transition-colors"
+                    >
+                      📋 로그 보기
+                    </button>
                   </div>
 
                   {/* 현재 단계 표시 (상세 정보) */}
@@ -581,6 +611,75 @@ export default function PipelineManagementPage() {
           <div className="text-6xl mb-4">💤</div>
           <p className="text-xl font-medium text-gray-900 mb-2">현재 실행 중인 작업이 없습니다</p>
           <p className="text-gray-600">포스트 관리 페이지에서 AI 생성을 시작해보세요</p>
+        </div>
+      )}
+
+      {/* 로그 모달 */}
+      {logModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">📋 파이프라인 로그</h2>
+                {selectedPipelineId && (
+                  <p className="text-sm font-mono text-gray-600 mt-1">
+                    {selectedPipelineId}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setLogModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* 내용 */}
+            <div className="flex-1 overflow-auto p-6">
+              {loadingLogs ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">로그 불러오는 중...</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {logs.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">로그가 없습니다.</p>
+                  ) : (
+                    logs.map((log, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded text-sm font-mono"
+                      >
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          })}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${
+                          log.agent_type === 'pipeline' ? 'bg-blue-100 text-blue-700' :
+                          log.agent_type === 'edit' ? 'bg-purple-100 text-purple-700' :
+                          log.agent_type === 'evaluation' ? 'bg-green-100 text-green-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {log.agent_type}
+                        </span>
+                        <span className="flex-1 text-gray-800 break-all">
+                          {log.message}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
