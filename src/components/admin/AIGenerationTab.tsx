@@ -135,6 +135,9 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 완료 알림 중복 방지를 위한 플래그
+  const completionNotifiedRef = useRef(false);
+
   // 팝업 상태
   const [showInputDataPopup, setShowInputDataPopup] = useState(false);
   const [inputDataDetails, setInputDataDetails] = useState<any>(null);
@@ -178,6 +181,9 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
 
   // 컴포넌트 마운트 시 초기 progress 설정 (모든 에이전트 pending 상태)
   useEffect(() => {
+    // 완료 알림 플래그 초기화
+    completionNotifiedRef.current = false;
+
     setProgress({
       current_step: '준비 중',
       progress_percent: 0,
@@ -411,9 +417,17 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
   };
 
 
-  // 파이프라인 완료 처리 함수
+  // 파이프라인 완료 처리 함수 (중복 방지 로직 포함)
   const handlePipelineCompleted = (data: any) => {
     console.log('🎉 파이프라인 완료 처리 시작');
+
+    // 중복 호출 방지
+    if (completionNotifiedRef.current) {
+      console.log('⚠️ 이미 완료 알림 전송됨, 중복 방지');
+      return;
+    }
+
+    completionNotifiedRef.current = true;
 
     // 상태 업데이트
     setCurrentState('completed');
@@ -421,6 +435,7 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
 
     // 진행 중 카드를 완료 상태로 변경
     updateProgressToCompleted(postId);
+    console.log('✅ 완료 알림 전송 완료');
   };
 
   // 완료 감지를 위한 polling 시작
@@ -435,13 +450,27 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
         // api.ts에서 이미 2분 타임아웃이 설정되어 있음
         const status = await adminApi.getPipelineStatus(postId);
 
-        if (status.is_completed) {
+        // ✅ 더 엄격한 완료 조건 검증
+        const lastExecution = status.last_execution;
+        const isActuallyCompleted = 
+          status.is_completed && 
+          lastExecution &&
+          (lastExecution.status === 'completed' || lastExecution.status === 'COMPLETED');
+
+        if (isActuallyCompleted) {
           console.log('🎉 Polling으로 완료 감지!');
+          console.log('📊 상태 검증:', {
+            is_completed: status.is_completed,
+            last_execution_status: lastExecution?.status
+          });
           clearInterval(pollInterval);
           handlePipelineCompleted({ data: status });
         } else {
           // 아직 완료되지 않음
-          console.log('⏳ 파이프라인 진행 중...');
+          console.log('⏳ 파이프라인 진행 중...', {
+            is_completed: status.is_completed,
+            last_execution_status: lastExecution?.status
+          });
         }
 
         // 성공 시 에러 카운트 리셋
@@ -625,11 +654,8 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
             setError('파이프라인이 중단되었습니다.');
             setLoading(false); // 취소 시 로딩 상태 해제
           } else if (data.type === 'pipeline_completed') {
-            // 파이프라인 완료 - WebSocket에서는 상태 업데이트만, 알림은 polling에서 처리
+            // 파이프라인 완료 - WebSocket과 Polling 모두 처리 (중복 방지 로직 포함)
             console.log('🎉 파이프라인 실행 완료 (WebSocket):', data.data);
-
-            setCurrentState('completed');
-            setLoading(false); // 파이프라인 완료 시 로딩 상태 해제
 
             // 진행률을 100%로 설정
             setProgress(prev => ({
@@ -647,8 +673,8 @@ const AIGenerationTab: React.FC<AIGenerationTabProps> = ({ postId, postStatus })
               }, 500);
             }
 
-            // 중요: WebSocket에서는 알림 생성하지 않음 (중복 방지)
-            // 알림은 polling에서만 처리
+            // ✅ WebSocket에서도 완료 알림 생성 (중복 방지 로직 포함)
+            handlePipelineCompleted(data);
           } else if (data.type === 'pipeline_result') {
             setCurrentState('completed');
             setResult(data.data);
