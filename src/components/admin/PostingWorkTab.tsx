@@ -49,7 +49,7 @@ export default function PostingWorkTab({
   // 필터 그룹 정의
   const filterGroups: Record<string, string[]> = {
     '전체': [],
-    '가이드': ['병원 자료 입력 중', '병원 자료 제공 완료'],
+    '가이드': ['병원 자료 입력 중', '병원 자료 제공 완료', '의료 리서치 완료'],
     'AI 생성': ['자료 검토 완료', '어드민 가이드 완료'],
     '생성 검토': ['AI 생성 중', 'AI 생성 완료-성공', 'AI 생성 완료-실패'],
     '최종 승인': ['어드민 검토 완료', '클라이언트 승인 완료'],
@@ -233,6 +233,8 @@ export default function PostingWorkTab({
     switch (status) {
       case 'initial': return 'bg-gray-100 text-gray-800';
       case 'material_completed': return 'bg-blue-100 text-blue-800';
+      case 'image_analysis_completed':
+      case 'medical_research_completed': return 'bg-cyan-100 text-cyan-800';
       case 'guide_completed': return 'bg-green-100 text-green-800';
       case 'agent_processing': return 'bg-yellow-100 text-yellow-800';
       case 'agent_completed': return 'bg-purple-100 text-purple-800';
@@ -402,6 +404,10 @@ export default function PostingWorkTab({
       // 병원 자료 제공 완료
       case 'material_completed':
       case 'hospital_completed': return '병원 자료 제공 완료';
+
+      // 의료 리서치 완료 (이미지 분석 + 의료 리서치 통합 표시)
+      case 'image_analysis_completed':
+      case 'medical_research_completed': return '의료 리서치 완료';
 
       // 자료 검토 완료
       case 'material_review_completed': return '자료 검토 완료';
