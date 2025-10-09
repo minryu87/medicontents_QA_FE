@@ -11,9 +11,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface ProgressCard {
   id: string;
   postId: string;
-  status: 'running' | 'completed';
+  status: 'running' | 'completed' | 'failed';
   timestamp: Date;
   acknowledged: boolean;
+  notificationType?: string;  // 추가: 알림 타입
+  message?: string;           // 추가: DB 메시지
 }
 
 // 진행/완료 알림 Context 타입
@@ -50,23 +52,34 @@ export function CompletionNotificationProvider({ children }: { children: React.R
           const relevantNotifications = response.items.filter((item: any) =>
             item.notification_type === 'generation_progress' ||
             item.notification_type === 'generation_completed' ||
+            item.notification_type === 'generation_failed' ||
             item.notification_type === 'image_analysis_started' ||
             item.notification_type === 'image_analysis_completed' ||
+            item.notification_type === 'image_analysis_failed' ||
             item.notification_type === 'medical_research_started' ||
-            item.notification_type === 'medical_research_completed'
+            item.notification_type === 'medical_research_completed' ||
+            item.notification_type === 'medical_research_failed'
           );
 
-          const savedCards: ProgressCard[] = relevantNotifications.map((item: any) => ({
-            id: `db_${item.id}`,
-            postId: item.post_id,
-            status: (
-              item.notification_type === 'generation_completed' ||
-              item.notification_type === 'image_analysis_completed' ||
-              item.notification_type === 'medical_research_completed'
-            ) ? 'completed' : 'running',
-            timestamp: new Date(item.created_at),
-            acknowledged: false
-          }));
+          const savedCards: ProgressCard[] = relevantNotifications.map((item: any) => {
+            // 상태 결정 로직
+            let status: 'running' | 'completed' | 'failed' = 'running';
+            if (item.notification_type.endsWith('_completed')) {
+              status = 'completed';
+            } else if (item.notification_type.endsWith('_failed')) {
+              status = 'failed';
+            }
+
+            return {
+              id: `db_${item.id}`,
+              postId: item.post_id,
+              status,
+              timestamp: new Date(item.created_at),
+              acknowledged: false,
+              notificationType: item.notification_type,  // 추가
+              message: item.message                      // 추가
+            };
+          });
 
           setProgressCards(savedCards);
           console.log('✅ CompletionNotificationContext: 저장된 알림 로드 완료', savedCards.length, '개');
@@ -260,6 +273,14 @@ function ProgressCardItem({
           </svg>
         </div>
       );
+    } else if (card.status === 'failed') {
+      return (
+        <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
     } else {
       return (
         <div className="w-5 h-5 bg-green-500 rounded-full animate-pulse flex items-center justify-center">
@@ -271,12 +292,43 @@ function ProgressCardItem({
     }
   };
 
-  const getBorderColor = () => card.status === 'running' ? 'border-l-blue-500 bg-blue-50' : 'border-l-green-500 bg-green-50';
+  const getBorderColor = () => {
+    if (card.status === 'failed') return 'border-l-red-500 bg-red-50';
+    if (card.status === 'running') return 'border-l-blue-500 bg-blue-50';
+    return 'border-l-green-500 bg-green-50';
+  };
 
-  const getTitle = () => card.status === 'running' ? 'AI 생성 진행 중' : 'AI 생성 완료';
+  const getTitle = () => {
+    // notificationType에서 제목 추출
+    if (card.notificationType) {
+      const typeMap: { [key: string]: string } = {
+        'generation_progress': 'AI 생성 진행 중',
+        'generation_completed': 'AI 생성 완료',
+        'image_analysis_started': '이미지 분석 시작',
+        'image_analysis_completed': '이미지 분석 완료',
+        'medical_research_started': '의료 리서치 시작',
+        'medical_research_completed': '의료 리서치 완료',
+        'medical_research_failed': '의료 리서치 실패',
+        'image_analysis_failed': '이미지 분석 실패',
+      };
+      return typeMap[card.notificationType] || '알림';
+    }
+    
+    // fallback: 기존 로직
+    if (card.status === 'failed') return '작업 실패';
+    return card.status === 'running' ? 'AI 생성 진행 중' : 'AI 생성 완료';
+  };
 
   const getMessage = () => {
-    if (card.status === 'running') {
+    // DB에서 온 message가 있으면 그대로 사용
+    if (card.message) {
+      return card.message;
+    }
+    
+    // fallback: 기존 하드코딩 메시지
+    if (card.status === 'failed') {
+      return '작업이 실패했습니다. 관리자에게 문의하세요.';
+    } else if (card.status === 'running') {
       return 'AI 콘텐츠 생성이 진행 중입니다.';
     } else {
       return 'AI 콘텐츠 생성이 완료되었습니다.';
