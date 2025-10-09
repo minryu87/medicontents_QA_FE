@@ -7,6 +7,7 @@ import PipelineResultHeader from '@/components/admin/result-dashboard/PipelineRe
 import HTMLPreviewPopup from '@/components/admin/result-dashboard/HTMLPreviewPopup';
 import EvaluationResultsCard from '@/components/admin/result-dashboard/EvaluationResultsCard';
 import IterationHistoryCard from '@/components/admin/result-dashboard/IterationHistoryCard';
+import { useCompletionNotification } from '@/contexts/CompletionNotificationContext';
 
 interface Post {
   id: string;
@@ -37,6 +38,9 @@ export default function PostingWorkTab({
   onPostUpdate,
   selectedPost
 }: PostingWorkTabProps) {
+  // 글로벌 진행/완료 알림 Context 사용 (이미지 분석/의료 리서치용)
+  const { addProgressNotification, updateProgressToCompleted } = useCompletionNotification();
+  
   const [activeStep, setActiveStep] = useState<string>('material-review');
   const [isWorking, setIsWorking] = useState(false);
   const [guideText, setGuideText] = useState('');
@@ -87,6 +91,12 @@ export default function PostingWorkTab({
   const [pipelineResult, setPipelineResult] = useState<any>(null);
   const [evaluationData, setEvaluationData] = useState<any>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+
+  // 리서치 결과 상태
+  const [researchResults, setResearchResults] = useState<any>(null);
+  const [researchLoading, setResearchLoading] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [isReResearching, setIsReResearching] = useState(false);
 
   // HTML 미리보기 팝업 상태
   const [showHTMLPreview, setShowHTMLPreview] = useState(false);
@@ -154,6 +164,86 @@ export default function PostingWorkTab({
   }, [selectedPost]);
 
   // 워크플로우 데이터 로드
+  // 이미지 재분석 핸들러
+  const handleReanalyzeImages = async () => {
+    if (!selectedPost?.post_id) return;
+    
+    if (!confirm('이미지를 재분석하시겠습니까? 기존 분석 결과는 이력으로 보관됩니다.')) {
+      return;
+    }
+    
+    setIsReanalyzing(true);
+    try {
+      const result = await adminApi.reanalyzeImages(selectedPost.post_id);
+      
+      // 시작 토스트 표시 (3초 후 사라짐)
+      if (typeof window !== 'undefined' && (window as any).addToast) {
+        (window as any).addToast({
+          type: 'info',
+          title: '이미지 분석 시작',
+          message: `이미지 분석을 시작합니다 (버전 ${result.new_version})`,
+          duration: 3000
+        });
+      }
+      
+      // 진행 중 알림 카드 표시 (완료될 때까지 지속 유지)
+      addProgressNotification(`${selectedPost.post_id}_image_analysis`);
+      
+    } catch (error) {
+      console.error('이미지 재분석 실패:', error);
+      if (typeof window !== 'undefined' && (window as any).addToast) {
+        (window as any).addToast({
+          type: 'error',
+          title: '이미지 분석 실패',
+          message: '이미지 분석 요청에 실패했습니다.',
+          duration: 5000
+        });
+      }
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
+
+  // 의료 리서치 재실행 핸들러
+  const handleReResearchMedical = async () => {
+    if (!selectedPost?.post_id) return;
+    
+    if (!confirm('의료 리서치를 재실행하시겠습니까? 기존 리서치 결과는 이력으로 보관됩니다.')) {
+      return;
+    }
+    
+    setIsReResearching(true);
+    try {
+      const result = await adminApi.reResearchMedical(selectedPost.post_id);
+      
+      // 시작 토스트 표시 (3초 후 사라짐)
+      if (typeof window !== 'undefined' && (window as any).addToast) {
+        (window as any).addToast({
+          type: 'info',
+          title: '의료 리서치 시작',
+          message: `의료 리서치를 시작합니다 (버전 ${result.new_version})`,
+          duration: 3000
+        });
+      }
+      
+      // 진행 중 알림 카드 표시 (완료될 때까지 지속 유지)
+      addProgressNotification(`${selectedPost.post_id}_medical_research`);
+      
+    } catch (error) {
+      console.error('의료 리서치 재실행 실패:', error);
+      if (typeof window !== 'undefined' && (window as any).addToast) {
+        (window as any).addToast({
+          type: 'error',
+          title: '의료 리서치 실패',
+          message: '의료 리서치 요청에 실패했습니다.',
+          duration: 5000
+        });
+      }
+    } finally {
+      setIsReResearching(false);
+    }
+  };
+
   const loadWorkflowData = async (postId: string) => {
     setWorkflowLoading(true);
     setDashboardLoading(true);
@@ -182,9 +272,10 @@ export default function PostingWorkTab({
 
       // 새로운 대시보드 데이터 로드 (병렬 처리)
       try {
-        const [pipelineResultData, evaluationResultData] = await Promise.allSettled([
+        const [pipelineResultData, evaluationResultData, researchResultData] = await Promise.allSettled([
           adminApi.getLatestPipelineResult(postId),
-          adminApi.getEvaluationResultsDashboard(postId)
+          adminApi.getEvaluationResultsDashboard(postId),
+          adminApi.getResearchResults(postId)
         ]);
 
         if (pipelineResultData.status === 'fulfilled') {
@@ -200,10 +291,18 @@ export default function PostingWorkTab({
           console.warn('EvaluationResults 로드 실패:', evaluationResultData.reason);
           setEvaluationData(null);
         }
+
+        if (researchResultData.status === 'fulfilled') {
+          setResearchResults(researchResultData.value);
+        } else {
+          console.warn('ResearchResults 로드 실패:', researchResultData.reason);
+          setResearchResults(null);
+        }
       } catch (dashboardError) {
         console.error('대시보드 데이터 로드 실패:', dashboardError);
         setPipelineResult(null);
         setEvaluationData(null);
+        setResearchResults(null);
       }
 
     } catch (error) {
@@ -211,6 +310,7 @@ export default function PostingWorkTab({
       setWorkflowData(null);
       setPipelineResult(null);
       setEvaluationData(null);
+      setResearchResults(null);
     } finally {
       setWorkflowLoading(false);
       setDashboardLoading(false);
@@ -222,6 +322,7 @@ export default function PostingWorkTab({
     setWorkflowData(null);
     setPipelineResult(null);
     setEvaluationData(null);
+    setResearchResults(null);
     setGuideText('');
     setEditContent('');
     setIsEditing(false);
@@ -814,6 +915,277 @@ export default function PostingWorkTab({
                             </div>
                           )}
                         </div>
+
+                        {/* 이미지 분석 및 리서치 결과 섹션 - 항상 표시 */}
+                        <div className="bg-white p-4 rounded-lg border border-neutral-200 mt-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h5 className="font-medium text-neutral-900 flex items-center">
+                              <span className="mr-2">🔬</span>
+                              이미지 분석 및 리서치 결과
+                            </h5>
+                            
+                            {/* 재실행 버튼 그룹 - 항상 표시 */}
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={handleReanalyzeImages}
+                                disabled={isReanalyzing}
+                                className="px-3 py-1.5 bg-cyan-600 text-white text-xs rounded hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                              >
+                                <i className="fa-solid fa-rotate-right"></i>
+                                <span>{isReanalyzing ? '분석 중...' : (researchResults?.has_image_analysis ? '이미지 재분석' : '이미지 분석 실행')}</span>
+                              </button>
+                              
+                              <button
+                                onClick={handleReResearchMedical}
+                                disabled={isReResearching}
+                                className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                              >
+                                <i className="fa-solid fa-rotate-right"></i>
+                                <span>{isReResearching ? '리서치 중...' : (researchResults?.has_medical_research ? '의료 리서치 재실행' : '의료 리서치 실행')}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 결과가 없을 때 안내 메시지 */}
+                          {(!researchResults || (!researchResults.has_image_analysis && !researchResults.has_medical_research)) && (
+                            <div className="p-4 bg-neutral-50 rounded-lg text-center">
+                              <p className="text-sm text-neutral-600">
+                                아직 이미지 분석 및 의료 리서치가 실행되지 않았습니다.<br/>
+                                위 버튼을 클릭하여 분석을 시작하세요.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* 이미지 분석 결과 */}
+                          {researchResults?.has_image_analysis && (
+                              <div className="space-y-4 mb-6">
+                                <div className="flex items-center justify-between p-3 bg-cyan-50 rounded">
+                                  <span className="text-sm font-medium text-cyan-700">이미지 분석 상태:</span>
+                                  <div className="flex items-center space-x-3">
+                                    <span className="text-xs text-cyan-600">
+                                      완료: {researchResults.image_analysis.status_summary.completed}
+                                    </span>
+                                    {researchResults.image_analysis.status_summary.failed > 0 && (
+                                      <span className="text-xs text-red-600">
+                                        실패: {researchResults.image_analysis.status_summary.failed}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Before 이미지 분석 */}
+                                {researchResults.image_analysis.by_stage.before.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h6 className="text-sm font-medium text-neutral-800">치료 전 이미지 분석</h6>
+                                    {researchResults.image_analysis.by_stage.before.map((analysis: any, index: number) => (
+                                      <div key={index} className="p-3 bg-cyan-50 rounded border border-cyan-100">
+                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                          <div>
+                                            <span className="font-medium text-cyan-700">이미지 종류:</span>
+                                            <span className="ml-1 text-cyan-900">{analysis.image_type || '미분류'}</span>
+                                          </div>
+                                          <div>
+                                            <span className="font-medium text-cyan-700">해부학적 위치:</span>
+                                            <span className="ml-1 text-cyan-900">{analysis.anatomical_location || '미분류'}</span>
+                                          </div>
+                                          {analysis.suggested_diagnosis && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">추정 진단:</span>
+                                              <span className="ml-1 text-cyan-900">{analysis.suggested_diagnosis}</span>
+                                            </div>
+                                          )}
+                                          {analysis.medical_findings && analysis.medical_findings.length > 0 && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">의학적 소견:</span>
+                                              <ul className="ml-4 mt-1 list-disc text-cyan-900">
+                                                {analysis.medical_findings.map((finding: string, idx: number) => (
+                                                  <li key={idx}>{finding}</li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+                                          {analysis.measurements && Object.keys(analysis.measurements).length > 0 && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">측정값:</span>
+                                              <div className="ml-2 mt-1 text-cyan-900">
+                                                {Object.entries(analysis.measurements).map(([key, value]) => (
+                                                  <div key={key}>{key}: {String(value)}</div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {analysis.clinical_significance && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">임상적 의미:</span>
+                                              <p className="ml-1 text-cyan-900">{analysis.clinical_significance}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Process 이미지 분석 */}
+                                {researchResults.image_analysis.by_stage.process.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h6 className="text-sm font-medium text-neutral-800">치료 과정 이미지 분석</h6>
+                                    {researchResults.image_analysis.by_stage.process.map((analysis: any, index: number) => (
+                                      <div key={index} className="p-3 bg-cyan-50 rounded border border-cyan-100">
+                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                          <div>
+                                            <span className="font-medium text-cyan-700">이미지 종류:</span>
+                                            <span className="ml-1 text-cyan-900">{analysis.image_type || '미분류'}</span>
+                                          </div>
+                                          <div>
+                                            <span className="font-medium text-cyan-700">해부학적 위치:</span>
+                                            <span className="ml-1 text-cyan-900">{analysis.anatomical_location || '미분류'}</span>
+                                          </div>
+                                          {analysis.suggested_diagnosis && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">추정 진단:</span>
+                                              <span className="ml-1 text-cyan-900">{analysis.suggested_diagnosis}</span>
+                                            </div>
+                                          )}
+                                          {analysis.medical_findings && analysis.medical_findings.length > 0 && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">의학적 소견:</span>
+                                              <ul className="ml-4 mt-1 list-disc text-cyan-900">
+                                                {analysis.medical_findings.map((finding: string, idx: number) => (
+                                                  <li key={idx}>{finding}</li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+                                          {analysis.measurements && Object.keys(analysis.measurements).length > 0 && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">측정값:</span>
+                                              <div className="ml-2 mt-1 text-cyan-900">
+                                                {Object.entries(analysis.measurements).map(([key, value]) => (
+                                                  <div key={key}>{key}: {String(value)}</div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {analysis.clinical_significance && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">임상적 의미:</span>
+                                              <p className="ml-1 text-cyan-900">{analysis.clinical_significance}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* After 이미지 분석 */}
+                                {researchResults.image_analysis.by_stage.after.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h6 className="text-sm font-medium text-neutral-800">치료 후 이미지 분석</h6>
+                                    {researchResults.image_analysis.by_stage.after.map((analysis: any, index: number) => (
+                                      <div key={index} className="p-3 bg-cyan-50 rounded border border-cyan-100">
+                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                          <div>
+                                            <span className="font-medium text-cyan-700">이미지 종류:</span>
+                                            <span className="ml-1 text-cyan-900">{analysis.image_type || '미분류'}</span>
+                                          </div>
+                                          <div>
+                                            <span className="font-medium text-cyan-700">해부학적 위치:</span>
+                                            <span className="ml-1 text-cyan-900">{analysis.anatomical_location || '미분류'}</span>
+                                          </div>
+                                          {analysis.suggested_diagnosis && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">추정 진단:</span>
+                                              <span className="ml-1 text-cyan-900">{analysis.suggested_diagnosis}</span>
+                                            </div>
+                                          )}
+                                          {analysis.medical_findings && analysis.medical_findings.length > 0 && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">의학적 소견:</span>
+                                              <ul className="ml-4 mt-1 list-disc text-cyan-900">
+                                                {analysis.medical_findings.map((finding: string, idx: number) => (
+                                                  <li key={idx}>{finding}</li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+                                          {analysis.measurements && Object.keys(analysis.measurements).length > 0 && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">측정값:</span>
+                                              <div className="ml-2 mt-1 text-cyan-900">
+                                                {Object.entries(analysis.measurements).map(([key, value]) => (
+                                                  <div key={key}>{key}: {String(value)}</div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {analysis.clinical_significance && (
+                                            <div className="col-span-2">
+                                              <span className="font-medium text-cyan-700">임상적 의미:</span>
+                                              <p className="ml-1 text-cyan-900">{analysis.clinical_significance}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* 의료 리서치 결과 */}
+                            {researchResults?.has_medical_research && researchResults.medical_research && (
+                              <div className="space-y-4 border-t border-neutral-200 pt-4">
+                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded">
+                                  <span className="text-sm font-medium text-blue-700">의료 리서치 상태:</span>
+                                  <span className={`px-2 py-1 text-xs rounded ${
+                                    researchResults.medical_research.research_status === 'completed'
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {researchResults.medical_research.research_status === 'completed' ? '완료' : '진행중'}
+                                  </span>
+                                </div>
+
+                                {/* 진단 표준화 */}
+                                {researchResults.medical_research.diagnosis_standardization && (
+                                  <div className="p-3 bg-blue-50 rounded">
+                                    <span className="text-sm font-medium text-blue-700 block mb-2">진단 표준화:</span>
+                                    <pre className="text-xs text-blue-900 whitespace-pre-wrap">
+                                      {JSON.stringify(researchResults.medical_research.diagnosis_standardization, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {/* 치료법 상세 */}
+                                {researchResults.medical_research.treatment_details && (
+                                  <div className="p-3 bg-blue-50 rounded">
+                                    <span className="text-sm font-medium text-blue-700 block mb-2">치료법 상세:</span>
+                                    <pre className="text-xs text-blue-900 whitespace-pre-wrap">
+                                      {JSON.stringify(researchResults.medical_research.treatment_details, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {/* 참고 문헌 */}
+                                {researchResults.medical_research.sources && researchResults.medical_research.sources.length > 0 && (
+                                  <div className="p-3 bg-blue-50 rounded">
+                                    <span className="text-sm font-medium text-blue-700 block mb-2">참고 문헌:</span>
+                                    <ul className="space-y-1">
+                                      {researchResults.medical_research.sources.map((source: any, index: number) => (
+                                        <li key={index} className="text-xs text-blue-900">
+                                          <a href={source.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            {source.title || source.url}
+                                          </a>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                       </div>
                     )}
 
@@ -823,6 +1195,17 @@ export default function PostingWorkTab({
                         hospitalId={parseInt(selectedPost.id)}
                         postStatus={selectedPost.status}
                         workflowData={workflowData}
+                        onGuideCompleted={async () => {
+                          // 가이드 완료 시 AI 생성 탭으로 전환
+                          setActiveStep('ai-agent');
+                          await loadWorkflowData(selectedPost.post_id);
+                          
+                          // 포스트 상태 업데이트 알림
+                          if (onPostUpdate && selectedPost) {
+                            const updatedPost = { ...selectedPost, status: 'guide_input_completed' };
+                            onPostUpdate(updatedPost);
+                          }
+                        }}
                       />
                     )}
 

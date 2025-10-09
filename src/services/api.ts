@@ -783,6 +783,72 @@ export class AdminApiService {
     return response.data;
   }
 
+  // 이미지 분석 및 의료 리서치 결과 조회
+  async getResearchResults(postId: string): Promise<{
+    post_id: string;
+    image_analysis: {
+      total_images: number;
+      by_stage: {
+        before: Array<{
+          image_url: string;
+          image_type: string;
+          anatomical_location: string;
+          medical_findings: string[];
+          measurements: Record<string, any>;
+          clinical_significance: string;
+          suggested_diagnosis: string;
+          analysis_status: string;
+          error_message?: string;
+        }>;
+        process: Array<any>;
+        after: Array<any>;
+      };
+      status_summary: {
+        completed: number;
+        failed: number;
+      };
+    };
+    medical_research: {
+      research_status: string;
+      diagnosis_standardization: Record<string, any>;
+      treatment_details: Record<string, any>;
+      anatomical_info: Record<string, any>;
+      clinical_criteria: Record<string, any>;
+      standard_measurements: Record<string, any>;
+      search_queries: string[];
+      sources: Array<{ url: string; title: string }>;
+      researched_at: string;
+      error_message?: string;
+    } | null;
+    has_image_analysis: boolean;
+    has_medical_research: boolean;
+  }> {
+    const response = await api.get(`/api/v1/admin/posts/${postId}/research-results`);
+    return response.data;
+  }
+
+  // 이미지 재분석
+  async reanalyzeImages(postId: string): Promise<{
+    success: boolean;
+    message: string;
+    post_id: string;
+    new_version: number;
+  }> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/reanalyze-images`);
+    return response.data;
+  }
+
+  // 의료 리서치 재실행
+  async reResearchMedical(postId: string): Promise<{
+    success: boolean;
+    message: string;
+    post_id: string;
+    new_version: number;
+  }> {
+    const response = await api.post(`/api/v1/admin/posts/${postId}/re-research-medical`);
+    return response.data;
+  }
+
   // 가이드 입력 데이터 조회 (우측 패널용)
   async getGuideInput(postId: string): Promise<{
     persona_selection: { persona_style_id?: string; persona_name: string; persona_description: string };

@@ -46,16 +46,24 @@ export function CompletionNotificationProvider({ children }: { children: React.R
         }));
 
         if (response.items) {
-          // generation_progress와 generation_completed 타입만 필터링
-          const generationNotifications = response.items.filter((item: any) =>
+          // generation, image_analysis, medical_research 관련 알림 필터링
+          const relevantNotifications = response.items.filter((item: any) =>
             item.notification_type === 'generation_progress' ||
-            item.notification_type === 'generation_completed'
+            item.notification_type === 'generation_completed' ||
+            item.notification_type === 'image_analysis_started' ||
+            item.notification_type === 'image_analysis_completed' ||
+            item.notification_type === 'medical_research_started' ||
+            item.notification_type === 'medical_research_completed'
           );
 
-          const savedCards: ProgressCard[] = generationNotifications.map((item: any) => ({
+          const savedCards: ProgressCard[] = relevantNotifications.map((item: any) => ({
             id: `db_${item.id}`,
             postId: item.post_id,
-            status: item.notification_type === 'generation_completed' ? 'completed' : 'running',
+            status: (
+              item.notification_type === 'generation_completed' ||
+              item.notification_type === 'image_analysis_completed' ||
+              item.notification_type === 'medical_research_completed'
+            ) ? 'completed' : 'running',
             timestamp: new Date(item.created_at),
             acknowledged: false
           }));

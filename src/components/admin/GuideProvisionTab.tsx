@@ -9,6 +9,7 @@ interface GuideProvisionTabProps {
   hospitalId: number;
   postStatus?: string;
   workflowData: CompletePostingWorkflow | null;
+  onGuideCompleted?: () => void; // 가이드 완료 시 콜백
 }
 
 interface GuideProvisionData {
@@ -69,7 +70,7 @@ interface KeywordsFormData {
 
 type KeywordField = keyof Pick<KeywordsFormData, 'region_keywords' | 'hospital_keywords' | 'symptom_keywords' | 'procedure_keywords' | 'treatment_keywords' | 'target_keywords'>;
 
-export default function GuideProvisionTab({ postId, hospitalId, postStatus, workflowData }: GuideProvisionTabProps) {
+export default function GuideProvisionTab({ postId, hospitalId, postStatus, workflowData, onGuideCompleted }: GuideProvisionTabProps) {
   console.log('GuideProvisionTab props:', { postId, hospitalId, postStatus, workflowData });
   const [data, setData] = useState<GuideProvisionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -346,9 +347,12 @@ export default function GuideProvisionTab({ postId, hospitalId, postStatus, work
       // 포스트 상태 업데이트
       await adminApi.updatePostStatus(postId, 'guide_input_completed', '가이드 제공 완료');
 
-      alert('가이드 제공이 완료되었습니다.\nAI 생성 탭으로 이동하여 콘텐츠 생성을 진행해주세요.');
+      alert('가이드 제공이 완료되었습니다.\nAI 생성 탭으로 이동합니다.');
 
-      // 페이지 리로드 없이 상태만 업데이트 (실시간 반영을 위해)
+      // 부모 컴포넌트에 완료 알림 (탭 전환 처리)
+      if (onGuideCompleted) {
+        onGuideCompleted();
+      }
     } catch (error) {
       console.error('가이드 제공 완료 실패:', error);
       alert('가이드 제공 완료 처리 중 오류가 발생했습니다.');
