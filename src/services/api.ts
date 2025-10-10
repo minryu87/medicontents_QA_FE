@@ -1577,13 +1577,13 @@ export class ClientApiService {
     id: number;
     post_id: string;
     title: string | null;
-    recent_pipeline_id: string | null;
+    recent_s_pipeline_id: string | null;
   }>> {
     const response = await api.get<Array<{
       id: number;
       post_id: string;
       title: string | null;
-      recent_pipeline_id: string | null;
+      recent_s_pipeline_id: string | null;
     }>>('/api/v1/client/sample/posts', { params });
     return response.data;
   }
