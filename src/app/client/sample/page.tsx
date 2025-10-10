@@ -10,7 +10,7 @@ interface BlogPost {
   id: number;
   post_id: string;
   title: string | null;
-  recent_pipeline_id: string | null;
+  recent_s_pipeline_id: string | null;
 }
 
 interface SamplePageProps {}
@@ -41,13 +41,13 @@ const SamplePage: React.FC<SamplePageProps> = () => {
 
   // HTML 콘텐츠 조회
   const fetchHtmlContent = async (post: BlogPost) => {
-    if (!post.recent_pipeline_id) {
-      alert('Pipeline ID가 없습니다.');
+    if (!post.recent_s_pipeline_id) {
+      alert('Simplified Pipeline ID가 없습니다.');
       return;
     }
 
     try {
-      const data = await clientApi.getSampleHtmlContent(post.recent_pipeline_id);
+      const data = await clientApi.getSampleHtmlContent(post.recent_s_pipeline_id);
       setHtmlContent(data.final_html_content || '');
       setSelectedPost(post);
       setShowPreview(true);
@@ -111,14 +111,14 @@ const SamplePage: React.FC<SamplePageProps> = () => {
                       </button>
                     </td>
                     <td className="p-2">
-                      <Badge variant={post.recent_pipeline_id ? "default" : "secondary"}>
-                        {post.recent_pipeline_id || '없음'}
+                      <Badge variant={post.recent_s_pipeline_id ? "default" : "secondary"}>
+                        {post.recent_s_pipeline_id || '없음'}
                       </Badge>
                     </td>
                     <td className="p-2">
                       <Button
                         onClick={() => fetchHtmlContent(post)}
-                        disabled={!post.recent_pipeline_id}
+                        disabled={!post.recent_s_pipeline_id}
                         size="sm"
                       >
                         HTML 미리보기
@@ -146,9 +146,11 @@ const SamplePage: React.FC<SamplePageProps> = () => {
             </div>
             <div className="p-4 max-h-[70vh] overflow-auto">
               {htmlContent ? (
-                <div
-                  className="prose max-w-none"
-                  dangerouslySetInnerHTML={{ __html: htmlContent }}
+                <iframe
+                  srcDoc={htmlContent}
+                  className="w-full border rounded"
+                  style={{ minHeight: '600px', height: '100%' }}
+                  title="HTML Preview"
                 />
               ) : (
                 <div className="text-center text-gray-500">

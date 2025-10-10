@@ -25,6 +25,7 @@ const adminNavigation = [
     ]
   },
   { name: '파이프라인 관리', href: '/admin/pipeline-management', icon: '⚡' },
+  { name: '심플 파이프라인', href: '/admin/s-pipeline', icon: '⚡' },
   { name: '데이터베이스 관리', href: '/admin/database', icon: '🗄️' },
   {
     name: '시스템 관리',
