@@ -20,7 +20,6 @@ const adminNavigation = [
     icon: '🤖',
     children: [
       { name: '모니터링', href: '/admin/agents' },
-      { name: '성능 분석', href: '/admin/agents/performance' },
       { name: '프롬프트 관리', href: '/admin/agents/prompts' },
       { name: '체크리스트', href: '/admin/agents/checklists' },
     ]
@@ -34,8 +33,6 @@ const adminNavigation = [
     children: [
       { name: '시스템 로그', href: '/admin/system/logs' },
       { name: '사용자 관리', href: '/admin/system/users' },
-      { name: '시스템 상태', href: '/admin/system/health' },
-      { name: '분석 및 보고', href: '/admin/analytics' },
     ]
   },
 ];

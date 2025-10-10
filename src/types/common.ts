@@ -669,3 +669,263 @@ export interface ScheduleMaintenanceResult {
   };
   executed_at: string;
 }
+
+// Prompts Management 타입들
+export interface Prompt {
+  id: number;
+  name: string;
+  category: string;
+  subcategory?: string;
+  prompt_text: string;
+  variables: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  current_version?: PromptVersion;
+  versions?: PromptVersion[];
+}
+
+export interface PromptVersion {
+  id: number;
+  prompt_id: number;
+  version: string;
+  prompt_text: string;
+  variables: string[];
+  is_active: boolean;
+  created_at: string;
+  created_by?: number;
+  prompt?: Prompt;
+}
+
+export interface PromptCreateRequest {
+  name: string;
+  category: string;
+  subcategory?: string;
+  prompt_text: string;
+  variables: string[];
+}
+
+export interface PromptUpdateRequest {
+  name?: string;
+  category?: string;
+  subcategory?: string;
+  prompt_text?: string;
+  variables?: string[];
+  is_active?: boolean;
+}
+
+export interface PromptImprovementRequest {
+  target: 'prompt' | 'checklist';
+  target_id: number;
+  improvement_instruction: string;
+  context?: string;
+}
+
+export interface PromptImprovementResponse {
+  improved_content: string;
+  analysis: string;
+  suggestions: string[];
+  confidence_score: number;
+}
+
+export interface PromptQualityAnalysis {
+  overall_score: number;
+  clarity_score: number;
+  specificity_score: number;
+  completeness_score: number;
+  issues: string[];
+  recommendations: string[];
+}
+
+export interface PromptComparison {
+  version_a: PromptVersion;
+  version_b: PromptVersion;
+  differences: {
+    added: string[];
+    removed: string[];
+    modified: string[];
+  };
+  analysis: string;
+  recommendation: 'version_a' | 'version_b' | 'neither';
+}
+
+// Checklists Management 타입들
+export interface Checklist {
+  id: number;
+  name: string;
+  description?: string;
+  checklist_type: string;
+  subcategory?: string;
+  version: string;
+  major_version: number;
+  minor_version: number;
+  patch_version: number;
+  checklist_items: any; // JSON 객체 또는 배열
+  scoring_rules?: any;
+  thresholds?: any;
+  weights?: any;
+  is_active: boolean;
+  is_testing: boolean;
+  is_deprecated: boolean;
+  performance_score?: number;
+  success_rate?: number;
+  usage_count: number;
+  quality_score?: number;
+  review_status: string;
+  review_notes?: string;
+  tags?: any;
+  checklist_metadata?: any;
+  full_version: string;
+  can_be_used: boolean;
+  is_latest_version: boolean;
+  created_by: number;
+  updated_by?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChecklistItem {
+  id: number;
+  category: string;
+  item: string;
+  weight: number;
+  description?: string;
+}
+
+export interface ChecklistVersion {
+  id: number;
+  checklist_id: number;
+  version: string;
+  checklist_items: ChecklistItem[];
+  is_active: boolean;
+  created_at: string;
+  created_by?: number;
+  checklist?: Checklist;
+}
+
+export interface ChecklistCreateRequest {
+  name: string;
+  category: string;
+  subcategory?: string;
+  checklist_items: Omit<ChecklistItem, 'id'>[];
+}
+
+export interface ChecklistUpdateRequest {
+  name?: string;
+  category?: string;
+  subcategory?: string;
+  checklist_items?: Omit<ChecklistItem, 'id'>[];
+  is_active?: boolean;
+}
+
+// System Management 타입들
+export interface SystemLog {
+  id: number;
+  level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+  source: string;
+  message: string;
+  user_id?: number;
+  ip_address?: string;
+  log_metadata?: any;
+  timestamp: string;
+}
+
+export interface SystemLogsStats {
+  total_logs: number;
+  logs_by_level: { [level: string]: number };
+  logs_by_source: { [source: string]: number };
+  recent_errors: SystemLog[];
+}
+
+export interface SystemHealth {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  services: {
+    database: ServiceStatus;
+    redis: ServiceStatus;
+    llm_services: ServiceStatus;
+  };
+  resources: {
+    cpu_usage: number;
+    memory_usage: number;
+    disk_usage: number;
+  };
+  uptime: number;
+}
+
+export interface ServiceStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  response_time?: number;
+  error_message?: string;
+  last_check: string;
+}
+
+export interface SystemAnalytics {
+  period: string;
+  metrics: {
+    total_posts: number;
+    completed_pipelines: number;
+    failed_pipelines: number;
+    avg_processing_time: number;
+    agent_performance: {
+      [agent_type: string]: {
+        success_rate: number;
+        avg_execution_time: number;
+        total_executions: number;
+      };
+    };
+  };
+  trends: {
+    daily_posts: Array<{ date: string; count: number }>;
+    pipeline_success_rate: Array<{ date: string; rate: number }>;
+    processing_times: Array<{ date: string; avg_time: number }>;
+  };
+}
+
+// Posts Detail 타입들
+export interface PostStatusHistory {
+  id: number;
+  post_id: string;
+  from_status?: string;
+  to_status: string;
+  action_type: string;
+  action_by: number;
+  action_notes?: string;
+  created_at: string;
+  actor?: User;
+}
+
+export interface PostActivityResult {
+  id: number;
+  post_id: string;
+  activity_type: string;
+  result_data: any;
+  status: string;
+  success: boolean;
+  error_message?: string;
+  execution_time?: number;
+  quality_score?: number;
+  created_at: string;
+}
+
+export interface PostDetailMetrics {
+  post_id: string;
+  total_execution_time: number;
+  success_rate: number;
+  retry_count: number;
+  quality_score: number;
+  agent_performance: {
+    [agent_type: string]: {
+      execution_time: number;
+      success: boolean;
+      retry_count: number;
+    };
+  };
+  quality_scores: {
+    initial_score?: number;
+    final_score?: number;
+    improvement_rate?: number;
+  };
+  status_transitions: number;
+  revision_count: number;
+}

@@ -21,19 +21,8 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: 'admin' | 'operator' | 'support' | 'hospital_admin' | 'hospital_user';
-  hospitalId?: number;
-  hospitalName?: string;
-  isActive: boolean;
-  lastLogin?: string;
-  createdAt: string;
-  permissions: string[];
-}
+import { User } from '@/types/common';
+import { usersApi } from '@/services/systemApi';
 
 interface Role {
   id: string;
@@ -45,18 +34,14 @@ interface Role {
 
 const roleLabels = {
   admin: '시스템 관리자',
-  operator: '운영 담당자',
-  support: '고객 지원',
-  hospital_admin: '병원 관리자',
-  hospital_user: '병원 사용자'
+  client: '클라이언트',
+  hospital: '병원 사용자'
 };
 
 const roleColors = {
   admin: 'text-red-600 bg-red-100',
-  operator: 'text-blue-600 bg-blue-100',
-  support: 'text-green-600 bg-green-100',
-  hospital_admin: 'text-purple-600 bg-purple-100',
-  hospital_user: 'text-gray-600 bg-gray-100'
+  client: 'text-blue-600 bg-blue-100',
+  hospital: 'text-green-600 bg-green-100'
 };
 
 const permissions = {
@@ -110,51 +95,8 @@ export default function UserManagementPage() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      // 실제로는 API 호출
-      const mockUsers: User[] = [
-        {
-          id: 1,
-          username: 'admin',
-          email: 'admin@medicontents.com',
-          role: 'admin',
-          isActive: true,
-          lastLogin: '2024-01-20T09:30:00Z',
-          createdAt: '2024-01-01T00:00:00Z',
-          permissions: ['posts.*', 'campaigns.*', 'hospitals.*', 'users.*', 'system.*']
-        },
-        {
-          id: 2,
-          username: 'operator1',
-          email: 'operator@medicontents.com',
-          role: 'operator',
-          isActive: true,
-          lastLogin: '2024-01-19T16:45:00Z',
-          createdAt: '2024-01-05T00:00:00Z',
-          permissions: ['posts.*', 'campaigns.*', 'hospitals.read', 'users.read', 'system.read']
-        },
-        {
-          id: 3,
-          username: 'hospital_admin',
-          email: 'admin@hospital1.com',
-          role: 'hospital_admin',
-          hospitalId: 1,
-          hospitalName: 'A치과병원',
-          isActive: true,
-          lastLogin: '2024-01-18T14:20:00Z',
-          createdAt: '2024-01-10T00:00:00Z',
-          permissions: ['posts.read', 'posts.update', 'campaigns.read', 'users.read']
-        },
-        {
-          id: 4,
-          username: 'support_team',
-          email: 'support@medicontents.com',
-          role: 'support',
-          isActive: false,
-          createdAt: '2024-01-15T00:00:00Z',
-          permissions: ['posts.read', 'hospitals.read', 'users.read', 'system.read']
-        }
-      ];
-      setUsers(mockUsers);
+      const response = await usersApi.getUsers();
+      setUsers(response.items);
     } catch (error) {
       console.error('Failed to load users:', error);
     } finally {
@@ -170,35 +112,21 @@ export default function UserManagementPage() {
         name: '시스템 관리자',
         description: '모든 시스템 기능에 대한 완전한 접근 권한',
         permissions: ['posts.*', 'campaigns.*', 'hospitals.*', 'users.*', 'system.*'],
-        userCount: 1
+        userCount: users.filter(u => u.role === 'admin').length
       },
       {
-        id: 'operator',
-        name: '운영 담당자',
+        id: 'client',
+        name: '클라이언트',
         description: '콘텐츠 생성 및 캠페인 운영 관리',
         permissions: ['posts.*', 'campaigns.*', 'hospitals.read', 'users.read', 'system.read'],
-        userCount: 2
+        userCount: users.filter(u => u.role === 'client').length
       },
       {
-        id: 'support',
-        name: '고객 지원',
-        description: '병원 지원 및 문의 처리',
-        permissions: ['posts.read', 'hospitals.read', 'users.read', 'system.read'],
-        userCount: 1
-      },
-      {
-        id: 'hospital_admin',
-        name: '병원 관리자',
-        description: '자신의 병원 콘텐츠 및 사용자 관리',
-        permissions: ['posts.read', 'posts.update', 'campaigns.read', 'users.read'],
-        userCount: 5
-      },
-      {
-        id: 'hospital_user',
+        id: 'hospital',
         name: '병원 사용자',
         description: '기본적인 콘텐츠 조회 및 자료 제공',
         permissions: ['posts.read', 'posts.create'],
-        userCount: 15
+        userCount: users.filter(u => u.role === 'hospital').length
       }
     ];
     setRoles(mockRoles);
@@ -223,16 +151,22 @@ export default function UserManagementPage() {
 
   const handleDeleteUser = async (userId: number) => {
     if (confirm('이 사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-      // API 호출
-      setUsers(prev => prev.filter(u => u.id !== userId));
+      try {
+        await usersApi.deleteUser(userId);
+        await loadUsers();
+      } catch (error) {
+        console.error('Failed to delete user:', error);
+      }
     }
   };
 
   const handleToggleUserStatus = async (userId: number) => {
-    // API 호출
-    setUsers(prev => prev.map(user =>
-      user.id === userId ? { ...user, isActive: !user.isActive } : user
-    ));
+    try {
+      await usersApi.toggleUserStatus(userId);
+      await loadUsers();
+    } catch (error) {
+      console.error('Failed to toggle user status:', error);
+    }
   };
 
   const formatPermission = (permission: string) => {
@@ -287,7 +221,7 @@ export default function UserManagementPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">활성 사용자</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.isActive).length}
+                {users.filter(u => u.is_active).length}
               </p>
             </div>
           </div>
@@ -362,7 +296,7 @@ export default function UserManagementPage() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
                         {roleLabels[user.role]}
                       </span>
-                      {user.isActive ? (
+                      {user.is_active ? (
                         <CheckCircle className="w-5 h-5 text-green-500" />
                       ) : (
                         <XCircle className="w-5 h-5 text-red-500" />
@@ -384,7 +318,7 @@ export default function UserManagementPage() {
                             onClick={() => handleToggleUserStatus(user.id)}
                             className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
                           >
-                            {user.isActive ? '비활성화' : '활성화'}
+                            {user.is_active ? '비활성화' : '활성화'}
                           </button>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
@@ -399,25 +333,25 @@ export default function UserManagementPage() {
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                    {user.hospitalName && (
+                    {user.hospital_id && (
                       <div className="flex items-center">
                         <Building className="w-4 h-4 mr-1" />
-                        {user.hospitalName}
+                        병원 ID: {user.hospital_id}
                       </div>
                     )}
-                    {user.lastLogin && (
+                    {user.last_login && (
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        마지막 로그인: {new Date(user.lastLogin).toLocaleDateString('ko-KR')}
+                        마지막 로그인: {new Date(user.last_login).toLocaleDateString('ko-KR')}
                       </div>
                     )}
                     <div className="flex items-center">
                       <Key className="w-4 h-4 mr-1" />
-                      권한: {user.permissions.length}개
+                      역할: {user.role}
                     </div>
                     <div className="flex items-center">
                       <Shield className="w-4 h-4 mr-1" />
-                      생성일: {new Date(user.createdAt).toLocaleDateString('ko-KR')}
+                      생성일: {new Date(user.created_at).toLocaleDateString('ko-KR')}
                     </div>
                   </div>
                 </div>

@@ -10,7 +10,8 @@ import { formatDate, formatDateTime, getStatusText, getStatusColor, truncateText
 import { adminApi } from '@/services/api';
 import { WorkflowTimeline } from '@/components/shared/WorkflowTimeline';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import type { Post, AgentExecutionLog, PipelineResult, AgentResult } from '@/types/common';
+import { getPostDetail, getPostStatusHistory, getPostActivityResults, getPostMetrics, updatePostStatus, reprocessPost } from '@/services/postsDetailApi';
+import type { Post, AgentExecutionLog, PipelineResult, AgentResult, PostStatusHistory, PostActivityResult, PostDetailMetrics } from '@/types/common';
 
 export default function AdminPostDetail() {
   const params = useParams();
@@ -22,6 +23,9 @@ export default function AdminPostDetail() {
   const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null);
   const [agentResults, setAgentResults] = useState<AgentResult[]>([]);
   const [workflowData, setWorkflowData] = useState<any>(null);
+  const [statusHistory, setStatusHistory] = useState<PostStatusHistory[]>([]);
+  const [activityResults, setActivityResults] = useState<PostActivityResult[]>([]);
+  const [metrics, setMetrics] = useState<PostDetailMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,14 +33,22 @@ export default function AdminPostDetail() {
       try {
         setLoading(true);
         
-        // 실제 API 호출로 데이터 로드
+        // 새로운 Posts Detail API를 사용하여 데이터 로드
         const [
+          postDetailData,
+          statusHistoryData,
+          activityResultsData,
+          metricsData,
           postData,
           agentLogsData,
           pipelineResultData,
           agentResultsData,
           workflowDataResponse
         ] = await Promise.all([
+          getPostDetail(postId),
+          getPostStatusHistory(postId),
+          getPostActivityResults(postId),
+          getPostMetrics(postId),
           adminApi.getPost(postId),
           adminApi.getAgentLogs(postId),
           adminApi.getPipelineResult(postId),
@@ -49,6 +61,9 @@ export default function AdminPostDetail() {
         setPipelineResult(pipelineResultData);
         setAgentResults(agentResultsData);
         setWorkflowData(workflowDataResponse);
+        setStatusHistory(statusHistoryData);
+        setActivityResults(activityResultsData);
+        setMetrics(metricsData);
       } catch (error) {
         console.error('포스트 상세 데이터 로드 실패:', error);
         // 에러 시 null/빈 상태로 설정
@@ -56,6 +71,9 @@ export default function AdminPostDetail() {
         setAgentLogs([]);
         setPipelineResult(null);
         setAgentResults([]);
+        setStatusHistory([]);
+        setActivityResults([]);
+        setMetrics(null);
       } finally {
         setLoading(false);
       }
@@ -135,14 +153,167 @@ export default function AdminPostDetail() {
       </Card>
 
       {/* 탭 콘텐츠 */}
-      <Tabs defaultValue="pipeline" className="space-y-4">
+      <Tabs defaultValue="timeline" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="timeline">타임라인</TabsTrigger>
           <TabsTrigger value="workflow">워크플로우</TabsTrigger>
           <TabsTrigger value="pipeline">파이프라인 결과</TabsTrigger>
           <TabsTrigger value="agents">에이전트 로그</TabsTrigger>
           <TabsTrigger value="content">콘텐츠</TabsTrigger>
           <TabsTrigger value="actions">작업</TabsTrigger>
         </TabsList>
+
+        {/* 타임라인 탭 */}
+        <TabsContent value="timeline">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 상태 히스토리 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>상태 변경 히스토리</CardTitle>
+                <p className="text-sm text-gray-600">
+                  포스트의 상태 변경 이력을 시간순으로 확인하세요
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {statusHistory.map((history, index) => (
+                    <div key={history.id} className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Badge variant="outline">{history.from_status || '시작'}</Badge>
+                          <span className="text-gray-400">→</span>
+                          <Badge variant="outline">{history.to_status}</Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          {history.action_type === 'status_change' ? '상태 변경' :
+                           history.action_type === 'content_update' ? '콘텐츠 업데이트' :
+                           history.action_type === 'approval' ? '승인' :
+                           history.action_type === 'review' ? '검토' :
+                           history.action_type === 'revision' ? '수정' : history.action_type}
+                        </p>
+                        {history.action_notes && (
+                          <p className="text-xs text-gray-500 mb-1">
+                            {truncateText(history.action_notes, 100)}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-400">
+                          {formatDateTime(history.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {statusHistory.length === 0 && (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">📋</div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">상태 히스토리가 없습니다</h3>
+                      <p className="text-gray-600">아직 상태 변경 이력이 없습니다.</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 활동 결과 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>활동별 결과</CardTitle>
+                <p className="text-sm text-gray-600">
+                  각 에이전트의 실행 결과와 성능을 확인하세요
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {activityResults.map((result, index) => (
+                    <div key={result.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+                      <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-medium text-sm">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Badge variant="outline">{result.activity_type}</Badge>
+                          <Badge 
+                            variant={result.status === 'success' ? 'success' : 
+                                    result.status === 'failed' ? 'destructive' : 'warning'}
+                          >
+                            {result.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          실행 시간: {result.execution_time ? `${(result.execution_time / 1000).toFixed(1)}초` : '-'}
+                        </p>
+                        {result.quality_score && (
+                          <p className="text-sm text-gray-600 mb-1">
+                            품질 점수: {result.quality_score.toFixed(1)}
+                          </p>
+                        )}
+                        {result.error_message && (
+                          <p className="text-xs text-red-600 mb-1">
+                            오류: {truncateText(result.error_message, 80)}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-400">
+                          {formatDateTime(result.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {activityResults.length === 0 && (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">⚡</div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">활동 결과가 없습니다</h3>
+                      <p className="text-gray-600">아직 실행된 활동이 없습니다.</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 성능 메트릭 */}
+          {metrics && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>성능 메트릭</CardTitle>
+                <p className="text-sm text-gray-600">
+                  포스트 생성 과정의 성능 지표를 확인하세요
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {metrics.total_execution_time ? `${(metrics.total_execution_time / 1000).toFixed(1)}초` : '-'}
+                    </div>
+                    <div className="text-sm text-gray-600">총 실행 시간</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {metrics.success_rate ? `${(metrics.success_rate * 100).toFixed(1)}%` : '-'}
+                    </div>
+                    <div className="text-sm text-gray-600">성공률</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {metrics.retry_count || 0}
+                    </div>
+                    <div className="text-sm text-gray-600">재시도 횟수</div>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {metrics.quality_score ? metrics.quality_score.toFixed(1) : '-'}
+                    </div>
+                    <div className="text-sm text-gray-600">최종 품질 점수</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* 워크플로우 탭 */}
         <TabsContent value="workflow">

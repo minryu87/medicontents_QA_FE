@@ -5,18 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/Ca
 import { Badge } from '@/components/shared/Badge';
 import Button from '@/components/shared/Button';
 import { formatDateTime } from '@/lib/utils';
-
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
-  source: string;
-  message: string;
-  user_id?: number;
-  user_name?: string;
-  ip_address?: string;
-  details?: any;
-}
+import { SystemLog, SystemLogsStats } from '@/types/common';
+import { getSystemLogs, getSystemLogsStats, deleteSystemLogs, cleanupOldLogs, exportSystemLogs, SystemLogsFilters } from '@/services/systemLogsApi';
 
 interface LogFilters {
   level: string;
@@ -28,8 +18,9 @@ interface LogFilters {
 }
 
 export default function SystemLogs() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<SystemLog[]>([]);
+  const [filteredLogs, setFilteredLogs] = useState<SystemLog[]>([]);
+  const [stats, setStats] = useState<SystemLogsStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [realTime, setRealTime] = useState(false);
   const [filters, setFilters] = useState<LogFilters>({
@@ -40,16 +31,23 @@ export default function SystemLogs() {
     dateTo: '',
     search: ''
   });
+  const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadLogs();
+    loadStats();
   }, []);
 
   useEffect(() => {
     if (realTime) {
-      intervalRef.current = setInterval(loadLogs, 5000); // 5초마다 업데이트
+      intervalRef.current = setInterval(() => {
+        loadLogs();
+        loadStats();
+      }, 5000); // 5초마다 업데이트
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -65,8 +63,8 @@ export default function SystemLogs() {
   }, [realTime]);
 
   useEffect(() => {
-    applyFilters();
-  }, [logs, filters]);
+    loadLogs();
+  }, [filters, page]);
 
   useEffect(() => {
     if (realTime && logsEndRef.current) {
@@ -76,96 +74,44 @@ export default function SystemLogs() {
 
   const loadLogs = async () => {
     try {
-      // 실제로는 API를 통해 로그를 가져옵니다
-      // 현재는 샘플 데이터로 구현
-      const sampleLogs: LogEntry[] = generateSampleLogs();
-      setLogs(sampleLogs);
+      setLoading(true);
+      const apiFilters: SystemLogsFilters = {
+        level: filters.level || undefined,
+        source: filters.source || undefined,
+        user_id: filters.user ? parseInt(filters.user) : undefined,
+        date_from: filters.dateFrom || undefined,
+        date_to: filters.dateTo || undefined,
+        search: filters.search || undefined,
+        page,
+        limit: 200
+      };
+
+      const response = await getSystemLogs(apiFilters);
+      setLogs(response.logs);
+      setFilteredLogs(response.logs);
+      setTotalPages(response.total_pages);
     } catch (error) {
       console.error('로그 로드 실패:', error);
+      // 에러 발생 시 빈 배열로 설정
+      setLogs([]);
+      setFilteredLogs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateSampleLogs = (): LogEntry[] => {
-    const levels: LogEntry['level'][] = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'];
-    const sources = ['auth', 'pipeline', 'database', 'api', 'agent'];
-    const messages = [
-      '사용자 로그인 성공',
-      '포스트 생성 완료',
-      'AI 에이전트 실행 시작',
-      '데이터베이스 연결 오류',
-      'API 요청 처리됨',
-      '캠페인 상태 업데이트',
-      '파일 업로드 성공',
-      '검증 실패',
-      '시스템 메모리 부족 경고',
-      '백업 완료'
-    ];
-
-    const logs: LogEntry[] = [];
-    const now = new Date();
-
-    for (let i = 0; i < 50; i++) {
-      const timestamp = new Date(now.getTime() - (i * 60000)); // 1분 간격
-      logs.push({
-        id: `log_${i}`,
-        timestamp: timestamp.toISOString(),
-        level: levels[Math.floor(Math.random() * levels.length)],
-        source: sources[Math.floor(Math.random() * sources.length)],
-        message: messages[Math.floor(Math.random() * messages.length)],
-        user_id: Math.random() > 0.5 ? Math.floor(Math.random() * 10) + 1 : undefined,
-        user_name: Math.random() > 0.5 ? `User${Math.floor(Math.random() * 10) + 1}` : undefined,
-        ip_address: Math.random() > 0.3 ? `192.168.1.${Math.floor(Math.random() * 255)}` : undefined,
-        details: Math.random() > 0.8 ? { additionalInfo: '상세 정보' } : undefined
-      });
+  const loadStats = async () => {
+    try {
+      const statsData = await getSystemLogsStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('로그 통계 로드 실패:', error);
     }
-
-    return logs;
   };
 
-  const applyFilters = () => {
-    let filtered = [...logs];
-
-    // 레벨 필터링
-    if (filters.level) {
-      filtered = filtered.filter(log => log.level === filters.level);
-    }
-
-    // 소스 필터링
-    if (filters.source) {
-      filtered = filtered.filter(log => log.source === filters.source);
-    }
-
-    // 사용자 필터링
-    if (filters.user) {
-      filtered = filtered.filter(log =>
-        log.user_name?.toLowerCase().includes(filters.user.toLowerCase())
-      );
-    }
-
-    // 날짜 필터링
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      filtered = filtered.filter(log => new Date(log.timestamp) >= fromDate);
-    }
-
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo);
-      filtered = filtered.filter(log => new Date(log.timestamp) <= toDate);
-    }
-
-    // 검색어 필터링
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(log =>
-        log.message.toLowerCase().includes(searchLower) ||
-        log.source.toLowerCase().includes(searchLower) ||
-        log.user_name?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    setFilteredLogs(filtered);
+  const handleFilterChange = (newFilters: Partial<LogFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    setPage(1); // 필터 변경 시 첫 페이지로 이동
   };
 
   const clearFilters = () => {
@@ -177,30 +123,71 @@ export default function SystemLogs() {
       dateTo: '',
       search: ''
     });
+    setPage(1);
   };
 
-  const exportLogs = () => {
-    const csvContent = [
-      ['Timestamp', 'Level', 'Source', 'Message', 'User', 'IP Address'].join(','),
-      ...filteredLogs.map(log => [
-        log.timestamp,
-        log.level,
-        log.source,
-        `"${log.message}"`,
-        log.user_name || '',
-        log.ip_address || ''
-      ].join(','))
-    ].join('\n');
+  const exportLogs = async () => {
+    try {
+      const apiFilters: SystemLogsFilters = {
+        level: filters.level || undefined,
+        source: filters.source || undefined,
+        user_id: filters.user ? parseInt(filters.user) : undefined,
+        date_from: filters.dateFrom || undefined,
+        date_to: filters.dateTo || undefined,
+        search: filters.search || undefined,
+      };
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `system_logs_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = await exportSystemLogs(apiFilters, 'csv');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `system_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('로그 내보내기 실패:', error);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedLogs.length === 0) return;
+    
+    try {
+      await deleteSystemLogs(selectedLogs);
+      setSelectedLogs([]);
+      loadLogs();
+    } catch (error) {
+      console.error('로그 삭제 실패:', error);
+    }
+  };
+
+  const handleCleanupOldLogs = async () => {
+    try {
+      const result = await cleanupOldLogs(30);
+      alert(`${result.deleted_count}개의 오래된 로그가 삭제되었습니다.`);
+      loadLogs();
+      loadStats();
+    } catch (error) {
+      console.error('로그 정리 실패:', error);
+    }
+  };
+
+  const handleLogSelect = (logId: number) => {
+    setSelectedLogs(prev => 
+      prev.includes(logId) 
+        ? prev.filter(id => id !== logId)
+        : [...prev, logId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLogs.length === (filteredLogs?.length || 0)) {
+      setSelectedLogs([]);
+    } else {
+      setSelectedLogs((filteredLogs || []).map(log => log.id));
+    }
   };
 
   const getLevelColor = (level: string) => {
@@ -267,7 +254,7 @@ export default function SystemLogs() {
               <label className="block text-sm font-medium text-gray-700 mb-1">로그 레벨</label>
               <select
                 value={filters.level}
-                onChange={(e) => setFilters(prev => ({ ...prev, level: e.target.value }))}
+                onChange={(e) => handleFilterChange({ level: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">전체</option>
@@ -283,7 +270,7 @@ export default function SystemLogs() {
               <label className="block text-sm font-medium text-gray-700 mb-1">소스</label>
               <select
                 value={filters.source}
-                onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
+                onChange={(e) => handleFilterChange({ source: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">전체</option>
@@ -296,12 +283,12 @@ export default function SystemLogs() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">사용자</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">사용자 ID</label>
               <input
-                type="text"
+                type="number"
                 value={filters.user}
-                onChange={(e) => setFilters(prev => ({ ...prev, user: e.target.value }))}
-                placeholder="사용자명 검색"
+                onChange={(e) => handleFilterChange({ user: e.target.value })}
+                placeholder="사용자 ID"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -311,7 +298,7 @@ export default function SystemLogs() {
               <input
                 type="text"
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
                 placeholder="메시지 검색"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
@@ -324,7 +311,7 @@ export default function SystemLogs() {
               <input
                 type="datetime-local"
                 value={filters.dateFrom}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                onChange={(e) => handleFilterChange({ dateFrom: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -334,7 +321,7 @@ export default function SystemLogs() {
               <input
                 type="datetime-local"
                 value={filters.dateTo}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                onChange={(e) => handleFilterChange({ dateTo: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -342,11 +329,14 @@ export default function SystemLogs() {
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              총 {filteredLogs.length}개 로그 (전체 {logs.length}개 중)
+              총 {filteredLogs?.length || 0}개 로그
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 필터 초기화
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCleanupOldLogs}>
+                오래된 로그 정리
               </Button>
             </div>
           </div>
@@ -358,18 +348,44 @@ export default function SystemLogs() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>로그 목록</CardTitle>
-            {realTime && (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-green-600">실시간 모니터링 중</span>
-              </div>
-            )}
+            <div className="flex items-center space-x-4">
+              {selectedLogs.length > 0 && (
+                <Button variant="outline" size="sm" onClick={handleDeleteSelected}>
+                  선택된 로그 삭제 ({selectedLogs.length})
+                </Button>
+              )}
+              {realTime && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-green-600">실시간 모니터링 중</span>
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
+          {/* 전체 선택 체크박스 */}
+          {(filteredLogs?.length || 0) > 0 && (
+            <div className="mb-4 flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={selectedLogs.length === (filteredLogs?.length || 0) && (filteredLogs?.length || 0) > 0}
+                onChange={handleSelectAll}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-600">전체 선택</span>
+            </div>
+          )}
+
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {filteredLogs.map((log) => (
+            {(filteredLogs || []).map((log) => (
               <div key={log.id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={selectedLogs.includes(log.id)}
+                  onChange={() => handleLogSelect(log.id)}
+                  className="mt-1 rounded border-gray-300"
+                />
                 <div className="text-lg mt-0.5">{getLevelIcon(log.level)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-1">
@@ -383,14 +399,14 @@ export default function SystemLogs() {
                   </div>
                   <p className="text-sm text-gray-900 mb-1">{log.message}</p>
                   <div className="flex items-center space-x-4 text-xs text-gray-500">
-                    {log.user_name && <span>사용자: {log.user_name}</span>}
+                    {log.user_id && <span>사용자 ID: {log.user_id}</span>}
                     {log.ip_address && <span>IP: {log.ip_address}</span>}
                   </div>
-                  {log.details && (
+                  {log.log_metadata && (
                     <details className="mt-2">
                       <summary className="text-xs text-blue-600 cursor-pointer">상세 정보 보기</summary>
                       <pre className="text-xs bg-gray-100 p-2 mt-1 rounded overflow-x-auto">
-                        {JSON.stringify(log.details, null, 2)}
+                        {JSON.stringify(log.log_metadata, null, 2)}
                       </pre>
                     </details>
                   )}
@@ -400,7 +416,32 @@ export default function SystemLogs() {
             <div ref={logsEndRef} />
           </div>
 
-          {filteredLogs.length === 0 && (
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+              >
+                이전
+              </Button>
+              <span className="text-sm text-gray-600">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={page === totalPages}
+              >
+                다음
+              </Button>
+            </div>
+          )}
+
+          {(filteredLogs?.length || 0) === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📋</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">로그가 없습니다</h3>
@@ -411,21 +452,72 @@ export default function SystemLogs() {
       </Card>
 
       {/* 로그 통계 */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-5 gap-4">
-        {['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'].map((level) => {
-          const count = logs.filter(log => log.level === level).length;
-          return (
-            <Card key={level}>
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{count}</div>
-                  <Badge className={getLevelColor(level)}>{level}</Badge>
+      {stats && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">로그 통계</h3>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            {['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'].map((level) => {
+              const count = stats?.logs_by_level?.[level] || 0;
+              return (
+                <Card key={level}>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{count}</div>
+                      <Badge className={getLevelColor(level)}>{level}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          
+          {/* 소스별 통계 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">소스별 로그</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {Object.entries(stats?.logs_by_source || {}).map(([source, count]) => (
+                    <div key={source} className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{source}</span>
+                      <Badge variant="outline">{count as number}</Badge>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">전체 로그 수</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-primary-600">
+                  {(stats?.total_logs || 0).toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">최근 에러</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {(stats?.recent_errors || []).slice(0, 3).map((error: SystemLog) => (
+                    <div key={error.id} className="text-xs">
+                      <div className="font-medium text-red-600">{error.level}</div>
+                      <div className="text-gray-600 truncate">{error.message}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

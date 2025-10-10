@@ -15,37 +15,23 @@ import {
   Settings,
   Zap,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Brain,
+  History,
+  GitBranch,
+  Sparkles
 } from 'lucide-react';
-
-interface PromptVersion {
-  id: number;
-  agentType: string;
-  version: string;
-  content: string;
-  variables: string[];
-  performance: {
-    usageCount: number;
-    avgScore: number;
-    errorRate: number;
-  };
-  status: 'active' | 'testing' | 'archived';
-  createdAt: string;
-}
-
-interface ABTest {
-  id: number;
-  variantA: PromptVersion;
-  variantB: PromptVersion;
-  status: 'running' | 'completed' | 'stopped';
-  startDate: string;
-  winner?: string;
-  metrics: {
-    variantA: { usage: number; score: number; };
-    variantB: { usage: number; score: number; };
-    significance: number;
-  };
-}
+import { 
+  Prompt, 
+  PromptVersion, 
+  PromptCreateRequest, 
+  PromptUpdateRequest,
+  PromptImprovementRequest,
+  PromptImprovementResponse,
+  PromptQualityAnalysis
+} from '@/types/common';
+import { promptsApi, promptVersionsApi, promptImprovementApi } from '@/services/promptsApi';
+import PromptEditorModal from '@/components/admin/PromptEditorModal';
 
 const agentTypes = {
   input: '입력 처리',
@@ -57,82 +43,25 @@ const agentTypes = {
 };
 
 export default function PromptManagementPage() {
-  const [prompts, setPrompts] = useState<{
-    active: PromptVersion[];
-    testing: PromptVersion[];
-    archived: PromptVersion[];
-  }>({
-    active: [],
-    testing: [],
-    archived: []
-  });
-  const [abTests, setAbTests] = useState<ABTest[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>('all');
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
-  const [editingPrompt, setEditingPrompt] = useState<PromptVersion | null>(null);
+  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [showVersions, setShowVersions] = useState<number | null>(null);
+  const [showImprovement, setShowImprovement] = useState<number | null>(null);
+  const [improvementResult, setImprovementResult] = useState<PromptImprovementResponse | null>(null);
+  const [qualityAnalysis, setQualityAnalysis] = useState<PromptQualityAnalysis | null>(null);
 
   useEffect(() => {
     loadPrompts();
-    loadABTests();
   }, []);
 
   const loadPrompts = async () => {
     try {
       setLoading(true);
-      // 실제로는 API 호출
-      const mockPrompts: PromptVersion[] = [
-        {
-          id: 1,
-          agentType: 'content',
-          version: 'v2.1.0',
-          content: '다음과 같은 콘텐츠를 생성해주세요...',
-          variables: ['topic', 'length', 'style'],
-          performance: {
-            usageCount: 1250,
-            avgScore: 87.5,
-            errorRate: 2.1
-          },
-          status: 'active',
-          createdAt: '2024-01-15'
-        },
-        {
-          id: 2,
-          agentType: 'title',
-          version: 'v1.8.2',
-          content: '주제에 맞는 SEO 최적화 제목을 생성해주세요...',
-          variables: ['topic', 'keywords'],
-          performance: {
-            usageCount: 980,
-            avgScore: 92.1,
-            errorRate: 1.5
-          },
-          status: 'active',
-          createdAt: '2024-01-10'
-        },
-        {
-          id: 3,
-          agentType: 'content',
-          version: 'v2.2.0-beta',
-          content: '개선된 버전의 콘텐츠 생성 프롬프트...',
-          variables: ['topic', 'length', 'style', 'audience'],
-          performance: {
-            usageCount: 145,
-            avgScore: 89.2,
-            errorRate: 1.8
-          },
-          status: 'testing',
-          createdAt: '2024-01-20'
-        }
-      ];
-
-      const categorized = {
-        active: mockPrompts.filter(p => p.status === 'active'),
-        testing: mockPrompts.filter(p => p.status === 'testing'),
-        archived: mockPrompts.filter(p => p.status === 'archived')
-      };
-
-      setPrompts(categorized);
+      const response = await promptsApi.getPrompts();
+      setPrompts(response);
     } catch (error) {
       console.error('Failed to load prompts:', error);
     } finally {
@@ -140,29 +69,10 @@ export default function PromptManagementPage() {
     }
   };
 
-  const loadABTests = async () => {
-    // 실제로는 API 호출
-    const mockTests: ABTest[] = [
-      {
-        id: 1,
-        variantA: prompts.active[0] || {} as PromptVersion,
-        variantB: prompts.testing[0] || {} as PromptVersion,
-        status: 'running',
-        startDate: '2024-01-20',
-        metrics: {
-          variantA: { usage: 1250, score: 87.5 },
-          variantB: { usage: 145, score: 89.2 },
-          significance: 1.8
-        }
-      }
-    ];
-    setAbTests(mockTests);
-  };
-
-  const filteredPrompts = (status: 'active' | 'testing' | 'archived') => {
-    let filtered = prompts[status];
-    if (selectedAgent !== 'all') {
-      filtered = filtered.filter(p => p.agentType === selectedAgent);
+  const filteredPrompts = () => {
+    let filtered = prompts || [];
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(p => p.category === selectedCategory);
     }
     return filtered;
   };
@@ -172,21 +82,51 @@ export default function PromptManagementPage() {
     setShowEditor(true);
   };
 
-  const handleEditPrompt = (prompt: PromptVersion) => {
+  const handleEditPrompt = (prompt: Prompt) => {
     setEditingPrompt(prompt);
     setShowEditor(true);
   };
 
-  const handleArchivePrompt = async (promptId: number) => {
-    if (confirm('이 프롬프트를 보관하시겠습니까?')) {
-      // API 호출
-      console.log('Archiving prompt:', promptId);
+  const handleToggleStatus = async (promptId: number) => {
+    try {
+      await promptsApi.togglePromptStatus(promptId);
+      await loadPrompts();
+    } catch (error) {
+      console.error('Failed to toggle prompt status:', error);
     }
   };
 
-  const handleStartABTest = async (promptA: PromptVersion, promptB: PromptVersion) => {
-    // API 호출
-    console.log('Starting A/B test:', promptA.id, promptB.id);
+  const handleDeletePrompt = async (promptId: number) => {
+    if (confirm('이 프롬프트를 삭제하시겠습니까?')) {
+      try {
+        await promptsApi.deletePrompt(promptId);
+        await loadPrompts();
+      } catch (error) {
+        console.error('Failed to delete prompt:', error);
+      }
+    }
+  };
+
+  const handleImprovePrompt = async (promptId: number, instruction: string) => {
+    try {
+      const result = await promptImprovementApi.improvePrompt({
+        target: 'prompt',
+        target_id: promptId,
+        improvement_instruction: instruction,
+      });
+      setImprovementResult(result);
+    } catch (error) {
+      console.error('Failed to improve prompt:', error);
+    }
+  };
+
+  const handleAnalyzeQuality = async (promptId: number) => {
+    try {
+      const analysis = await promptImprovementApi.analyzePromptQuality(promptId);
+      setQualityAnalysis(analysis);
+    } catch (error) {
+      console.error('Failed to analyze prompt quality:', error);
+    }
   };
 
   if (loading) {
@@ -218,11 +158,11 @@ export default function PromptManagementPage() {
       {/* 필터 및 통계 */}
       <div className="mb-8 flex gap-4 items-center">
         <select
-          value={selectedAgent}
-          onChange={(e) => setSelectedAgent(e.target.value)}
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="all">모든 에이전트</option>
+          <option value="all">모든 카테고리</option>
           {Object.entries(agentTypes).map(([key, label]) => (
             <option key={key} value={key}>{label}</option>
           ))}
@@ -231,282 +171,171 @@ export default function PromptManagementPage() {
         <div className="flex gap-4 ml-auto">
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
-              {prompts.active.length}
+              {(prompts || []).filter(p => p.is_active).length}
             </div>
             <div className="text-sm text-gray-600">활성 프롬프트</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {prompts.testing.length}
+              {(prompts || []).filter(p => !p.is_active).length}
             </div>
-            <div className="text-sm text-gray-600">테스트 중</div>
+            <div className="text-sm text-gray-600">비활성 프롬프트</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">
-              {abTests.filter(t => t.status === 'running').length}
+            <div className="text-2xl font-bold text-purple-600">
+              {(prompts || []).length}
             </div>
-            <div className="text-sm text-gray-600">A/B 테스트</div>
+            <div className="text-sm text-gray-600">전체 프롬프트</div>
           </div>
         </div>
       </div>
-
-      {/* A/B 테스트 섹션 */}
-      {abTests.length > 0 && (
-        <Card className="p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            <BarChart3 className="w-5 h-5 inline mr-2" />
-            진행 중인 A/B 테스트
-          </h2>
-          <div className="space-y-4">
-            {abTests.map((test) => (
-              <div key={test.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-medium text-gray-900">
-                      {agentTypes[test.variantA.agentType as keyof typeof agentTypes]} A/B 테스트
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {test.variantA.version} vs {test.variantB.version}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      test.status === 'running' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {test.status === 'running' ? '진행중' : '완료'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {test.metrics.variantA.score.toFixed(1)}
-                    </div>
-                    <div className="text-sm text-gray-600">Variant A 점수</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {test.metrics.variantA.usage}회 사용
-                    </div>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {test.metrics.variantB.score.toFixed(1)}
-                    </div>
-                    <div className="text-sm text-gray-600">Variant B 점수</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {test.metrics.variantB.usage}회 사용
-                    </div>
-                  </div>
-                </div>
-
-                {test.winner && (
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center">
-                      <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                      <span className="text-green-800 font-medium">
-                        승자: {test.winner} (유의성: {test.metrics.significance.toFixed(2)})
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* 프롬프트 목록 */}
-      <div className="space-y-8">
-        {/* 활성 프롬프트 */}
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <Zap className="w-5 h-5 mr-2 text-green-600" />
-            활성 프롬프트 ({filteredPrompts('active').length})
-          </h2>
-          <div className="grid gap-4">
-            {filteredPrompts('active').map((prompt) => (
-              <Card key={prompt.id} className="p-6">
-                <div className="flex items-center justify-between mb-4">
+      <div className="space-y-6">
+        {filteredPrompts().map((prompt) => (
+          <Card key={prompt.id} className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {prompt.name}
+                  </h3>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    prompt.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {prompt.is_active ? '활성' : '비활성'}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600 mb-2">
+                  <span className="font-medium">카테고리:</span> {agentTypes[prompt.category as keyof typeof agentTypes] || prompt.category}
+                  {prompt.subcategory && (
+                    <span className="ml-2">
+                      <span className="font-medium">서브카테고리:</span> {prompt.subcategory}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowVersions(showVersions === prompt.id ? null : prompt.id)}
+                >
+                  <History className="w-4 h-4 mr-1" />
+                  버전
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowImprovement(showImprovement === prompt.id ? null : prompt.id)}
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  개선
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleEditPrompt(prompt)}>
+                  <Edit className="w-4 h-4 mr-1" />
+                  편집
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleToggleStatus(prompt.id)}
+                >
+                  {prompt.is_active ? '비활성화' : '활성화'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleDeletePrompt(prompt.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  삭제
+                </Button>
+              </div>
+            </div>
+
+            {/* 프롬프트 내용 미리보기 */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <div className="text-sm text-gray-700 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
+                {prompt.prompt_text}
+              </div>
+            </div>
+
+            {/* 버전 관리 섹션 */}
+            {showVersions === prompt.id && (
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <GitBranch className="w-4 h-4 mr-2" />
+                  버전 관리
+                </h4>
+                <div className="text-sm text-gray-600">
+                  버전 관리 기능이 여기에 표시됩니다.
+                </div>
+              </div>
+            )}
+
+            {/* LLM 개선 섹션 */}
+            {showImprovement === prompt.id && (
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <Brain className="w-4 h-4 mr-2" />
+                  LLM 기반 개선
+                </h4>
+                <div className="space-y-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {agentTypes[prompt.agentType as keyof typeof agentTypes]}
-                    </h3>
-                    <p className="text-gray-600">버전 {prompt.version}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      개선 지시사항
+                    </label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      rows={3}
+                      placeholder="어떤 부분을 개선하고 싶은지 설명해주세요..."
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEditPrompt(prompt)}>
-                      <Edit className="w-4 h-4 mr-1" />
-                      편집
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-1" />
-                      미리보기
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleArchivePrompt(prompt.id)}
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleAnalyzeQuality(prompt.id)}
                     >
-                      <Archive className="w-4 h-4 mr-1" />
-                      보관
+                      <BarChart3 className="w-4 h-4 mr-1" />
+                      품질 분석
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      개선 제안
                     </Button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-xl font-semibold text-blue-600">
-                      {prompt.performance.usageCount}
-                    </div>
-                    <div className="text-sm text-blue-600">사용 횟수</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <div className="text-xl font-semibold text-green-600">
-                      {prompt.performance.avgScore.toFixed(1)}
-                    </div>
-                    <div className="text-sm text-green-600">평균 점수</div>
-                  </div>
-                  <div className="text-center p-3 bg-red-50 rounded-lg">
-                    <div className="text-xl font-semibold text-red-600">
-                      {prompt.performance.errorRate.toFixed(1)}%
-                    </div>
-                    <div className="text-sm text-red-600">오류율</div>
-                  </div>
-                </div>
-
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">변수:</span> {prompt.variables.join(', ')}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* 테스트 중인 프롬프트 */}
-        {filteredPrompts('testing').length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-              <Settings className="w-5 h-5 mr-2 text-blue-600" />
-              테스트 중인 프롬프트 ({filteredPrompts('testing').length})
-            </h2>
-            <div className="grid gap-4">
-              {filteredPrompts('testing').map((prompt) => (
-                <Card key={prompt.id} className="p-6 border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {agentTypes[prompt.agentType as keyof typeof agentTypes]}
-                      </h3>
-                      <p className="text-gray-600">버전 {prompt.version} (테스트 중)</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleStartABTest(prompt, prompts.active.find(p => p.agentType === prompt.agentType)!)}
-                      >
-                        <Play className="w-4 h-4 mr-1" />
-                        A/B 테스트 시작
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleEditPrompt(prompt)}>
-                        <Edit className="w-4 h-4 mr-1" />
-                        편집
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
-                    이 프롬프트는 현재 테스트 단계에 있습니다. A/B 테스트를 통해 성능을 비교해보세요.
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 보관된 프롬프트 */}
-        {filteredPrompts('archived').length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-              <Archive className="w-5 h-5 mr-2 text-gray-600" />
-              보관된 프롬프트 ({filteredPrompts('archived').length})
-            </h2>
-            <div className="text-gray-600 text-center py-8">
-              보관된 프롬프트가 여기에 표시됩니다.
-            </div>
-          </div>
-        )}
+              </div>
+            )}
+          </Card>
+        ))}
       </div>
 
-      {/* 프롬프트 편집기 모달 (간단한 구현) */}
+
+      {/* 프롬프트 편집기 모달 */}
       {showEditor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingPrompt ? '프롬프트 편집' : '새 프롬프트 생성'}
-              </h2>
-              <Button variant="outline" onClick={() => setShowEditor(false)}>
-                닫기
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    에이전트 타입
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    {Object.entries(agentTypes).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    버전
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="v1.0.0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  프롬프트 내용
-                </label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md h-64 font-mono text-sm"
-                  placeholder="프롬프트를 입력하세요..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  변수 (쉼표로 구분)
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="topic, length, style"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button variant="primary">
-                  {editingPrompt ? '저장' : '생성'}
-                </Button>
-                <Button variant="outline" onClick={() => setShowEditor(false)}>
-                  취소
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PromptEditorModal
+          prompt={editingPrompt}
+          onClose={() => setShowEditor(false)}
+          onSave={async (data) => {
+            try {
+              if (editingPrompt) {
+                await promptsApi.updatePrompt(editingPrompt.id, data as PromptUpdateRequest);
+              } else {
+                await promptsApi.createPrompt(data as PromptCreateRequest);
+              }
+              await loadPrompts();
+              setShowEditor(false);
+            } catch (error) {
+              console.error('Failed to save prompt:', error);
+            }
+          }}
+        />
       )}
     </div>
   );
