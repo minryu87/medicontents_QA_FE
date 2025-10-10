@@ -29,7 +29,10 @@ export const checklistsApi = {
     if (params?.page) searchParams.append('page', params.page.toString());
     if (params?.size) searchParams.append('size', params.size.toString());
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/checklists?${searchParams}`, {
+    const queryString = searchParams.toString();
+    const url = `${API_BASE_URL}/api/v1/admin/checklists${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
