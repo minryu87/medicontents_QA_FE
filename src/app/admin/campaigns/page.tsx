@@ -150,6 +150,8 @@ export default function AdminCampaigns() {
         newStatus = 'active'; // ready -> active
       } else if (currentStatus === 'active') {
         newStatus = 'paused'; // active -> paused
+      } else if (currentStatus === 'paused') {
+        newStatus = 'active'; // paused -> active
       } else {
         return; // 다른 상태에서는 토글하지 않음
       }
@@ -173,10 +175,10 @@ export default function AdminCampaigns() {
 
   // 스위치 표시 여부 결정
   const shouldShowToggle = (status: string) => {
-    return status === 'ready' || status === 'active';
+    return status === 'ready' || status === 'active' || status === 'paused';
   };
 
-  // 스위치 상태 결정 (ready=off, active=on)
+  // 스위치 상태 결정 (ready=off, paused=off, active=on)
   const getSwitchState = (status: string) => {
     return status === 'active';
   };
